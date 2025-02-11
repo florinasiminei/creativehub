@@ -1,4 +1,5 @@
 "use client"; // Required for Next.js App Router
+/* eslint-disable react/no-unescaped-entities */
 
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
