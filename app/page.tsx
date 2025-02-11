@@ -138,7 +138,7 @@ export default function Home() {
       <section id="portfolio" className="py-20 bg-gray-100 dark:bg-gray-900 text-center transition-colors">
         <h2 className="text-4xl font-extrabold mb-12">Our Work</h2>
         <div className="grid md:grid-cols-3 gap-8 px-8">
-          {["portfolio1.jpg", "portfolio2.jpg", "portfolio3.jpg"].map((image, index) => (
+          {["portfolio1.jpg", "portfolio4.jpg", "portfolio3.jpg"].map((image, index) => (
             <motion.div
               key={index}
               whileHover={{ scale: 1.05 }}
