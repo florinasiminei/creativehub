@@ -8,6 +8,16 @@ import Image from "next/image";
 import Link from "next/link";
 import Slider from "rc-slider";
 import "rc-slider/assets/index.css";
+type Cazare = {
+  id: string;
+  title: string;
+  price: number;
+  tip: string;
+  locatie: string;
+  numarPersoane: number;
+  facilitati: string[];
+  image: string;
+};
 
 const Range = Slider.Range;
 import { supabase } from "@/lib/supabaseClient";
@@ -16,7 +26,7 @@ import Fuse from "fuse.js";
 export default function Home() {
   const [darkMode, setDarkMode] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [cazari, setCazari] = useState([]);
+  const [cazari, setCazari] = useState<Cazare[]>([]);
   const [filters, setFilters] = useState({
     locatie: "",
     keyword: "",
@@ -52,16 +62,17 @@ export default function Home() {
         return;
       }
 
-      const mapped = data.map((c) => ({
-        id: c.id,
-        title: c.title,
-        price: parseInt((c.price || "0").replace(/\D/g, "")) || 0,
-        tip: c.type,
-        locatie: c.location,
-        numarPersoane: parseInt(c.capacity?.match(/\d+/)?.[0]) || 1,
-        facilitati: c.listing_facilities?.map((f) => f.facilities.name) || [],
-        image: c.image_url || "/images/portfolio1.jpg",
-      }));
+      const mapped: Cazare[] = data.map((c: any) => ({
+  id: c.id,
+  title: c.title,
+  price: parseInt((c.price || "0").replace(/\D/g, "")) || 0,
+  tip: c.type,
+  locatie: c.location,
+  numarPersoane: parseInt(c.capacity?.match(/\d+/)?.[0]) || 1,
+  facilitati: (c.listing_facilities ?? []).map((f: any) => f.facilities?.name || ""),
+  image: c.image_url || "/images/portfolio1.jpg",
+}));
+
 
       setCazari(mapped);
 
