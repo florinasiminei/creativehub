@@ -433,6 +433,8 @@ export default function Home() {
               <FaYoutube />
             </a>
           </div>
+          <SpeedInsights />
+
         </footer>
       </div>
     </>
