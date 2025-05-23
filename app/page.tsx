@@ -4,6 +4,7 @@ import Head from "next/head";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { BsFillSunFill, BsFillMoonFill } from "react-icons/bs";
 import { FaFacebookF, FaInstagram, FaTiktok, FaYoutube } from "react-icons/fa";
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import Image from "next/image";
 import Link from "next/link";
 import Slider from "rc-slider";
@@ -78,7 +79,7 @@ export default function Home() {
         return;
       }
 
-      const mapped: Cazare[] = (data as SupabaseListing[]).map((c) => ({
+      const mapped: Cazare[] = (data as unknown as SupabaseListing[]).map((c) => { return {
         id: c.id,
         title: c.title,
         price: parseInt((c.price || "0").replace(/\D/g, "")) || 0,
@@ -87,7 +88,7 @@ export default function Home() {
         numarPersoane: parseInt(c.capacity?.match(/\d+/)?.[0]) || 1,
         facilitati: c.listing_facilities?.map((f) => f.facilities.name) || [],
         image: c.image_url || "/images/portfolio1.jpg",
-      }));
+      }; });
 
       setCazari(mapped);
 
