@@ -1,4 +1,5 @@
 "use client";
+export const dynamic = 'force-dynamic';
 import Head from "next/head";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { BsFillSunFill, BsFillMoonFill } from "react-icons/bs";
