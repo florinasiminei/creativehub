@@ -122,9 +122,6 @@ export default function Home() {
     }
   };
 
-  const handleKeywordChange = (e) => {
-    setFilters((prev) => ({ ...prev, keyword: e.target.value }));
-  };
 
   const selectLocatie = (locatieSugestie) => {
     const locatie = locatieSugestie.split(" – ")[0].trim();
