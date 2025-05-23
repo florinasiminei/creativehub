@@ -7,7 +7,10 @@ import { BsFillSunFill, BsFillMoonFill } from "react-icons/bs";
 import { FaFacebookF, FaInstagram, FaTiktok, FaYoutube } from "react-icons/fa";
 import Image from "next/image";
 import Link from "next/link";
-import ReactSlider from "react-slider";
+import Slider from "rc-slider";
+import "rc-slider/assets/index.css";
+
+const Range = Slider.Range;
 import { supabase } from "@/lib/supabaseClient";
 import Fuse from "fuse.js";
 
@@ -125,7 +128,7 @@ export default function Home() {
   };
 
   const selectLocatie = (locatieSugestie) => {
-    const locatie = locatieSugestie.split(" – ")[0].trim(); // Extract location name
+    const locatie = locatieSugestie.split(" – ")[0].trim();
     setFilters((prev) => ({ ...prev, locatie }));
     setLocatiiSugestii([]);
     setSugestieIndex(-1);
@@ -285,30 +288,15 @@ export default function Home() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Interval preț: {filters.pretMin} – {filters.pretMax} lei
               </label>
-              <ReactSlider
-                className="w-full h-2 bg-gray-200 dark:bg-zinc-700 rounded-full relative"
-                thumbClassName="h-5 w-5 bg-white border-2 border-teal-400 rounded-full shadow cursor-pointer -top-[6px]"
+              <Range
                 min={minPrice}
                 max={maxPrice}
                 step={10}
                 value={[filters.pretMin, filters.pretMax]}
+                allowCross={false}
                 onChange={([pretMin, pretMax]) =>
                   setFilters((prev) => ({ ...prev, pretMin, pretMax }))
                 }
-                renderTrack={({ key, ...rest }, state) => {
-                  const isActive = state.index === 1;
-                  return (
-                    <div
-                      key={key}
-                      {...rest}
-                      className={`h-2 rounded-full ${
-                        isActive
-                          ? "bg-teal-400"
-                          : "bg-gray-300 dark:bg-zinc-700"
-                      }`}
-                    />
-                  );
-                }}
               />
             </div>
 
@@ -317,9 +305,7 @@ export default function Home() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Număr persoane: {filters.persoane === 10 ? "10+" : filters.persoane}
               </label>
-              <ReactSlider
-                className="w-full h-2 bg-gray-200 dark:bg-zinc-700 rounded-full relative"
-                thumbClassName="h-5 w-5 bg-white border-2 border-teal-400 rounded-full shadow cursor-pointer -top-[6px]"
+              <Slider
                 min={1}
                 max={10}
                 step={1}
@@ -327,20 +313,6 @@ export default function Home() {
                 onChange={(persoane) =>
                   setFilters((prev) => ({ ...prev, persoane }))
                 }
-                renderTrack={({ key, ...rest }, state) => {
-                  const isActive = state.index === 0;
-                  return (
-                    <div
-                      key={key}
-                      {...rest}
-                      className={`h-2 rounded-full ${
-                        isActive
-                          ? "bg-teal-400"
-                          : "bg-gray-300 dark:bg-zinc-700"
-                      }`}
-                    />
-                  );
-                }}
               />
             </div>
 
@@ -390,9 +362,9 @@ export default function Home() {
             )}
           </div>
           {/* Total count */}
-<p className="text-center text-gray-600 dark:text-gray-400 mt-4">
-  Total rezultate: {filteredCazari.length}
-</p>
+          <p className="text-center text-gray-600 dark:text-gray-400 mt-4">
+            Total rezultate: {filteredCazari.length}
+          </p>
         </section>
 
         {/* Footer */}
