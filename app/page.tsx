@@ -1,6 +1,4 @@
 "use client";
-export const dynamic = 'force-dynamic';
-
 import Head from "next/head";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { BsFillSunFill, BsFillMoonFill } from "react-icons/bs";
@@ -10,7 +8,6 @@ import Image from "next/image";
 import Link from "next/link";
 import Slider from "rc-slider";
 import "rc-slider/assets/index.css";
-import { supabase } from "@/lib/supabaseClient";
 import Fuse from "fuse.js";
 
 const Range = Slider.Range;
@@ -58,6 +55,13 @@ export default function Home() {
 
   useEffect(() => {
     async function fetchCazari() {
+      const { createClient } = await import("@supabase/supabase-js");
+const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+      
       const { data, error } = await supabase
         .from("listings")
         .select(`
