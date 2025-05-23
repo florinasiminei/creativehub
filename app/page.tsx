@@ -8,6 +8,26 @@ import Image from "next/image";
 import Link from "next/link";
 import Slider from "rc-slider";
 import "rc-slider/assets/index.css";
+import { supabase } from "@/lib/supabaseClient";
+import Fuse from "fuse.js";
+
+const Range = Slider.Range;
+
+type SupabaseListing = {
+  id: string;
+  title: string;
+  type: string;
+  location: string;
+  capacity: string;
+  price: string;
+  image_url: string;
+  listing_facilities: {
+    facilities: {
+      name: string;
+    };
+  }[];
+};
+
 type Cazare = {
   id: string;
   title: string;
@@ -18,10 +38,6 @@ type Cazare = {
   facilitati: string[];
   image: string;
 };
-
-const Range = Slider.Range;
-import { supabase } from "@/lib/supabaseClient";
-import Fuse from "fuse.js";
 
 export default function Home() {
   const [darkMode, setDarkMode] = useState(false);
@@ -62,17 +78,16 @@ export default function Home() {
         return;
       }
 
-      const mapped: Cazare[] = data.map((c: any) => ({
-  id: c.id,
-  title: c.title,
-  price: parseInt((c.price || "0").replace(/\D/g, "")) || 0,
-  tip: c.type,
-  locatie: c.location,
-  numarPersoane: parseInt(c.capacity?.match(/\d+/)?.[0]) || 1,
-  facilitati: (c.listing_facilities ?? []).map((f: any) => f.facilities?.name || ""),
-  image: c.image_url || "/images/portfolio1.jpg",
-}));
-
+      const mapped: Cazare[] = (data as SupabaseListing[]).map((c) => ({
+        id: c.id,
+        title: c.title,
+        price: parseInt((c.price || "0").replace(/\D/g, "")) || 0,
+        tip: c.type,
+        locatie: c.location,
+        numarPersoane: parseInt(c.capacity?.match(/\d+/)?.[0]) || 1,
+        facilitati: c.listing_facilities?.map((f) => f.facilities.name) || [],
+        image: c.image_url || "/images/portfolio1.jpg",
+      }));
 
       setCazari(mapped);
 
@@ -96,7 +111,7 @@ export default function Home() {
   const locatiiUnice = [...new Set(cazari.map((c) => c.locatie))];
   const fuse = new Fuse(locatiiUnice, { threshold: 0.3 });
 
-  const handleLocatieChange = (e) => {
+  const handleLocatieChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setFilters((prev) => ({ ...prev, locatie: val }));
 
@@ -114,7 +129,7 @@ export default function Home() {
     setSugestieIndex(-1);
   };
 
-  const handleLocatieKeyDown = (e) => {
+  const handleLocatieKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setSugestieIndex((prev) =>
@@ -133,8 +148,7 @@ export default function Home() {
     }
   };
 
-
-  const selectLocatie = (locatieSugestie) => {
+  const selectLocatie = (locatieSugestie: string) => {
     const locatie = locatieSugestie.split(" – ")[0].trim();
     setFilters((prev) => ({ ...prev, locatie }));
     setLocatiiSugestii([]);
@@ -200,12 +214,17 @@ export default function Home() {
         );
 
       return (
-        matchLocatie && matchPret && matchFacilitati && matchPersoane && matchKeyword
+        matchLocatie &&
+        matchPret &&
+        matchFacilitati &&
+        matchPersoane &&
+        matchKeyword
       );
     });
   }, [filters, cazari]);
 
   if (!mounted) return null;
+
 
   return (
     <>
