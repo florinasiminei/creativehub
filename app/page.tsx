@@ -85,7 +85,7 @@ export default function Home() {
         price: parseInt((c.price || "0").replace(/\D/g, "")) || 0,
         tip: c.type,
         locatie: c.location,
-        numarPersoane: parseInt(c.capacity?.match(/\d+/)?.[0]) || 1,
+        numarPersoane: parseInt((c.capacity ?? '').match(/\d+/)?.[0] ?? '1'),
         facilitati: c.listing_facilities?.map((f) => f.facilities.name) || [],
         image: c.image_url || "/images/portfolio1.jpg",
       }; });
