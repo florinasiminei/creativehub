@@ -2,7 +2,6 @@
 
 import Head from "next/head";
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { FiFilter } from "react-icons/fi";
 import { BsFillSunFill, BsFillMoonFill } from "react-icons/bs";
 import { FaFacebookF, FaInstagram, FaTiktok, FaYoutube } from "react-icons/fa";
 import Image from "next/image";
