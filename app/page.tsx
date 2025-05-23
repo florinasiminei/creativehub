@@ -1,211 +1,439 @@
-"use client"; // Necesitar pentru Next.js App Router
-/* eslint-disable react/no-unescaped-entities */
+"use client";
 
 import Head from "next/head";
-import { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
-import { FaFacebook, FaInstagram, FaTiktok } from "react-icons/fa";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { FiFilter } from "react-icons/fi";
 import { BsFillSunFill, BsFillMoonFill } from "react-icons/bs";
+import { FaFacebookF, FaInstagram, FaTiktok, FaYoutube } from "react-icons/fa";
 import Image from "next/image";
+import Link from "next/link";
+import ReactSlider from "react-slider";
+import { supabase } from "@/lib/supabaseClient";
+import Fuse from "fuse.js";
 
-// Hook personalizat pentru gestionarea modului întunecat
-function useDarkMode() {
+export default function Home() {
   const [darkMode, setDarkMode] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [cazari, setCazari] = useState([]);
+  const [filters, setFilters] = useState({
+    locatie: "",
+    keyword: "",
+    pretMin: 0,
+    pretMax: 10000,
+    facilitati: "",
+    persoane: 1,
+  });
+  const [locatiiSugestii, setLocatiiSugestii] = useState<string[]>([]);
+  const [sugestieIndex, setSugestieIndex] = useState(-1);
 
   useEffect(() => {
-    // Verifică dacă există o preferință de temă stocată sau o preferință a sistemului la montare
-    const storedTheme = localStorage.getItem("theme");
-    if (storedTheme) {
-      setDarkMode(storedTheme === "dark");
-    } else {
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      setDarkMode(prefersDark);
-      localStorage.setItem("theme", prefersDark ? "dark" : "light");
+    async function fetchCazari() {
+      const { data, error } = await supabase
+        .from("listings")
+        .select(`
+          id,
+          title,
+          type,
+          location,
+          capacity,
+          price,
+          image_url,
+          listing_facilities (
+            facilities (
+              name
+            )
+          )
+        `);
+
+      if (error) {
+        console.error("Error fetching listings:", error);
+        return;
+      }
+
+      const mapped = data.map((c) => ({
+        id: c.id,
+        title: c.title,
+        price: parseInt((c.price || "0").replace(/\D/g, "")) || 0,
+        tip: c.type,
+        locatie: c.location,
+        numarPersoane: parseInt(c.capacity?.match(/\d+/)?.[0]) || 1,
+        facilitati: c.listing_facilities?.map((f) => f.facilities.name) || [],
+        image: c.image_url || "/images/portfolio1.jpg",
+      }));
+
+      setCazari(mapped);
+
+      if (mapped.length > 0) {
+        const prices = mapped.map((c) => c.price);
+        setFilters((prev) => ({
+          ...prev,
+          pretMin: Math.min(...prices),
+          pretMax: Math.max(...prices),
+        }));
+      }
     }
+
+    fetchCazari();
+  }, []);
+
+  const prices = cazari.map((c) => c.price);
+  const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+  const maxPrice = prices.length > 0 ? Math.max(...prices) : 10000;
+
+  const locatiiUnice = [...new Set(cazari.map((c) => c.locatie))];
+  const fuse = new Fuse(locatiiUnice, { threshold: 0.3 });
+
+  const handleLocatieChange = (e) => {
+    const val = e.target.value;
+    setFilters((prev) => ({ ...prev, locatie: val }));
+
+    if (val.trim() === "") {
+      setLocatiiSugestii([]);
+    } else {
+      const results = fuse.search(val);
+      const sugestii = results.map((result) => {
+        const location = result.item;
+        const count = cazari.filter((c) => c.locatie === location).length;
+        return `${location} – ${count} proprietăți`;
+      });
+      setLocatiiSugestii(sugestii);
+    }
+    setSugestieIndex(-1);
+  };
+
+  const handleLocatieKeyDown = (e) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSugestieIndex((prev) =>
+        prev < locatiiSugestii.length - 1 ? prev + 1 : 0
+      );
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSugestieIndex((prev) =>
+        prev > 0 ? prev - 1 : locatiiSugestii.length - 1
+      );
+    } else if (e.key === "Enter" && sugestieIndex >= 0) {
+      e.preventDefault();
+      selectLocatie(locatiiSugestii[sugestieIndex]);
+    } else if (e.key === "Escape") {
+      setLocatiiSugestii([]);
+    }
+  };
+
+  const handleKeywordChange = (e) => {
+    setFilters((prev) => ({ ...prev, keyword: e.target.value }));
+  };
+
+  const selectLocatie = (locatieSugestie) => {
+    const locatie = locatieSugestie.split(" – ")[0].trim(); // Extract location name
+    setFilters((prev) => ({ ...prev, locatie }));
+    setLocatiiSugestii([]);
+    setSugestieIndex(-1);
+  };
+
+  const resetFiltre = () => {
+    if (cazari.length > 0) {
+      const prices = cazari.map((c) => c.price);
+      setFilters({
+        locatie: "",
+        keyword: "",
+        pretMin: Math.min(...prices),
+        pretMax: Math.max(...prices),
+        facilitati: "",
+        persoane: 1,
+      });
+    }
+  };
+
+  useEffect(() => {
+    const storedTheme = localStorage.getItem("theme") || "light";
+    setDarkMode(storedTheme === "dark");
   }, []);
 
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  }, [darkMode]);
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    document.documentElement.classList.toggle("dark", darkMode);
+    localStorage.setItem("theme", darkMode ? "dark" : "light");
+  }, [darkMode, mounted]);
 
   const toggleDarkMode = useCallback(() => {
     setDarkMode((prev) => !prev);
   }, []);
 
-  return { darkMode, toggleDarkMode };
-}
+  const filteredCazari = useMemo(() => {
+    return cazari.filter((cazare) => {
+      const matchLocatie =
+        filters.locatie === "" ||
+        cazare.locatie.toLowerCase().includes(filters.locatie.toLowerCase());
 
-export default function Home() {
-  const { darkMode, toggleDarkMode } = useDarkMode();
-  
-  // Această variabilă "mounted" previne redarea până când componenta este montată pe client.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+      const matchPret =
+        cazare.price >= filters.pretMin && cazare.price <= filters.pretMax;
 
-  // Până când componenta nu este montată, nu se afișează nimic.
+      const matchFacilitati =
+        filters.facilitati === "" ||
+        cazare.facilitati.some((f) =>
+          f.toLowerCase().includes(filters.facilitati.toLowerCase())
+        );
+
+      const matchPersoane = cazare.numarPersoane >= filters.persoane;
+
+      const matchKeyword =
+        filters.keyword === "" ||
+        cazare.title.toLowerCase().includes(filters.keyword.toLowerCase()) ||
+        cazare.locatie.toLowerCase().includes(filters.keyword.toLowerCase()) ||
+        cazare.facilitati.some((f) =>
+          f.toLowerCase().includes(filters.keyword.toLowerCase())
+        );
+
+      return (
+        matchLocatie && matchPret && matchFacilitati && matchPersoane && matchKeyword
+      );
+    });
+  }, [filters, cazari]);
+
   if (!mounted) return null;
 
   return (
     <>
-      {/* SEO Meta Tags */}
       <Head>
-        <title>Promovare Cabane - Experiențe Unice în Cazări Rustice</title>
+        <title>cabn.ro</title>
         <meta
           name="description"
-          content="Descoperă cele mai bune oferte pentru promovarea cabanelor: cabane de vacanță, cazare la mute și rezervări online. Experiențe autentice la cabane rustice."
+          content="Cazări unice în natură, direct de la proprietari."
         />
-        <meta
-          name="keywords"
-          content="promovare cabane, cabane de vacanță, cazare cabane, cabane în munți, rezervări cabane, oferte cabane, cabane rustice"
-        />
-        <meta property="og:title" content="Promovare Cabane - Experiențe Unice în Cazări Rustice" />
-        <meta
-          property="og:description"
-          content="Descoperă cele mai bune oferte pentru cabane de vacanță, rezervări online și experiențe autentice la cabane rustice în munți."
-        />
-        <meta property="og:image" content="/images/hero-image.jpg" />
-        <meta property="og:url" content="https://exemplu.ro" />
-        <link rel="canonical" href="https://exemplu.ro" />
       </Head>
 
-      <div className="min-h-screen flex flex-col items-center bg-light dark:bg-dark text-dark dark:text-light transition-colors duration-300">
-        {/* Comutatorul rafinat pentru modul întunecat */}
+      <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white relative">
+        {/* Dark Mode Toggle */}
         <div className="fixed top-5 right-5 z-50">
           <button
             onClick={toggleDarkMode}
-            aria-label={`Comută la modul ${darkMode ? "luminos" : "întunecat"}`}
-            className="relative flex items-center justify-center w-14 h-7 bg-gray-300 dark:bg-gray-700 rounded-full transition-colors duration-300 focus:outline-none"
+            aria-label="Comută tema"
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-200 dark:bg-zinc-700 shadow-md"
           >
-            <span
-              className={`absolute top-1 left-1 w-5 h-5 bg-white dark:bg-gray-300 rounded-full shadow-md flex items-center justify-center transform transition-transform duration-300 ${
-                darkMode ? "translate-x-8" : "translate-x-0"
-              }`}
-            >
-              {darkMode ? (
-                // Când modul întunecat este activ, afișează icoana Lunii
-                <BsFillMoonFill className="text-lg text-gray-600" />
-              ) : (
-                // Când modul luminos este activ, afișează icoana Soarelui
-                <BsFillSunFill className="text-lg text-yellow-500" />
-              )}
-            </span>
+            {darkMode ? (
+              <BsFillMoonFill className="text-yellow-300" size={20} />
+            ) : (
+              <BsFillSunFill className="text-yellow-500" size={20} />
+            )}
           </button>
         </div>
 
-        {/* Secțiunea principală (Hero) */}
-        <section
-          className="w-full h-screen flex flex-col items-center justify-center text-center bg-cover bg-center relative"
-          style={{ backgroundImage: "url('/images/hero-image.jpg')" }}
-        >
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-          <motion.div
-            className="z-10 px-8"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1 }}
-          >
-            <h1 className="text-5xl font-extrabold tracking-tight drop-shadow-lg text-light dark:text-gold">
-              Noi creăm și promovăm
-            </h1>
-            <p className="mt-4 text-lg opacity-90">
-              Îți îmbunătățim brandul cu conținut premium și marketing.
-            </p>
-            <a
-              href="#services"
-              className="mt-6 inline-block bg-gold text-black px-8 py-3 rounded-full font-semibold text-lg hover:bg-yellow-500 transition transform hover:scale-105 shadow-lg"
+        {/* Navbar */}
+        <header className="sticky top-0 z-40 bg-white dark:bg-black py-4 shadow-sm border-b transition duration-300">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between px-6 gap-4">
+            <Image src="/logo.svg" alt="cabn.ro logo" width={160} height={70} />
+            <div className="flex gap-8 text-sm uppercase font-medium items-center justify-center">
+              <Link href="#cazari" className="hover:text-green-500 transition">
+                🏕️ Cazări geniale
+              </Link>
+              <Link href="#atractii" className="hover:text-green-500 transition">
+                🧭 Atracții
+              </Link>
+            </div>
+            <Link
+              href="#adauga"
+              className="bg-green-500 text-white px-5 py-2 rounded-full text-sm font-semibold hover:bg-green-600 transition"
             >
-              Descoperă mai mult
-            </a>
-          </motion.div>
-        </section>
-
-        {/* Secțiunea Servicii */}
-        <section id="services" className="py-20 text-center">
-          <h2 className="text-4xl font-extrabold mb-12">Serviciile Noastre</h2>
-          <div className="grid md:grid-cols-3 gap-10 px-8">
-            {[
-              {
-                title: "Promovare Cabină",
-                desc: "Crește rezervările cu imagini de înaltă calitate.",
-              },
-              {
-                title: "Marketing pe Rețelele Sociale",
-                desc: "Stimulează implicarea cu conținut de impact.",
-              },
-              {
-                title: "Creare de Conținut",
-                desc: "Fotografie, producție video și branding.",
-              },
-            ].map((service, index) => (
-              <motion.div
-                key={index}
-                whileHover={{ scale: 1.05 }}
-                className="p-8 bg-white dark:bg-gray-800 rounded-2xl shadow-lg transition-colors"
-              >
-                <h3 className="text-2xl font-semibold">{service.title}</h3>
-                <p className="mt-2 text-gray-600 dark:text-gray-300">{service.desc}</p>
-              </motion.div>
-            ))}
+              Adaugă proprietate
+            </Link>
           </div>
-        </section>
+        </header>
 
-        {/* Secțiunea Portofoliu */}
-        <section id="portfolio" className="py-20 bg-gray-100 dark:bg-gray-900 text-center transition-colors">
-          <h2 className="text-4xl font-extrabold mb-12">Lucrările Noastre</h2>
-          <div className="grid md:grid-cols-3 gap-8 px-8">
-            {["portfolio1.jpg", "portfolio4.jpg", "portfolio3.jpg"].map((image, index) => (
-              <motion.div
-                key={index}
-                whileHover={{ scale: 1.05 }}
-                className="overflow-hidden rounded-2xl shadow-lg"
-              >
-                <Image
-                  src={`/images/${image}`}
-                  width={400}
-                  height={300}
-                  alt={`Proiect portofoliu ${index + 1}`}
-                  className="rounded-lg object-cover"
-                />
-              </motion.div>
-            ))}
-          </div>
-        </section>
+        {/* Search Filters */}
+        <div className="bg-white dark:bg-zinc-800 py-10 px-4 border-b border-gray-200 dark:border-zinc-700 shadow-sm">
+          <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 items-start">
+            {/* LOCATIE */}
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Caută locație
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: Bran, Colibița"
+                value={filters.locatie}
+                onChange={handleLocatieChange}
+                onKeyDown={handleLocatieKeyDown}
+                onBlur={() => setTimeout(() => setLocatiiSugestii([]), 100)}
+                className="w-full p-3 border border-gray-300 dark:border-zinc-600 rounded-lg bg-white dark:bg-black text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-400 transition"
+              />
+              {locatiiSugestii.length > 0 && (
+                <ul className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 rounded-md shadow z-20 max-h-48 overflow-y-auto">
+                  {locatiiSugestii.map((locatie, index) => (
+                    <li
+                      key={locatie}
+                      onMouseDown={() => selectLocatie(locatie)}
+                      className={`px-4 py-2 text-sm cursor-pointer transition ${
+                        index === sugestieIndex
+                          ? "bg-gray-100 dark:bg-zinc-700 font-medium"
+                          : "hover:bg-gray-100 dark:hover:bg-zinc-700"
+                      }`}
+                    >
+                      {locatie}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
 
-        {/* Secțiunea Contact */}
-        <section id="contact" className="py-20 text-center">
-          <h2 className="text-4xl font-extrabold mb-6">Contactează-ne</h2>
-          <p className="text-lg text-gray-700 dark:text-gray-300">
-            Hai să creăm ceva uimitor împreună.
-          </p>
-          <div className="flex justify-center mt-6 gap-6">
-            {[
-              { icon: <FaFacebook />, href: "#", color: "text-blue-600" },
-              { icon: <FaInstagram />, href: "#", color: "text-pink-500" },
-              { icon: <FaTiktok />, href: "#", color: "text-black dark:text-white" },
-            ].map((social, index) => (
-              <a
-                key={index}
-                href={social.href}
-                className={`text-4xl ${social.color} hover:scale-110 transition`}
-                aria-label={`Legătură către ${social.href}`}
+            {/* PRET */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Interval preț: {filters.pretMin} – {filters.pretMax} lei
+              </label>
+              <ReactSlider
+                className="w-full h-2 bg-gray-200 dark:bg-zinc-700 rounded-full relative"
+                thumbClassName="h-5 w-5 bg-white border-2 border-teal-400 rounded-full shadow cursor-pointer -top-[6px]"
+                min={minPrice}
+                max={maxPrice}
+                step={10}
+                value={[filters.pretMin, filters.pretMax]}
+                onChange={([pretMin, pretMax]) =>
+                  setFilters((prev) => ({ ...prev, pretMin, pretMax }))
+                }
+                renderTrack={({ key, ...rest }, state) => {
+                  const isActive = state.index === 1;
+                  return (
+                    <div
+                      key={key}
+                      {...rest}
+                      className={`h-2 rounded-full ${
+                        isActive
+                          ? "bg-teal-400"
+                          : "bg-gray-300 dark:bg-zinc-700"
+                      }`}
+                    />
+                  );
+                }}
+              />
+            </div>
+
+            {/* PERSOANE */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Număr persoane: {filters.persoane === 10 ? "10+" : filters.persoane}
+              </label>
+              <ReactSlider
+                className="w-full h-2 bg-gray-200 dark:bg-zinc-700 rounded-full relative"
+                thumbClassName="h-5 w-5 bg-white border-2 border-teal-400 rounded-full shadow cursor-pointer -top-[6px]"
+                min={1}
+                max={10}
+                step={1}
+                value={filters.persoane}
+                onChange={(persoane) =>
+                  setFilters((prev) => ({ ...prev, persoane }))
+                }
+                renderTrack={({ key, ...rest }, state) => {
+                  const isActive = state.index === 0;
+                  return (
+                    <div
+                      key={key}
+                      {...rest}
+                      className={`h-2 rounded-full ${
+                        isActive
+                          ? "bg-teal-400"
+                          : "bg-gray-300 dark:bg-zinc-700"
+                      }`}
+                    />
+                  );
+                }}
+              />
+            </div>
+
+            {/* RESET BUTTON */}
+            <div className="flex justify-start md:justify-end pt-6">
+              <button
+                onClick={resetFiltre}
+                className="text-sm text-teal-600 hover:text-teal-700 underline transition"
               >
-                {social.icon}
-              </a>
-            ))}
+                Resetează filtrele
+              </button>
+            </div>
           </div>
+        </div>
+
+        {/* Cazari Section */}
+        <section id="cazari" className="py-16 px-4 max-w-7xl mx-auto">
+          <h2 className="text-2xl font-bold mb-8">🏕️ Cazări geniale</h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+            {filteredCazari.length === 0 ? (
+              <div className="col-span-full text-center text-gray-500 dark:text-gray-400">
+                Nicio cazare găsită pentru criteriile selectate.
+              </div>
+            ) : (
+              filteredCazari.map((cazare) => (
+                <div
+                  key={cazare.id}
+                  className="space-y-2 text-left transition-transform hover:-translate-y-1"
+                >
+                  <Image
+                    src={cazare.image}
+                    width={800}
+                    height={600}
+                    alt={`Imagine ${cazare.title}`}
+                    className="rounded-xl border object-cover w-full h-[250px]"
+                  />
+                  <div className="font-semibold text-md">{cazare.title}</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                    {cazare.locatie} — de la {cazare.price} lei/noapte
+                  </div>
+                  <div className="text-xs text-gray-400 dark:text-gray-500">
+                    👥 {cazare.numarPersoane} persoane
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+          {/* Total count */}
+<p className="text-center text-gray-600 dark:text-gray-400 mt-4">
+  Total rezultate: {filteredCazari.length}
+</p>
         </section>
 
         {/* Footer */}
-        <footer className="py-6 bg-black text-white text-center w-full">
-          <p className="text-sm opacity-80">© 2024 Compania Ta. Toate drepturile rezervate.</p>
+        <footer className="py-8 bg-black text-white text-center mt-12">
+          <p className="text-sm opacity-80 lowercase mb-4">
+            © 2024 cabn.ro – Toate drepturile rezervate.
+          </p>
+          <div className="flex justify-center gap-6 text-xl">
+            <a
+              href="https://facebook.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-green-400 transition"
+            >
+              <FaFacebookF />
+            </a>
+            <a
+              href="https://instagram.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-green-400 transition"
+            >
+              <FaInstagram />
+            </a>
+            <a
+              href="https://tiktok.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-green-400 transition"
+            >
+              <FaTiktok />
+            </a>
+            <a
+              href="https://youtube.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-green-400 transition"
+            >
+              <FaYoutube />
+            </a>
+          </div>
         </footer>
       </div>
     </>

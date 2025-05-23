@@ -1,23 +1,26 @@
-import type { Config } from "tailwindcss";
-
-export default {
-  darkMode: "class", // Enable class-based dark mode
+/** @type {import('tailwindcss').Config} */
+module.exports = {
   content: [
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./app/**/*.{js,ts,jsx,tsx}",
+    "./components/**/*.{js,ts,jsx,tsx}",
   ],
-  theme: {
-    extend: {
-      colors: {
-        light: "#F5F5F5",      // Light mode background (Off-White)
-        dark: "#121212",       // Dark mode background (Near Black)
-        gold: "#D4AF37",       // Warm gold accent
-        accent: "#0ABAB5",     // Optional secondary accent (Muted Teal)
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+  
+  darkMode: "class",
+// tailwind.config.js
+theme: {
+  extend: {
+    colors: {
+      primary: {
+        DEFAULT: '#2dd4bf', // teal-400
+        hover: '#14b8a6',   // teal-500
       },
     },
   },
+},
+
+  corePlugins: {
+    preflight: true, // ✅ Optional: keeps Tailwind's base styles
+  },
+
   plugins: [],
-} satisfies Config;
+};
