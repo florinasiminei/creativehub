@@ -3,7 +3,6 @@ import Footer from "@/components/Footer";
 import { supabase } from "@/lib/supabaseClient";
 import ListingCarousel from "@/components/ListingCarousel";
 
-// SIMPLIFY props typing for Next.js App Router:
 export default async function Cazare({ params }: { params: { slug: string } }) {
   const getListingIdFromSlug = (slug: string): string => {
     return slug.split("-").slice(-5).join("-");
@@ -11,7 +10,6 @@ export default async function Cazare({ params }: { params: { slug: string } }) {
 
   const id = getListingIdFromSlug(params.slug);
 
-  // Fetch listing details
   const { data: listingData, error } = await supabase
     .from("listings")
     .select(`
@@ -23,7 +21,6 @@ export default async function Cazare({ params }: { params: { slug: string } }) {
 
   if (error || !listingData) return notFound();
 
-  // Type safety
   type Listing = {
     id: string;
     title: string;
@@ -41,7 +38,6 @@ export default async function Cazare({ params }: { params: { slug: string } }) {
 
   const listing = listingData as unknown as Listing;
 
-  // Fetch images from listing_images table
   const { data: imagesData, error: imageError } = await supabase
     .from("listing_images")
     .select("image_url")
