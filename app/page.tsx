@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Fuse from "fuse.js";
-import debounce from "lodash.debounce";
 import TopSearchBar from "@/components/TopSearchBar";
 import FilterSidebar from "@/components/FilterSidebar";
 import ListingsGrid from "@/components/ListingGrid";
@@ -25,12 +24,6 @@ type ListingRaw = {
       name: string;
     };
   }[];
-};
-
-type ListingImage = {
-  listing_id: string;
-  image_url: string;
-  display_order: number;
 };
 
 function getInitialFilters(cazari: Cazare[]): Filters {
@@ -64,8 +57,6 @@ export default function Home() {
   const [persoaneRange, setPersoaneRange] = useState({ min: 1, max: 10 });
   const [locatiiSugestii, setLocatiiSugestii] = useState<string[]>([]);
   const [sugestieIndex, setSugestieIndex] = useState(-1);
-
-  const setFilters = useMemo(() => debounce(setFiltersRaw, 200), []);
 
   useEffect(() => {
     async function fetchCazari() {
@@ -110,7 +101,7 @@ export default function Home() {
         numarPersoane: parseInt((c.capacity ?? "").match(/\d+/)?.[0] ?? "1"),
         facilities: c.listing_facilities.map((f) => f.facilities.id),
         facilitiesNames: c.listing_facilities.map((f) => f.facilities.name),
-        image: imageMap[c.id] || "/fallback.jpg",
+        image: imageMap[c.id] ?? null,
       }));
 
       setCazari(mapped);
@@ -125,17 +116,13 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    async function fetchFacilities() {
-      const { data, error } = await supabase.from("facilities").select("id, name");
-      if (!error && data) setFacilitiesList(data);
-    }
-
-    fetchFacilities();
+    supabase.from("facilities").select("id, name").then(({ data }) => setFacilitiesList(data || []));
   }, []);
 
   const locatiiUnice = useMemo(() => [...new Set(cazari.map((c) => c.locatie))], [cazari]);
   const fuse = useMemo(() => new Fuse(locatiiUnice, { threshold: 0.3 }), [locatiiUnice]);
 
+  // SUGGESTION & FILTER LOGIC
   const handleLocatieChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setFiltersRaw((prev) => ({ ...prev, locatie: val, keyword: val }));
@@ -229,7 +216,6 @@ export default function Home() {
             />
           </div>
         </div>
-
         <main className="flex-1 lg:pl-6">
           <section id="cazari" className="py-16">
             <h2 className="text-2xl font-bold mb-8">🎕️ Căzări turistice</h2>
