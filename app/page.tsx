@@ -3,19 +3,35 @@
 import { useEffect, useState, useMemo } from "react";
 import Fuse from "fuse.js";
 import debounce from "lodash.debounce";
-import TopSearchBar from "../components/TopSearchBar";
-import FilterSidebar from "../components/FilterSidebar";
-import ListingsGrid from "../components/ListingGrid";
-import Footer from "../components/Footer";
-import { useFuzzyCazari } from "../hooks/useFuzzyCazari";
-import { Cazare } from "../lib/utils";
-import { Filters } from "../lib/types";
-import { createClient } from "@supabase/supabase-js";
+import TopSearchBar from "@/components/TopSearchBar";
+import FilterSidebar from "@/components/FilterSidebar";
+import ListingsGrid from "@/components/ListingGrid";
+import Footer from "@/components/Footer";
+import { useFuzzyCazari } from "@/hooks/useFuzzyCazari";
+import { Cazare } from "@/lib/utils";
+import { Filters } from "@/lib/types";
+import { supabase } from "@/lib/supabaseClient";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+type ListingRaw = {
+  id: string;
+  title: string;
+  type: string;
+  location: string;
+  capacity: string;
+  price: string;
+  listing_facilities: {
+    facilities: {
+      id: string;
+      name: string;
+    };
+  }[];
+};
+
+type ListingImage = {
+  listing_id: string;
+  image_url: string;
+  display_order: number;
+};
 
 function getInitialFilters(cazari: Cazare[]): Filters {
   const prices = cazari.map((c) => c.price);
@@ -53,30 +69,52 @@ export default function Home() {
 
   useEffect(() => {
     async function fetchCazari() {
-      const { data, error } = await supabase
+      const { data: listingsData, error: listingsError } = await supabase
         .from("listings")
-        .select(`id, title, type, location, capacity, price, image_url, listing_facilities(facilities(id, name))`);
+        .select(`
+          id, title, type, location, capacity, price,
+          listing_facilities(facilities(id, name))
+        `);
 
-      if (error) {
-        console.error("Error fetching listings:", error);
+      if (listingsError || !listingsData) {
+        console.error("Error fetching listings:", listingsError);
         return;
       }
 
-      const mapped: Cazare[] = (data || []).map((c) => ({
+      const { data: imagesData, error: imagesError } = await supabase
+        .from("listing_images")
+        .select("listing_id, image_url, display_order");
+
+      if (imagesError || !imagesData) {
+        console.error("Error fetching listing_images:", imagesError);
+        return;
+      }
+
+      // Create a map: listing_id → first image_url (lowest display_order)
+      const imageMap: Record<string, string> = {};
+      imagesData.forEach((img) => {
+        if (
+          !imageMap[img.listing_id] ||
+          img.display_order < (imagesData.find(i => i.listing_id === img.listing_id && i.image_url === imageMap[img.listing_id])?.display_order ?? Infinity)
+        ) {
+          imageMap[img.listing_id] = img.image_url;
+        }
+      });
+
+      const mapped: Cazare[] = (listingsData as ListingRaw[]).map((c) => ({
         id: c.id,
         title: c.title,
         price: parseInt((c.price || "0").replace(/\D/g, "")) || 0,
         tip: c.type,
         locatie: c.location,
         numarPersoane: parseInt((c.capacity ?? "").match(/\d+/)?.[0] ?? "1"),
-        facilities: c.listing_facilities?.map((f: any) => f.facilities.id) || [],
-        facilitiesNames: c.listing_facilities?.map((f: any) => f.facilities.name) || [],
-        image: c.image_url || "/images/portfolio1.jpg",
+        facilities: c.listing_facilities.map((f) => f.facilities.id),
+        facilitiesNames: c.listing_facilities.map((f) => f.facilities.name),
+        image: imageMap[c.id] || "/fallback.jpg",
       }));
 
       setCazari(mapped);
       setFiltersRaw(getInitialFilters(mapped));
-
       setPersoaneRange({
         min: Math.min(...mapped.map((c) => c.numarPersoane)),
         max: Math.max(...mapped.map((c) => c.numarPersoane)),
