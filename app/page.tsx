@@ -22,7 +22,7 @@ type ListingRaw = {
     facilities: {
       id: string;
       name: string;
-    };
+    }[]; 
   }[];
 };
 
@@ -99,8 +99,8 @@ export default function Home() {
         tip: c.type,
         locatie: c.location,
         numarPersoane: parseInt((c.capacity ?? "").match(/\d+/)?.[0] ?? "1"),
-        facilities: c.listing_facilities.map((f) => f.facilities.id),
-        facilitiesNames: c.listing_facilities.map((f) => f.facilities.name),
+        facilities: c.listing_facilities.flatMap(f => f.facilities.map(ff => ff.id)),
+        facilitiesNames: c.listing_facilities.flatMap(f => f.facilities.map(ff => ff.name)),
         image: imageMap[c.id] ?? null,
       }));
 
