@@ -22,7 +22,7 @@ type ListingRaw = {
     facilities: {
       id: string;
       name: string;
-    }[]; 
+    } | null;
   }[];
 };
 
@@ -32,11 +32,11 @@ function getInitialFilters(cazari: Cazare[]): Filters {
   return {
     locatie: "",
     keyword: "",
-    pretMin: Math.min(...prices),
-    pretMax: Math.max(...prices),
+    pretMin: prices.length ? Math.min(...prices) : 0,
+    pretMax: prices.length ? Math.max(...prices) : 10000,
     facilities: [],
-    persoaneMin: Math.min(...persoane),
-    persoaneMax: Math.max(...persoane),
+    persoaneMin: persoane.length ? Math.min(...persoane) : 1,
+    persoaneMax: persoane.length ? Math.max(...persoane) : 10,
   };
 }
 
@@ -64,7 +64,9 @@ export default function Home() {
         .from("listings")
         .select(`
           id, title, type, location, capacity, price,
-          listing_facilities(facilities(id, name))
+          listing_facilities(
+            facilities(id, name)
+          )
         `);
 
       if (listingsError || !listingsData) {
@@ -99,16 +101,21 @@ export default function Home() {
         tip: c.type,
         locatie: c.location,
         numarPersoane: parseInt((c.capacity ?? "").match(/\d+/)?.[0] ?? "1"),
-        facilities: c.listing_facilities.flatMap(f => f.facilities.map(ff => ff.id)),
-        facilitiesNames: c.listing_facilities.flatMap(f => f.facilities.map(ff => ff.name)),
-        image: imageMap[c.id] ?? null,
+        // Map and filter out any null facility (for listings with missing facilities)
+        facilities: c.listing_facilities
+          .map(f => f.facilities?.id)
+          .filter(Boolean) as string[],
+        facilitiesNames: c.listing_facilities
+          .map(f => f.facilities?.name)
+          .filter(Boolean) as string[],
+         image: imageMap[c.id]?.trim() ? imageMap[c.id] : "/fallback.jpg",
       }));
 
       setCazari(mapped);
       setFiltersRaw(getInitialFilters(mapped));
       setPersoaneRange({
-        min: Math.min(...mapped.map((c) => c.numarPersoane)),
-        max: Math.max(...mapped.map((c) => c.numarPersoane)),
+        min: mapped.length ? Math.min(...mapped.map((c) => c.numarPersoane)) : 1,
+        max: mapped.length ? Math.max(...mapped.map((c) => c.numarPersoane)) : 10,
       });
     }
 
@@ -163,8 +170,8 @@ export default function Home() {
   const resetFiltre = () => {
     setFiltersRaw(getInitialFilters(cazari));
     setPersoaneRange({
-      min: Math.min(...cazari.map((c) => c.numarPersoane)),
-      max: Math.max(...cazari.map((c) => c.numarPersoane)),
+      min: cazari.length ? Math.min(...cazari.map((c) => c.numarPersoane)) : 1,
+      max: cazari.length ? Math.max(...cazari.map((c) => c.numarPersoane)) : 10,
     });
   };
 
