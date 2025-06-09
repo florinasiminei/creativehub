@@ -10,21 +10,9 @@ import { useFuzzyCazari } from "@/hooks/useFuzzyCazari";
 import { Cazare } from "@/lib/utils";
 import { Filters } from "@/lib/types";
 import { supabase } from "@/lib/supabaseClient";
+import type { ListingRaw } from "@/lib/types";
 
-type ListingRaw = {
-  id: string;
-  title: string;
-  type: string;
-  location: string;
-  capacity: string;
-  price: string;
-  listing_facilities: {
-    facilities: {
-      id: string;
-      name: string;
-    } | null;
-  }[];
-};
+
 
 function getInitialFilters(cazari: Cazare[]): Filters {
   const prices = cazari.map((c) => c.price);
@@ -94,22 +82,25 @@ export default function Home() {
         }
       });
 
-      const mapped: Cazare[] = (listingsData as ListingRaw[]).map((c) => ({
-        id: c.id,
-        title: c.title,
-        price: parseInt((c.price || "0").replace(/\D/g, "")) || 0,
-        tip: c.type,
-        locatie: c.location,
-        numarPersoane: parseInt((c.capacity ?? "").match(/\d+/)?.[0] ?? "1"),
-        // Map and filter out any null facility (for listings with missing facilities)
-        facilities: c.listing_facilities
-          .map(f => f.facilities?.id)
-          .filter(Boolean) as string[],
-        facilitiesNames: c.listing_facilities
-          .map(f => f.facilities?.name)
-          .filter(Boolean) as string[],
-         image: imageMap[c.id]?.trim() ? imageMap[c.id] : "/fallback.jpg",
-      }));
+   const mapped: Cazare[] = (listingsData as ListingRaw[]).map((c) => ({
+  id: c.id,
+  title: c.title,
+  price: parseInt((c.price || "0").replace(/\D/g, "")) || 0,
+  tip: c.type,
+  locatie: c.location,
+  numarPersoane: parseInt((c.capacity ?? "").match(/\d+/)?.[0] ?? "1"),
+
+  // ✅ Corrected: Flatten facilities array
+  facilities: c.listing_facilities
+    .flatMap((f) => f.facilities.map((fac) => fac.id))
+    .filter(Boolean) as string[],
+
+  facilitiesNames: c.listing_facilities
+    .flatMap((f) => f.facilities.map((fac) => fac.name))
+    .filter(Boolean) as string[],
+
+  image: imageMap[c.id]?.trim() ? imageMap[c.id] : "/fallback.jpg",
+}));
 
       setCazari(mapped);
       setFiltersRaw(getInitialFilters(mapped));

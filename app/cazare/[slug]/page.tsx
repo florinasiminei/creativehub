@@ -1,14 +1,23 @@
+export const dynamic = "force-dynamic";
+
 import { notFound } from "next/navigation";
 import Footer from "@/components/Footer";
-import { supabase } from "@/lib/supabaseClient";
 import ListingCarousel from "@/components/ListingCarousel";
+import { supabase } from "@/lib/supabaseClient";
 
-export default async function Cazare({ params }: { params: { slug: string } }) {
-  const getListingIdFromSlug = (slug: string): string => {
-    return slug.split("-").slice(-5).join("-");
-  };
+// ✅ Silences dynamic warning
+export async function generateStaticParams() {
+  return [];
+}
 
-  const id = getListingIdFromSlug(params.slug);
+export default async function Cazare({ params }: any) {
+  const slug = params.slug;
+
+  const getListingIdFromSlug = (slug: string): string =>
+    slug.split("-").slice(-5).join("-");
+
+  const id = getListingIdFromSlug(slug);
+  if (!/^[a-f0-9-]{36}$/.test(id)) return notFound();
 
   const { data: listingData, error } = await supabase
     .from("listings")
@@ -21,69 +30,47 @@ export default async function Cazare({ params }: { params: { slug: string } }) {
 
   if (error || !listingData) return notFound();
 
-  type Listing = {
-    id: string;
-    title: string;
-    location: string;
-    capacity: string;
-    price: string;
-    phone_number: string;
-    listing_facilities: {
-      facilities: {
-        id: string;
-        name: string;
-      };
-    }[];
-  };
-
-  const listing = listingData as unknown as Listing;
-
   const { data: imagesData, error: imageError } = await supabase
     .from("listing_images")
     .select("image_url")
     .eq("listing_id", id)
     .order("display_order", { ascending: true });
 
-  if (imageError || !imagesData) {
-    console.error("Error fetching images:", imageError);
-    return notFound();
-  }
+  if (imageError || !imagesData) return notFound();
 
   const publicUrls = imagesData.map((img) => img.image_url);
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white px-4 py-12">
       <div className="max-w-5xl mx-auto flex flex-col lg:flex-row gap-10">
-        {/* Image Carousel */}
         <div className="w-full lg:w-1/2">
           <ListingCarousel images={publicUrls} />
         </div>
-
-        {/* Info */}
         <div className="flex-1 space-y-4">
-          <h1 className="text-4xl font-bold">{listing.title}</h1>
+          <h1 className="text-4xl font-bold">{listingData.title}</h1>
           <p className="text-gray-500 dark:text-gray-400 text-sm">
-            {listing.location} &bull; {listing.capacity}
+            {listingData.location} &bull; {listingData.capacity}
           </p>
 
           <h2 className="text-lg font-medium mt-6 mb-2">Facilități</h2>
           <div className="flex flex-wrap gap-2">
-            {listing.listing_facilities.map((f) => (
-              <span
-                key={f.facilities.id}
-                className="text-sm px-3 py-1 bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-200 rounded-full"
-              >
-                {f.facilities.name}
-              </span>
-            ))}
+            {listingData.listing_facilities
+              .flatMap((f) => f.facilities)
+              .map((facility) => (
+                <span
+                  key={facility.id}
+                  className="text-sm px-3 py-1 bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-gray-200 rounded-full"
+                >
+                  {facility.name}
+                </span>
+              ))}
           </div>
 
-          {/* Price & Contact */}
           <div className="mt-10 rounded-xl bg-gray-100 dark:bg-zinc-900 p-6 shadow-md space-y-4">
             <div className="flex justify-between border-b border-gray-300 dark:border-zinc-700 pb-4">
               <p className="text-sm text-gray-500 dark:text-gray-400">Începând de la:</p>
               <p className="text-lg font-semibold">
-                {listing.price} lei{" "}
+                {listingData.price} lei{" "}
                 <span className="text-sm font-normal text-gray-500">/ noapte</span>
               </p>
             </div>
@@ -94,10 +81,10 @@ export default async function Cazare({ params }: { params: { slug: string } }) {
                 Direct de la gazdă fără comision
               </p>
 
-              {listing.phone_number && (
+              {listingData.phone_number ? (
                 <a
-                  href={`https://wa.me/${listing.phone_number}?text=https://cabn.ro/cazare/${params.slug}%0a%0aBună+ziua%2C+mă+interesează+câteva+informații+pentru+${encodeURIComponent(
-                    listing.title
+                  href={`https://wa.me/${listingData.phone_number}?text=https://cabn.ro/cazare/${slug}%0a%0aBună+ziua%2C+mă+interesează+câteva+informații+pentru+${encodeURIComponent(
+                    listingData.title
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -105,6 +92,8 @@ export default async function Cazare({ params }: { params: { slug: string } }) {
                 >
                   WhatsApp
                 </a>
+              ) : (
+                <p className="text-sm italic text-gray-400">Momentan indisponibil pe WhatsApp</p>
               )}
             </div>
           </div>

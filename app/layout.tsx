@@ -1,19 +1,20 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import { ThemeProvider } from "next-themes";
-// app/layout.tsx or app/page.tsx if you prefer
+
+import { Inter, JetBrains_Mono } from "next/font/google";
+
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
-const geistSans = Geist({
+const inter = Inter({
   variable: "--font-geist-sans",
   subsets: ["latin"],
   display: "swap",
 });
 
-const geistMono = Geist_Mono({
+const jetbrainsMono = JetBrains_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
   display: "swap",
@@ -29,16 +30,13 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = typeof window !== "undefined" ? window.location.pathname : "";
-  const showNavbar = !pathname.startsWith("/maintenance");
-
   return (
     <html lang="ro" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white text-black dark:bg-black dark:text-white transition-colors duration-300`}
+        className={`${inter.variable} ${jetbrainsMono.variable} antialiased bg-white text-black dark:bg-black dark:text-white transition-colors duration-300`}
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          {showNavbar && <Navbar />}
+          <Navbar />
           <main>{children}</main>
         </ThemeProvider>
       </body>
