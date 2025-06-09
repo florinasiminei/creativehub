@@ -3,6 +3,8 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import { ThemeProvider } from "next-themes";
 
+import { Analytics } from "@vercel/analytics/next"
+
 import { Inter, JetBrains_Mono } from "next/font/google";
 
 import "slick-carousel/slick/slick.css";
@@ -39,6 +41,7 @@ export default function RootLayout({
           <Navbar />
           <main>{children}</main>
         </ThemeProvider>
+                <Analytics />
       </body>
     </html>
   );
