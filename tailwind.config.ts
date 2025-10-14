@@ -11,8 +11,8 @@ theme: {
   extend: {
     colors: {
       primary: {
-        DEFAULT: '#2dd4bf', // teal-400
-        hover: '#14b8a6',   // teal-500
+        DEFAULT: '#34d399', // emerald-400
+        hover: '#10b981',   // emerald-500
       },
     },
   },

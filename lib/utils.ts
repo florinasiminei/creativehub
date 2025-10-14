@@ -19,10 +19,13 @@ export function normalize(str: string) {
 export type Cazare = {
   id: string;
   title: string;
+  slug: string;
   price: number;
   tip: string;
   locatie: string;
   numarPersoane: number;
   facilities: string[];
+  facilitiesNames: string[];
   image: string;
+  phone?: string;
 };

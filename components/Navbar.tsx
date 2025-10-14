@@ -1,36 +1,200 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import DarkModeToggle from "./DarkModeToggle"; // ✅ use the reusable component
+import { usePathname } from "next/navigation";
+import DarkModeToggle from "./DarkModeToggle";
+
+const NAV_LINKS = [
+  { href: "/", label: "Cazări turistice" },
+  { href: "#atractii", label: "Atracții" },
+  { href: "#contact", label: "Contact" },
+];
+
+function classNames(...cls: (string | false | null | undefined)[]) {
+  return cls.filter(Boolean).join(" ");
+}
+
+function useHash(): string {
+  const [hash, setHash] = useState<string>("");
+  useEffect(() => {
+    const update = () => setHash(window.location.hash || "");
+    update();
+    window.addEventListener("hashchange", update);
+    return () => window.removeEventListener("hashchange", update);
+  }, []);
+  return hash;
+}
+
+function isActiveLink(pathname: string, hash: string, href: string) {
+  if (href.startsWith("/")) return pathname === href;
+  if (href.startsWith("#")) return hash === href && pathname === "/";
+  return false;
+}
 
 export default function Navbar() {
-  return (
-    <header className="sticky top-0 z-40 bg-white dark:bg-black py-2 shadow-sm border-b transition duration-300">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between px-6 gap-4">
-        
-        <Link href="/" className="flex items-center">
-          <Image src="/logo.svg" alt="cabn.ro logo" width={140} height={60} className="cursor-pointer" />
-        </Link>
+  const pathname = usePathname();
+  const hash = useHash();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
-        <div className="flex gap-6 text-sm uppercase font-medium items-center justify-center">
-          <Link href="/" className="hover:text-green-500 transition">
-            🏕️ Cazări turistice
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 2);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname, hash]);
+
+  return (
+    <header
+      className={classNames(
+        "sticky top-0 z-40 border-b border-zinc-200/70 bg-white/70 backdrop-blur-md transition-all duration-200 dark:border-white/5 dark:bg-zinc-900/60",
+        scrolled ? "shadow-sm" : ""
+      )}
+      role="banner"
+    >
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:inset-x-0 focus:top-2 focus:z-50 focus:mx-auto focus:w-max focus:rounded-lg focus:bg-emerald-600 focus:px-3 focus:py-2 focus:text-white"
+      >
+        Sari la conținut
+      </a>
+
+      <div className="mx-auto max-w-[var(--page-max-w)] px-4 sm:px-6 lg:px-8">
+        <div className="flex min-h-[90px] items-center justify-between gap-3 py-3">
+          {/* Logo mare */}
+          <Link
+            href="/"
+            aria-label="cabn.ro – Pagina principală"
+            className="group flex shrink-0 select-none items-center gap-3"
+          >
+            <Image
+              src="/images/logo.svg"
+              alt="cabn.ro – explorăm cazări autentice"
+              width={85}
+              height={150}
+              priority
+            />
           </Link>
-          <Link href="#atractii" className="hover:text-green-500 transition">
-            🧭 Atracții
-          </Link>
+
+          {/* Desktop nav */}
+          <nav
+            className="hidden md:flex min-w-0 flex-1 items-center justify-center"
+            aria-label="Meniu principal"
+          >
+            <ul className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-600 transition-colors dark:text-gray-300 sm:text-xs">
+              {NAV_LINKS.map((link) => {
+                const active = isActiveLink(pathname, hash, link.href);
+                return (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className={classNames(
+                        "rounded-full px-3 py-1 outline-none transition-colors duration-200 hover:text-emerald-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:hover:text-emerald-300",
+                        active && "text-emerald-600 dark:text-emerald-300"
+                      )}
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+
+          {/* Acțiuni (CTA + Dark mode) */}
+          <div className="ml-auto hidden shrink-0 items-center gap-2 md:flex">
+            <Link
+              href="/descoperaCABN"
+              className="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-1.5 text-sm font-semibold text-white shadow transition hover:-translate-y-0.5 hover:bg-emerald-600 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
+            >
+              <span aria-hidden="true" className="text-lg font-semibold leading-none">
+                +
+              </span>
+              <span>Adaugă proprietate</span>
+            </Link>
+            <DarkModeToggle />
+          </div>
+
+          {/* Buton meniu mobil */}
+          <div className="flex items-center gap-2 md:hidden">
+            <DarkModeToggle />
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-expanded={menuOpen}
+              aria-controls="mobile-nav"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200/70 bg-white/60 shadow-sm outline-none transition hover:bg-white dark:border-white/10 dark:bg-zinc-900/70"
+            >
+              <span className="sr-only">Deschide meniul</span>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                className="h-5 w-5"
+                aria-hidden="true"
+              >
+                {menuOpen ? (
+                  <path strokeWidth="2" strokeLinecap="round" d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeWidth="2" strokeLinecap="round" d="M3 6h18M3 12h18M3 18h18" />
+                )}
+              </svg>
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <Link
-            href="#adauga"
-            className="bg-green-500 text-white px-4 py-1.5 rounded-full text-sm font-semibold hover:bg-green-600 transition"
-          >
-            Adaugă proprietate
-          </Link>
+        {/* Meniu mobil */}
+        <div
+          id="mobile-nav"
+          className={classNames(
+            "md:hidden overflow-hidden transition-[max-height,opacity] duration-300",
+            menuOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+          )}
+        >
+          <nav aria-label="Meniu principal – mobil" className="pb-4">
+            <ul className="grid gap-2 text-sm font-semibold tracking-wide text-zinc-700 dark:text-zinc-200">
+              {NAV_LINKS.map((link) => {
+                const active = isActiveLink(pathname, hash, link.href);
+                return (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className={classNames(
+                        "flex items-center justify-between rounded-2xl border border-zinc-200/70 bg-white/80 px-4 py-3 outline-none transition hover:border-emerald-200 hover:bg-emerald-50/70 dark:border-white/10 dark:bg-zinc-900/60 dark:hover:border-emerald-500/30 dark:hover:bg-emerald-500/10",
+                        active && "text-emerald-600 dark:text-emerald-300"
+                      )}
+                    >
+                      <span>{link.label}</span>
+                      <span
+                        aria-hidden="true"
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-zinc-200/70 dark:border-white/10"
+                      >
+                        →
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
 
-          <DarkModeToggle /> {/* ✅ clean and reusable */}
+              <li className="pt-1">
+                <Link
+                  href="/descoperaCABN"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-base font-semibold text-white shadow transition hover:-translate-y-0.5 hover:bg-emerald-600 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
+                >
+                  <span aria-hidden="true" className="text-lg font-semibold leading-none">
+                    +
+                  </span>
+                  <span>Adaugă proprietate</span>
+                </Link>
+              </li>
+            </ul>
+          </nav>
         </div>
       </div>
     </header>

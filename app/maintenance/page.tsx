@@ -1,10 +1,20 @@
+import Link from "next/link";
+
 export default function Maintenance() {
   return (
-    <div className="h-screen flex items-center justify-center text-center bg-white text-black p-6">
-      <div>
-        <h1 className="text-4xl font-bold mb-4">🚧 Site în Mentenanță</h1>
-        <p className="text-gray-600">Ne întoarcem în curând. Mulțumim pentru înțelegere!</p>
+    <main className="min-h-screen bg-white px-6 py-20 text-gray-900">
+      <div className="mx-auto flex max-w-lg flex-col items-center justify-center text-center space-y-6">
+        <h1 className="text-4xl font-bold tracking-tight">Site in mentenanta</h1>
+        <p className="text-base text-gray-600">
+          Lucram la imbunatatiri si revenim in curand. Multumim pentru rabdare!
+        </p>
+        <Link
+          href="/"
+          className="inline-flex items-center rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow transition hover:bg-emerald-700"
+        >
+          Inapoi la prima pagina
+        </Link>
       </div>
-    </div>
+    </main>
   );
 }

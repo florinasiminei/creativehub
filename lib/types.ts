@@ -10,14 +10,20 @@ export type Filters = {
 export type ListingRaw = {
   id: string;
   title: string;
+  slug?: string;
+  phone?: string;
   type: string;
   location: string;
   capacity: string;
   price: string;
-  listing_facilities: {
+  listing_images?: {
+    image_url: string | null;
+    display_order: number | null;
+  }[];
+  listing_facilities?: {
     facilities: {
       id: string;
       name: string;
-    }[];
+    } | null;
   }[];
 };
