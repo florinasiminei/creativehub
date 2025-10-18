@@ -3,22 +3,199 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
   --foreground: #171717;
+}
+
+/* Custom styles for Image Gallery */
+.image-gallery-custom {
+  @apply w-full select-none;
+  height: 80vh;
+  background: transparent;
+}
+
+.image-gallery-custom .image-gallery-content {
+  @apply h-full relative;
+}
+
+.image-gallery-custom .image-gallery-slide-wrapper {
+  height: calc(100% - 100px);
+  background: transparent;
+}
+
+.image-gallery-custom .image-gallery-swipe {
+  @apply h-full;
+}
+
+.image-gallery-custom .image-gallery-slides {
+  @apply h-full;
+}
+
+.image-gallery-custom .image-gallery-slide {
+  @apply h-full;
+}
+
+.image-gallery-custom .image-gallery-slide > div {
+  @apply h-full;
+}
+
+.image-gallery-custom .image-gallery-thumbnails-wrapper {
+  @apply absolute bottom-0 inset-x-0 py-4 px-6;
+  background: linear-gradient(to top, rgba(0,0,0,0.4), rgba(0,0,0,0.2) 40%, transparent 100%);
+}
+
+.image-gallery-custom .image-gallery-thumbnails {
+  @apply max-w-4xl mx-auto;
+}
+
+.image-gallery-custom .image-gallery-thumbnail {
+  @apply transition duration-150 border-2 border-transparent rounded-lg overflow-hidden opacity-50 transform hover:opacity-100 hover:scale-105;
+  height: 60px;
+  width: 90px;
+  margin: 0 3px;
+}
+
+.image-gallery-custom .image-gallery-thumbnail.active {
+  @apply opacity-100 border-white;
+}
+
+.image-gallery-custom {
+  height: 100%;
+  width: 100%;
+}
+
+.image-gallery-custom .image-gallery-content {
+  height: 100%;
+}
+
+.image-gallery-custom .image-gallery-slide-wrapper {
+  height: calc(100% - 120px); /* Leave space for thumbnails */
+}
+
+.image-gallery-custom .image-gallery-icon {
+  @apply bg-black/50 hover:bg-black/70 rounded-full p-3 transition-all duration-100;
+  filter: none !important;
+  text-shadow: none !important;
+  padding: 12px !important;
+  color: white !important;
+}
+
+.image-gallery-custom .image-gallery-icon svg {
+  @apply w-5 h-5 stroke-[2.5];
+}
+
+.image-gallery-custom .image-gallery-bullets {
+  @apply bottom-20;
+}
+
+.image-gallery-custom .image-gallery-bullet {
+  @apply bg-white/50 border-0 w-2 h-2 rounded-full mx-1 transition-all duration-200;
+  padding: 0 !important;
+}
+
+.image-gallery-custom .image-gallery-bullet:hover {
+  @apply bg-white;
+}
+
+.image-gallery-custom .image-gallery-bullet.active {
+  @apply bg-white scale-110;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .image-gallery-custom .image-gallery-thumbnails-wrapper {
+    @apply hidden;
+  }
+
+  .image-gallery-custom .image-gallery-bullets {
+    @apply bottom-4;
+  }
+  
+  .image-gallery-custom .image-gallery-icon {
+    @apply p-2 !important;
+  }
+  
+  .image-gallery-custom .image-gallery-icon svg {
+    @apply w-4 h-4;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
     --foreground: #ededed;
   }
 }
 
 body {
   color: var(--foreground);
-  background: var(--background);
+
   font-family: Arial, Helvetica, sans-serif;
 }
 html {
   scroll-behavior: smooth;
 }
+
+/* Slider size variables and rc-slider overrides */
+:root {
+  --slider-rail-height: 6px;
+  --slider-handle-size: 12px;
+}
+
+@media (min-width: 640px) {
+  :root {
+    /* desktop: smaller tracks and handles */
+    --slider-rail-height: 4px;
+    --slider-handle-size: 10px;
+  }
+}
+
+/* Scoped rc-slider overrides for our compact ranges */
+.compact-range .rc-slider-rail {
+  height: var(--slider-rail-height) !important;
+  background: #e5e7eb !important;
+}
+.compact-range .rc-slider-track {
+  height: var(--slider-rail-height) !important;
+  background: #10b981 !important;
+}
+.compact-range .rc-slider-handle {
+  height: var(--slider-handle-size) !important;
+  width: var(--slider-handle-size) !important;
+  margin-top: calc((var(--slider-rail-height) - var(--slider-handle-size)) / 2) !important;
+  border-color: #10b981 !important;
+  background: #10b981 !important;
+}
+
+.compact-range {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Basic slider reset */
+.compact-range .rc-slider {
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: visible !important;
+  position: relative !important;
+}
+
+.compact-range .rc-slider-rail {
+  width: 100% !important;
+}
+
+/* Handle positioning fix */
+.compact-range .rc-slider-handle {
+  transform: translate(-50%, -50%) !important;
+  margin-top: 0 !important;
+  top: 50% !important;
+}
+
+/* Fix for handles at extremes */
+.compact-range .rc-slider-handle[style*="left: 100%"] {
+  left: 100% !important;
+}
+
+.compact-range .rc-slider-handle[style*="left: 0%"] {
+  left: 0% !important;
+}
+

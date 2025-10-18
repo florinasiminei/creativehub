@@ -5,33 +5,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import DarkModeToggle from "./DarkModeToggle";
-
-const NAV_LINKS = [
-  { href: "/", label: "Cazări turistice" },
-  { href: "#atractii", label: "Atracții" },
-  { href: "#contact", label: "Contact" },
-];
-
-function classNames(...cls: (string | false | null | undefined)[]) {
-  return cls.filter(Boolean).join(" ");
-}
-
-function useHash(): string {
-  const [hash, setHash] = useState<string>("");
-  useEffect(() => {
-    const update = () => setHash(window.location.hash || "");
-    update();
-    window.addEventListener("hashchange", update);
-    return () => window.removeEventListener("hashchange", update);
-  }, []);
-  return hash;
-}
-
-function isActiveLink(pathname: string, hash: string, href: string) {
-  if (href.startsWith("/")) return pathname === href;
-  if (href.startsWith("#")) return hash === href && pathname === "/";
-  return false;
-}
+import { NAV_LINKS } from "@/lib/constants";
+import { classNames, isActiveLink } from "@/lib/utils";
+import { useHash } from "@/hooks/useHash";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -65,18 +41,18 @@ export default function Navbar() {
         Sari la conținut
       </a>
 
-      <div className="mx-auto max-w-[var(--page-max-w)] px-4 sm:px-6 lg:px-8">
+      <div className="px-3 sm:px-4 lg:px-6">
         <div className="flex min-h-[90px] items-center justify-between gap-3 py-3">
           {/* Logo mare */}
           <Link
             href="/"
             aria-label="cabn.ro – Pagina principală"
-            className="group flex shrink-0 select-none items-center gap-3"
+            className="group flex shrink-0 select-none items-center gap-3 pl-2 sm:pl-3 lg:pl-5"
           >
             <Image
               src="/images/logo.svg"
               alt="cabn.ro – explorăm cazări autentice"
-              width={85}
+              width={100}
               height={150}
               priority
             />
@@ -126,7 +102,7 @@ export default function Navbar() {
             <DarkModeToggle />
             <button
               type="button"
-              onClick={() => setMenuOpen((v) => !v)}
+              onClick={() => setMenuOpen((value) => !value)}
               aria-expanded={menuOpen}
               aria-controls="mobile-nav"
               className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200/70 bg-white/60 shadow-sm outline-none transition hover:bg-white dark:border-white/10 dark:bg-zinc-900/70"
@@ -175,7 +151,7 @@ export default function Navbar() {
                         aria-hidden="true"
                         className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-zinc-200/70 dark:border-white/10"
                       >
-                        →
+                        ›
                       </span>
                     </Link>
                   </li>
@@ -200,3 +176,4 @@ export default function Navbar() {
     </header>
   );
 }
+

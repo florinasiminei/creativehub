@@ -22,7 +22,7 @@ const TESTIMONIALE = [
   },
   {
     title: "Forest Retreat",
-    text: "Echipa cabn.ro a surprins perfect atmosfera locului - recomandăm cu încredere!",
+    text: "Echipa cabn.ro a surprins perfect atmosfera locului – recomandăm cu încredere!",
   },
   {
     title: "Glamping Sky",
@@ -37,7 +37,7 @@ const WHATSAPP_LINK = cleanedWhatsApp ? `https://wa.me/${cleanedWhatsApp}` : nul
 export default function DescoperaCabn() {
   return (
     <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white">
-            {/* HERO full-bleed, full-screen */}
+      {/* HERO full-bleed, full-screen */}
       <section
         className="
           relative
@@ -61,7 +61,7 @@ export default function DescoperaCabn() {
         {/* content */}
         <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center text-white gap-4 md:gap-6">
           <div>
-            <Link href="/" className="inline-flex items-center gap-2 text-xl font-semibold tracking-tight">
+            <Link href="/" className="inline-flex items-center text-xl font-semibold tracking-tight">
               cabn<span className="text-emerald-300">.ro</span>
             </Link>
           </div>
@@ -83,7 +83,6 @@ export default function DescoperaCabn() {
           </Link>
         </div>
       </section>
-
 
       <section id="servicii" className="max-w-7xl mx-auto px-6 py-16">
         <h2 className="text-2xl font-bold mb-8">Serviciile noastre</h2>
@@ -107,6 +106,7 @@ export default function DescoperaCabn() {
               alt="Portofoliu cabn"
               width={1200}
               height={900}
+              loading="lazy"
               className="w-full h-[220px] object-cover rounded-xl border"
             />
           ))}
@@ -118,7 +118,9 @@ export default function DescoperaCabn() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
           <div className="text-gray-700 dark:text-gray-300 space-y-4">
             <p>
-              cabn.ro nu este doar o agenție de marketing. Suntem o întreprindere socială care oferă oportunități persoanelor vulnerabile, integrându-le în proiecte creative și sustenabile. Punem accent pe autenticitatea locațiilor promovate și pe povești memorabile.
+              cabn.ro nu este doar o agenție de marketing. Suntem o întreprindere socială care oferă oportunități
+              persoanelor vulnerabile, integrându-le în proiecte creative și sustenabile. Punem accent pe autenticitatea
+              locațiilor promovate și pe povești memorabile.
             </p>
             <span className="inline-block bg-amber-500 text-white text-xs px-3 py-1 rounded-full">
               Întreprindere socială
@@ -149,23 +151,31 @@ export default function DescoperaCabn() {
       <section id="contact" className="max-w-3xl mx-auto px-6 py-16">
         <h2 className="text-2xl font-bold mb-6">Solicită o ofertă</h2>
         <form className="grid grid-cols-1 gap-4">
-          <input className="rounded-lg border px-4 py-3 bg-white dark:bg-zinc-900" placeholder="Nume" />
-          <input className="rounded-lg border px-4 py-3 bg-white dark:bg-zinc-900" placeholder="Email / Telefon" />
+          <input name="name" className="rounded-lg border px-4 py-3 bg-white dark:bg-zinc-900" placeholder="Nume" />
+          <input
+            name="contact"
+            className="rounded-lg border px-4 py-3 bg-white dark:bg-zinc-900"
+            placeholder="Email / Telefon"
+          />
           <textarea
+            name="message"
             className="rounded-lg border px-4 py-3 bg-white dark:bg-zinc-900"
             rows={5}
             placeholder="Detalii proiect"
           />
-          <button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-full font-semibold">
+          <button
+            type="submit"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-full font-semibold"
+          >
             Trimite
           </button>
         </form>
         {WHATSAPP_LINK ? (
           <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
             sau contactează-ne pe WhatsApp:
-            <a className="text-emerald-600 ml-1" href={WHATSAPP_LINK} target="_blank" rel="noopener noreferrer">
+            <Link className="text-emerald-600 ml-1" href={WHATSAPP_LINK} target="_blank" rel="noopener noreferrer">
               Deschide WhatsApp
-            </a>
+            </Link>
           </div>
         ) : (
           <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
@@ -173,7 +183,6 @@ export default function DescoperaCabn() {
           </div>
         )}
       </section>
-
     </div>
   );
 }

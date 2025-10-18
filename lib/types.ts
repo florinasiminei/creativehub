@@ -7,6 +7,22 @@ export type Filters = {
   persoaneMin: number;
   persoaneMax: number;
 };
+
+export type WhatsAppButtonProps = {
+  phone: string;
+  message?: string;
+};
+
+export type PageProps = { 
+  params: { 
+    slug: string 
+  } 
+};
+
+export type FacilityOption = {
+  id: string;
+  name: string;
+};
 export type ListingRaw = {
   id: string;
   title: string;
@@ -16,6 +32,8 @@ export type ListingRaw = {
   location: string;
   capacity: string;
   price: string;
+  description?: string | null;
+  highlights?: string[] | null;
   listing_images?: {
     image_url: string | null;
     display_order: number | null;

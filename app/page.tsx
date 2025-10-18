@@ -1,22 +1,17 @@
 ﻿// app/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type SetStateAction } from "react";
 import Fuse from "fuse.js";
-import TopSearchBar from "@/components/TopSearchBar";
-import FilterSidebar from "@/components/FilterSidebar";
+import { TopSearchBar } from "@/components/TopSearchBar";
 import ListingsGrid from "@/components/ListingGrid";
+import LoadingLogo from "@/components/LoadingLogo";
+import Pagination from "@/components/Pagination";
 import { useFuzzyCazari } from "@/hooks/useFuzzyCazari";
-import { Cazare, slugify } from "@/lib/utils";
-import { Filters, ListingRaw } from "@/lib/types";
+import { mapListingSummary } from "@/lib/transformers";
+import { Cazare } from "@/lib/utils";
+import type { FacilityOption, Filters, ListingRaw } from "@/lib/types";
 import { supabase } from "@/lib/supabaseClient";
-
-type Facility = { id: string; name: string };
-
-function num(n: unknown, fallback = 0) {
-  const v = typeof n === "number" ? n : Number(n);
-  return Number.isFinite(v) ? v : fallback;
-}
 
 function getInitialFilters(cazari: Cazare[]): Filters {
   const prices = cazari.map((c) => c.price);
@@ -37,18 +32,43 @@ function getInitialFilters(cazari: Cazare[]): Filters {
   };
 }
 
+const ITEMS_PER_PAGE = 50;
+
 export default function Home() {
   const [cazari, setCazari] = useState<Cazare[]>([]);
-  const [facilitiesList, setFacilitiesList] = useState<Facility[]>([]);
-  const [filters, setFiltersRaw] = useState<Filters>({
+  const [facilitiesList, setFacilitiesList] = useState<FacilityOption[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [filters, setFiltersState] = useState<Filters>({
     locatie: "",
     keyword: "",
     pretMin: 0,
     pretMax: 10000,
     facilities: [],
     persoaneMin: 1,
-    persoaneMax: 10,
+    persoaneMax: 15,
   });
+  const setFilters = useCallback((updater: SetStateAction<Filters>) => {
+    setFiltersState((prev) => {
+      const next =
+        typeof updater === "function" ? (updater as (prev: Filters) => Filters)(prev) : updater;
+
+      if (
+        next.locatie === prev.locatie &&
+        next.keyword === prev.keyword &&
+        next.pretMin === prev.pretMin &&
+        next.pretMax === prev.pretMax &&
+        next.persoaneMin === prev.persoaneMin &&
+        next.persoaneMax === prev.persoaneMax &&
+        next.facilities.length === prev.facilities.length &&
+        next.facilities.every((value, index) => value === prev.facilities[index])
+      ) {
+        return prev;
+      }
+
+      setCurrentPage(1);
+      return next;
+    });
+  }, [setCurrentPage, setFiltersState]);
   const [persoaneRange, setPersoaneRange] = useState({ min: 1, max: 10 });
   const [locatiiSugestii, setLocatiiSugestii] = useState<string[]>([]);
   const [sugestieIndex, setSugestieIndex] = useState(-1);
@@ -80,38 +100,13 @@ export default function Home() {
 
         if (error) throw error;
 
-        const mapped: Cazare[] = (data as unknown as ListingRaw[]).map((row) => {
-          const cover = Array.isArray(row.listing_images) && row.listing_images[0]?.image_url
-            ? String(row.listing_images[0].image_url).trim()
-            : "/fallback.jpg";
-
-          const facIds = (row.listing_facilities ?? [])
-            .map((lf) => lf.facilities?.id)
-            .filter(Boolean) as string[];
-          const facNames = (row.listing_facilities ?? [])
-            .map((lf) => lf.facilities?.name)
-            .filter(Boolean) as string[];
-
-          return {
-            id: row.id,
-            title: row.title,
-            slug: row.slug || `${slugify(row.title)}-${row.id}`,
-            price: num(row.price, 0),
-            tip: row.type,
-            locatie: row.location,
-            numarPersoane: num(row.capacity, 1),
-            facilities: facIds,
-            facilitiesNames: facNames,
-            image: cover,
-            phone: row.phone ? String(row.phone) : undefined,
-          };
-        });
+        const mapped = (data as unknown as ListingRaw[]).map((row) => mapListingSummary(row));
 
         if (cancelled) return;
 
         setCazari(mapped);
         const init = getInitialFilters(mapped);
-        setFiltersRaw(init);
+        setFilters(init);
         setPersoaneRange({
           min: mapped.length ? Math.min(...mapped.map((c) => c.numarPersoane)) : init.persoaneMin,
           max: mapped.length ? Math.max(...mapped.map((c) => c.numarPersoane)) : init.persoaneMax,
@@ -164,7 +159,7 @@ export default function Home() {
 
   const handleLocatieChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
-    setFiltersRaw((prev) => ({ ...prev, locatie: val, keyword: val }));
+    setFilters((prev) => ({ ...prev, locatie: val, keyword: val }));
     setSugestieIndex(-1);
     setLocatiiSugestii(
       val.trim()
@@ -194,14 +189,14 @@ export default function Home() {
 
   const selectLocatie = (locatieSugestie: string) => {
     const locatie = locatieSugestie.split(" – ")[0].trim();
-    setFiltersRaw((prev) => ({ ...prev, locatie, keyword: locatie }));
+    setFilters((prev) => ({ ...prev, locatie, keyword: locatie }));
     setLocatiiSugestii([]);
     setSugestieIndex(-1);
   };
 
   const resetFiltre = () => {
     const init = getInitialFilters(cazari);
-    setFiltersRaw(init);
+    setFilters(init);
     setPersoaneRange({
       min: cazari.length ? Math.min(...cazari.map((c) => c.numarPersoane)) : init.persoaneMin,
       max: cazari.length ? Math.max(...cazari.map((c) => c.numarPersoane)) : init.persoaneMax,
@@ -218,7 +213,7 @@ export default function Home() {
     activeFilterChips.push({
       key: "keyword",
       label: `Căutare: ${filters.keyword}`,
-      onClear: () => setFiltersRaw((prev) => ({ ...prev, keyword: "", locatie: "" })),
+      onClear: () => setFilters((prev) => ({ ...prev, keyword: "", locatie: "" })),
     });
   }
 
@@ -226,7 +221,7 @@ export default function Home() {
     activeFilterChips.push({
       key: "price",
       label: `Preț: ${filters.pretMin} - ${filters.pretMax} lei`,
-      onClear: () => setFiltersRaw((prev) => ({ ...prev, pretMin: minPriceAll, pretMax: maxPriceAll })),
+      onClear: () => setFilters((prev) => ({ ...prev, pretMin: minPriceAll, pretMax: maxPriceAll })),
     });
   }
 
@@ -235,7 +230,7 @@ export default function Home() {
       key: "people",
       label: `Persoane: ${filters.persoaneMin} - ${filters.persoaneMax}`,
       onClear: () =>
-        setFiltersRaw((prev) => ({
+        setFilters((prev) => ({
           ...prev,
           persoaneMin: persoaneRange.min,
           persoaneMax: persoaneRange.max,
@@ -249,7 +244,7 @@ export default function Home() {
       key: `facility-${fid}`,
       label: `Facilitate: ${name}`,
       onClear: () =>
-        setFiltersRaw((prev) => ({
+        setFilters((prev) => ({
           ...prev,
           facilities: prev.facilities.filter((f) => f !== fid),
         })),
@@ -258,86 +253,72 @@ export default function Home() {
 
   const filteredCazari = useFuzzyCazari(cazari, filters);
 
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredCazari.length / ITEMS_PER_PAGE));
+    if (currentPage > maxPage) {
+      setCurrentPage(maxPage);
+    }
+  }, [filteredCazari.length, currentPage, setCurrentPage]);
+
   return (
     <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white relative">
       <TopSearchBar
         filters={filters}
-        setFilters={setFiltersRaw}
+        setFilters={setFilters}
         locatiiSugestii={locatiiSugestii}
         sugestieIndex={sugestieIndex}
         handleLocatieChange={handleLocatieChange}
         handleLocatieKeyDown={handleLocatieKeyDown}
         selectLocatie={selectLocatie}
         setLocatiiSugestii={setLocatiiSugestii}
+        minPrice={minPriceAll}
+        maxPrice={maxPriceAll || 10000}
+        persoaneRange={persoaneRange}
+        resetFiltre={resetFiltre}
+        facilitiesList={facilitiesList}
+        resultsCount={filteredCazari.length}
       />
 
-      <div className="px-4 lg:px-6 mt-4">
-        <FilterSidebar
-          filters={filters}
-          setFilters={setFiltersRaw}
-          minPrice={minPriceAll}
-          maxPrice={maxPriceAll || 10000}
-          persoaneRange={persoaneRange}
-          resetFiltre={resetFiltre}
-          facilitiesList={facilitiesList}
-          resultsCount={filteredCazari.length}
-        />
-      </div>
-
       <main className="w-full px-4 lg:px-6">
-        <section id="cazari" className="py-16">
-            <h2 className="text-2xl font-bold mb-8">Cazări turistice</h2>
+        <section id="cazari" className="py-8">
+          <h2 className="text-xl font-medium mb-6">Cazări turistice</h2>
 
-            {activeFilterChips.length > 0 && (
-              <div className="mb-6">
-                <div className="flex flex-wrap items-center gap-2">
-                  {activeFilterChips.map((chip) => (
-                    <button
-                      key={chip.key}
-                      onClick={chip.onClear}
-                      className="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1 text-xs font-medium hover:bg-emerald-100"
-                    >
-                      {chip.label}
-                      <span aria-hidden="true">×</span>
-                    </button>
-                  ))}
-                  <button
-                    onClick={resetFiltre}
-                    className="text-xs font-medium text-gray-600 dark:text-gray-300 underline-offset-2 hover:underline"
-                  >
-                    Resetează toate filtrele
-                  </button>
+          {loading && <LoadingLogo />}
+
+          {error && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 mb-6">
+              <div className="flex items-center">
+                <div className="text-red-600 dark:text-red-400 text-xl mr-3">⚠️</div>
+                <div>
+                  <h3 className="text-red-800 dark:text-red-200 font-semibold">Eroare la încărcare</h3>
+                  <p className="text-red-700 dark:text-red-300 mt-1">{error}</p>
                 </div>
               </div>
-            )}
-
-            {loading && (
-              <div className="flex justify-center items-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600" />
-                <span className="ml-3 text-gray-600 dark:text-gray-400">Se încarcă proprietățile...</span>
-              </div>
-            )}
-
-            {error && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 mb-6">
-                <div className="flex items-center">
-                  <div className="text-red-600 dark:text-red-400 text-xl mr-3">⚠️</div>
-                  <div>
-                    <h3 className="text-red-800 dark:text-red-200 font-semibold">Eroare la încărcare</h3>
-                    <p className="text-red-700 dark:text-red-300 mt-1">{error}</p>
-                  </div>
-                </div>
-              </div>
-            )}
+            </div>
+          )}
 
             {!loading && !error && (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                  <ListingsGrid cazari={filteredCazari} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-2 gap-y-8">
+                  <ListingsGrid 
+                    cazari={filteredCazari.slice(
+                      (currentPage - 1) * ITEMS_PER_PAGE,
+                      currentPage * ITEMS_PER_PAGE
+                    )} 
+                  />
                 </div>
-                <p className="text-center text-gray-600 dark:text-gray-400 mt-4">
-                  Rezultate totale: {filteredCazari.length}
-                </p>
+                <div className="text-center">
+                  {filteredCazari.length > ITEMS_PER_PAGE && (
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={Math.ceil(filteredCazari.length / ITEMS_PER_PAGE)}
+                      onPageChange={(page) => {
+                        setCurrentPage(page);
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                    />
+                  )}
+                </div>
               </>
             )}
 
@@ -364,6 +345,3 @@ export default function Home() {
     </div>
   );
 }
-
-
-
