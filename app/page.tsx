@@ -261,7 +261,7 @@ export default function Home() {
   }, [filteredCazari.length, currentPage, setCurrentPage]);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white relative">
+    <div className="min-h-screen bg-white dark:bg-[#080808] text-black dark:text-white relative">
       <TopSearchBar
         filters={filters}
         setFilters={setFilters}

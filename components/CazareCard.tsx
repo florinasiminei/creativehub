@@ -1,11 +1,11 @@
-﻿import Image from "next/image";
+import Image from "next/image";
 import Link from "next/link";
 import { Cazare } from "../lib/utils";
 
 export default function CazareCard({ cazare }: { cazare: Cazare }) {
   return (
     <Link href={`/cazare/${cazare.slug}`}>
-      <article className="group bg-white dark:bg-zinc-900 transition">
+      <article className="group bg-white transition dark:bg-transparent">
         <div className="relative aspect-[2.7/2] overflow-hidden rounded-xl">
           <Image
             src={cazare.image}
@@ -34,6 +34,7 @@ export default function CazareCard({ cazare }: { cazare: Cazare }) {
     </Link>
   );
 }
+
 
 
 

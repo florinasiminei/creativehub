@@ -107,7 +107,7 @@ const TopSearchBar = ({
 
   return (
     <>
-      <div className="w-full flex justify-center py-4 bg-white dark:bg-black border-b border-gray-200 dark:border-zinc-800 shadow-sm">
+      <div className="w-full flex justify-center py-4 bg-white dark:bg-[#080808] border-b border-gray-200 dark:border-zinc-800 shadow-sm">
         <div className="relative w-full max-w-3xl px-4 flex gap-4">
           {/* Destination Search */}
           <div className="flex-1 relative">
@@ -120,7 +120,7 @@ const TopSearchBar = ({
                 value={filters.keyword}
                 onChange={handleInputChange}
                 onKeyDown={handleLocatieKeyDown}
-                className="w-full h-[48px] pl-12 pr-4 border border-gray-300 dark:border-zinc-600 rounded-full bg-white dark:bg-zinc-900 text-sm sm:text-base dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                className="w-full h-[48px] pl-12 pr-4 border border-gray-300 dark:border-zinc-600 rounded-full bg-white dark:bg-zinc-900 text-sm sm:text-base dark:text-white focus:outline-none transition-all duration-200 hover:border-emerald-400 hover:ring hover:ring-emerald-300 focus:border-emerald-400 focus:ring focus:ring-emerald-300"
                 role="combobox"
                 aria-expanded={locatiiSugestii.length > 0}
                 aria-controls="locatii-sugestii"
@@ -131,13 +131,13 @@ const TopSearchBar = ({
               <ul
                 ref={dropdownRef}
                 id="locatii-sugestii"
-                className="absolute z-10 w-full mt-1 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-lg max-h-60 overflow-auto"
+                 className="absolute z-10 w-full mt-1 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-lg max-h-60 overflow-auto"
                 role="listbox"
               >
                 {locatiiSugestii.map((locatie, index) => (
                   <li
                     key={locatie}
-                    className={`px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-700 ${
+                     className={`px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-700 ${
                       index === sugestieIndex ? "bg-gray-100 dark:bg-zinc-700" : ""
                     }`}
                     onClick={() => selectLocatie(locatie)}
@@ -154,7 +154,7 @@ const TopSearchBar = ({
           {/* Filters Button */}
           <button
             onClick={() => setIsModalOpen(true)}
-            className={`h-[48px] px-6 rounded-full border flex items-center gap-2 transition
+            className={`h-[48px] px-6 rounded-full border flex items-center gap-2 transition-all duration-200 hover:border-emerald-400 hover:ring hover:ring-emerald-300 dark:hover:border-emerald-300 dark:hover:ring dark:hover:ring-emerald-200
               ${
                 hasActiveFilters
                   ? "border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
