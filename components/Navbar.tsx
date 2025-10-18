@@ -52,7 +52,7 @@ export default function Navbar() {
             <Image
               src="/images/logo.svg"
               alt="cabn.ro – explorăm cazări autentice"
-              width={100}
+              width={101}
               height={150}
               priority
             />
