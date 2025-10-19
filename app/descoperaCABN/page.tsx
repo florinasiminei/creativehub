@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Camera, Globe, Share2, Video } from "lucide-react";
+import { TESTIMONIALE } from "@/lib/constants";
 
 const SERVICES = [
   { title: "Foto & video profesional", Icon: Camera },
@@ -13,21 +14,6 @@ const PORTFOLIO_IMAGES = [
   "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
   "https://images.unsplash.com/photo-1500530855697-80e6db1ae836?auto=format&fit=crop&w=1200&q=80",
   "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=80",
-];
-
-const TESTIMONIALE = [
-  {
-    title: "Cabana Valea",
-    text: "Colaborare excelentă, conținut premium și rezultate vizibile în doar câteva săptămâni.",
-  },
-  {
-    title: "Forest Retreat",
-    text: "Echipa cabn.ro a surprins perfect atmosfera locului – recomandăm cu încredere!",
-  },
-  {
-    title: "Glamping Sky",
-    text: "Materiale vizuale spectaculoase și o strategie clară pentru social media.",
-  },
 ];
 
 const rawWhatsApp = process.env.NEXT_PUBLIC_WHATSAPP_PHONE ?? "";
@@ -60,19 +46,12 @@ export default function DescoperaCabn() {
 
         {/* content */}
         <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center text-white gap-4 md:gap-6">
-          <div>
-            <Link href="/" className="inline-flex items-center text-xl font-semibold tracking-tight">
-              cabn<span className="text-emerald-300">.ro</span>
-            </Link>
-          </div>
-
           <h1 className="text-3xl md:text-5xl font-bold max-w-3xl">
-            Promovăm experiențe unice. Creăm conținut care inspiră.
+            Alege nivelul de vizibilitate care se potriveşte locației tale.
           </h1>
 
           <p className="text-white/85 max-w-2xl">
-            Servicii profesionale de marketing digital pentru unități de cazare alternativă: producție foto-video,
-            website-uri, optimizare SEO și gestionare social media.
+            Pachete flexibile foto-video și promovare social media, pentru orice tip de locație, create cu drag de echipa cabn.
           </p>
 
           <Link
@@ -186,3 +165,4 @@ export default function DescoperaCabn() {
     </div>
   );
 }
+
