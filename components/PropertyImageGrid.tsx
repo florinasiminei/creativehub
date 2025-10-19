@@ -12,7 +12,6 @@ interface PropertyImageGridProps {
 }
 
 const PropertyImageGrid: React.FC<PropertyImageGridProps> = ({ images, title, className }) => {
-  console.log('Total images in PropertyImageGrid:', images.length);
   const [showGallery, setShowGallery] = useState(false);
   const [startIndex, setStartIndex] = useState(0);
 
@@ -32,13 +31,20 @@ const PropertyImageGrid: React.FC<PropertyImageGridProps> = ({ images, title, cl
     return () => window.removeEventListener('keydown', handleEsc);
   }, []);
 
-  // Display up to 5 images in the grid for preview, but keep all images for gallery
+  if (!images || images.length === 0) {
+    return null;
+  }
+
+  // Display up to 5 images in the desktop grid for preview, but keep all images for gallery
   const gridImages = images.slice(0, 5);
   const remainingCount = Math.max(0, images.length - 5);
 
   return (
     <>
-      <div className={`grid grid-cols-4 gap-2 h-[480px] rounded-2xl overflow-hidden ${className}`}>
+      {/* Desktop grid */}
+      <div
+        className={`hidden md:grid grid-cols-4 gap-2 h-[480px] rounded-2xl overflow-hidden ${className}`}
+      >
         {/* Main large image */}
         <div 
           className="col-span-2 row-span-2 relative group cursor-pointer"
@@ -46,7 +52,7 @@ const PropertyImageGrid: React.FC<PropertyImageGridProps> = ({ images, title, cl
         >
           <Image
             src={images[0]}
-            alt={title ? `${title} - Imagine principală` : 'Imagine principală'}
+            alt={title ? `${title} - Imagine principala` : 'Imagine principala'}
             fill
             priority
             sizes="(max-width: 768px) 100vw, 50vw"
@@ -82,6 +88,32 @@ const PropertyImageGrid: React.FC<PropertyImageGridProps> = ({ images, title, cl
             )}
           </div>
         ))}
+      </div>
+
+      {/* Mobile swipeable carousel */}
+      <div className="md:hidden -mx-6">
+        <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory px-6 pb-4 scrollbar-hide">
+          {images.map((url: string, index: number) => (
+            <div
+              key={url}
+              className="relative flex-shrink-0 snap-center w-[85vw] aspect-[4/3] rounded-2xl overflow-hidden shadow-sm cursor-pointer"
+              onClick={() => openGallery(index)}
+            >
+              <Image
+                src={url}
+                alt={`${title || 'Locatie'} - Imagine ${index + 1}`}
+                fill
+                sizes="90vw"
+                className="object-cover"
+                priority={index === 0}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-black/10 to-transparent" />
+              <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs px-3 py-1 rounded-full font-medium">
+                {index + 1} / {images.length}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Show button for mobile */}
