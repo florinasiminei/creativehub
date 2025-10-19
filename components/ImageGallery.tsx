@@ -142,7 +142,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
           showBullets={isMobile && items.length > 1}
           thumbnailPosition="bottom"
           infinite
-          slideDuration={350}
+          slideDuration={0}
           slideInterval={4000}
           startIndex={currentIndex}
           useTranslate3D
@@ -151,7 +151,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
           renderLeftNav={renderLeftNav}
           renderRightNav={renderRightNav}
           additionalClass={`image-gallery-custom ${isMobile ? "image-gallery--mobile" : ""}`}
-          disableSwipe={false}
+          disableSwipe={!isMobile}
           lazyLoad={false}
           stopPropagation={true}
         />

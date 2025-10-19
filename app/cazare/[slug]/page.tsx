@@ -159,7 +159,7 @@ Interiorul este amenajat cu gust, oferind spații generoase și luminoase. Fieca
   }, [slug]); // Folosim slug-ul validat
 
   return (
-    <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white">
+    <div className="min-h-screen bg-white dark:bg-transparent text-black dark:text-white">
       <main className="max-w-6xl mx-auto px-4 py-10">
         {loading && <LoadingLogo />}
 

@@ -22,11 +22,11 @@ const WHATSAPP_LINK = cleanedWhatsApp ? `https://wa.me/${cleanedWhatsApp}` : nul
 
 export default function DescoperaCabn() {
   return (
-    <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white">
+    <div className="[margin-left:calc(50%-50vw)] [margin-right:calc(50%-50vw)] -mt-6 md:-mt-6 min-h-screen overflow-x-hidden bg-transparent text-black dark:text-white">
       {/* HERO full-bleed, full-screen */}
       <section
         className="
-          relative
+          relative 
           w-screen h-[100dvh] overflow-hidden
           [margin-left:calc(50%-50vw)] [margin-right:calc(50%-50vw)]
         "
@@ -67,7 +67,7 @@ export default function DescoperaCabn() {
         <h2 className="text-2xl font-bold mb-8">Serviciile noastre</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {SERVICES.map(({ title, Icon }) => (
-            <div key={title} className="rounded-xl border p-6 bg-white dark:bg-zinc-900 shadow-sm">
+            <div key={title} className="rounded-xl border border-zinc-200/70 dark:border-white/10 p-6 bg-white dark:bg-transparent shadow-sm">
               <Icon className="h-7 w-7 text-emerald-500 mb-3" aria-hidden />
               <div className="font-semibold text-gray-900 dark:text-white">{title}</div>
             </div>
@@ -119,7 +119,7 @@ export default function DescoperaCabn() {
         <h2 className="text-2xl font-bold mb-8">Testimoniale</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {TESTIMONIALE.map((item) => (
-            <div key={item.title} className="rounded-xl border p-6 bg-white dark:bg-zinc-900 shadow-sm">
+            <div key={item.title} className="rounded-xl border border-zinc-200/70 dark:border-white/10 p-6 bg-white dark:bg-transparent shadow-sm">
               <div className="text-lg font-semibold mb-2">{item.title}</div>
               <p className="text-gray-600 dark:text-gray-400 text-sm">{item.text}</p>
             </div>
@@ -130,15 +130,15 @@ export default function DescoperaCabn() {
       <section id="contact" className="max-w-3xl mx-auto px-6 py-16">
         <h2 className="text-2xl font-bold mb-6">Solicită o ofertă</h2>
         <form className="grid grid-cols-1 gap-4">
-          <input name="name" className="rounded-lg border px-4 py-3 bg-white dark:bg-zinc-900" placeholder="Nume" />
+          <input name="name" className="rounded-lg border border-zinc-200/70 dark:border-white/10 px-4 py-3 bg-white dark:bg-transparent" placeholder="Nume" />
           <input
             name="contact"
-            className="rounded-lg border px-4 py-3 bg-white dark:bg-zinc-900"
+            className="rounded-lg border border-zinc-200/70 dark:border-white/10 px-4 py-3 bg-white dark:bg-transparent"
             placeholder="Email / Telefon"
           />
           <textarea
             name="message"
-            className="rounded-lg border px-4 py-3 bg-white dark:bg-zinc-900"
+            className="rounded-lg border border-zinc-200/70 dark:border-white/10 px-4 py-3 bg-white dark:bg-transparent"
             rows={5}
             placeholder="Detalii proiect"
           />
@@ -165,4 +165,3 @@ export default function DescoperaCabn() {
     </div>
   );
 }
-

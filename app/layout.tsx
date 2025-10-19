@@ -14,6 +14,18 @@ const jetbrainsMono = JetBrains_Mono({ variable: "--font-geist-mono", subsets: [
 export const metadata: Metadata = {
   title: "cabn.ro - Cazare in natura",
   description: "Cazari inedite si autentice pentru escapade naturale.",
+  icons: {
+    icon: "/images/favicon.svg",
+    shortcut: "/images/favicon.svg",
+    apple: "/images/favicon.svg",
+    other: [
+      {
+        rel: "mask-icon",
+        url: "/images/favicon.svg",
+        color: "#000000",
+      },
+    ],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -96,7 +96,7 @@ const PropertyImageGrid: React.FC<PropertyImageGridProps> = ({ images, title, cl
           {images.map((url: string, index: number) => (
             <div
               key={url}
-              className="relative flex-shrink-0 snap-center w-[85vw] aspect-[4/3] rounded-2xl overflow-hidden shadow-sm cursor-pointer"
+              className="relative flex-shrink-0 snap-center snap-always w-[85vw] aspect-[4/3] rounded-2xl overflow-hidden shadow-sm cursor-pointer"
               onClick={() => openGallery(index)}
             >
               <Image
