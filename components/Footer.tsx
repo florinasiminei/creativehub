@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { FaFacebookF, FaInstagram, FaTiktok, FaYoutube } from "react-icons/fa";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { memo } from "react";
 
-export default function Footer() {
+const Footer = memo(function Footer() {
   return (
     <footer className="border-t border-zinc-200/70 bg-white text-zinc-800 transition-all duration-200 dark:border-zinc-800 dark:bg-[#080808] dark:text-zinc-100">
       <div className="mx-auto max-w-[var(--page-max-w)] px-4 sm:px-6 lg:px-8 py-10 text-center">
@@ -68,4 +69,8 @@ export default function Footer() {
       <SpeedInsights />
     </footer>
   );
-}
+});
+
+Footer.displayName = 'Footer';
+
+export default Footer;

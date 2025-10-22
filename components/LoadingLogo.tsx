@@ -1,8 +1,9 @@
 "use client";
 
 import Image from "next/image";
+import { memo } from "react";
 
-export default function LoadingLogo() {
+const LoadingLogo = memo(function LoadingLogo() {
   return (
     <div className="flex flex-col items-center justify-center p-8 min-h-[600px]">
       <div className="relative w-[140px] h-[140px] animate-pulse">
@@ -19,4 +20,8 @@ export default function LoadingLogo() {
       </p>
     </div>
   );
-}
+});
+
+LoadingLogo.displayName = 'LoadingLogo';
+
+export default LoadingLogo;

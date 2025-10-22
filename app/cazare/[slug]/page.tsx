@@ -87,7 +87,9 @@ export default function Page({ params }: PageProps) {
           .order("display_order", { ascending: true });
 
         if (imagesError) {
-          console.warn("Eroare la încărcarea imaginilor:", imagesError);
+          // Log error for debugging but don't fail the page load
+          console.error("Failed to load listing images:", imagesError);
+          listingImages = [];
         } else {
           listingImages = images || [];
         }
@@ -120,7 +122,7 @@ export default function Page({ params }: PageProps) {
           .map((i) => i.image_url)
           .filter((url): url is string => typeof url === 'string' && url.length > 0);
         
-        let displayImages: string[] = imagesUrls.length > 0 ? imagesUrls : ["/fallback.jpg"];
+        const displayImages: string[] = imagesUrls.length > 0 ? imagesUrls : ["/fallback.jpg"];
 
         if (cancelled) return;
 

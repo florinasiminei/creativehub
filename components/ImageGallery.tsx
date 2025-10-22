@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, MouseEvent, useCallback, useEffect, useMemo } from "react";
+import { useState, MouseEvent, useCallback, useEffect, useMemo } from "react";
 import Image from "next/image";
 import ReactImageGallery from "react-image-gallery";
 import { MoveLeft, MoveRight, X } from "lucide-react";

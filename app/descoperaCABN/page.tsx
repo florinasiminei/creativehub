@@ -1,20 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Camera, Globe, Share2, Video } from "lucide-react";
-import { TESTIMONIALE } from "@/lib/constants";
+import { SERVICES, PORTFOLIO_IMAGES, TESTIMONIALE } from "@/lib/constants";
 
-const SERVICES = [
-  { title: "Foto & video profesional", Icon: Camera },
-  { title: "Filmări cu drona", Icon: Video },
-  { title: "Creare website & SEO", Icon: Globe },
-  { title: "Social Media Management", Icon: Share2 },
-];
-
-const PORTFOLIO_IMAGES = [
-  "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1500530855697-80e6db1ae836?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=80",
-];
+const ICON_MAP = {
+  Camera,
+  Video,
+  Globe,
+  Share2,
+};
 
 const rawWhatsApp = process.env.NEXT_PUBLIC_WHATSAPP_PHONE ?? "";
 const cleanedWhatsApp = rawWhatsApp.replace(/\D+/g, "");
@@ -66,12 +60,15 @@ export default function DescoperaCabn() {
       <section id="servicii" className="max-w-7xl mx-auto px-6 py-16">
         <h2 className="text-2xl font-bold mb-8">Serviciile noastre</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {SERVICES.map(({ title, Icon }) => (
-            <div key={title} className="rounded-xl border border-zinc-200/70 dark:border-white/10 p-6 bg-white dark:bg-transparent shadow-sm">
-              <Icon className="h-7 w-7 text-emerald-500 mb-3" aria-hidden />
-              <div className="font-semibold text-gray-900 dark:text-white">{title}</div>
-            </div>
-          ))}
+          {SERVICES.map(({ title, Icon }) => {
+            const IconComponent = ICON_MAP[Icon as keyof typeof ICON_MAP];
+            return (
+              <div key={title} className="rounded-xl border border-zinc-200/70 dark:border-white/10 p-6 bg-white dark:bg-transparent shadow-sm">
+                <IconComponent className="h-7 w-7 text-emerald-500 mb-3" aria-hidden />
+                <div className="font-semibold text-gray-900 dark:text-white">{title}</div>
+              </div>
+            );
+          })}
         </div>
       </section>
 

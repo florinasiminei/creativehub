@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, memo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -9,11 +9,55 @@ import { NAV_LINKS } from "@/lib/constants";
 import { classNames, isActiveLink } from "@/lib/utils";
 import { useHash } from "@/hooks/useHash";
 
-export default function Navbar() {
+const Navbar = memo(function Navbar() {
   const pathname = usePathname();
   const hash = useHash();
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+
+  const navLinks = useMemo(() => {
+    return NAV_LINKS.map((link) => {
+      const active = isActiveLink(pathname, hash, link.href);
+      return (
+        <li key={link.href}>
+          <Link
+            href={link.href}
+            className={classNames(
+              "rounded-full px-3 py-1 outline-none transition-colors duration-200 hover:text-emerald-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:hover:text-emerald-300",
+              active && "text-emerald-600 dark:text-emerald-300"
+            )}
+          >
+            {link.label}
+          </Link>
+        </li>
+      );
+    });
+  }, [pathname, hash]);
+
+  const mobileNavLinks = useMemo(() => {
+    return NAV_LINKS.map((link) => {
+      const active = isActiveLink(pathname, hash, link.href);
+      return (
+        <li key={link.href}>
+          <Link
+            href={link.href}
+            className={classNames(
+              "flex items-center justify-between rounded-2xl border border-zinc-200/70 bg-white/80 px-4 py-3 outline-none transition hover:border-emerald-200 hover:bg-emerald-50/70 dark:border-white/10 dark:bg-zinc-900/60 dark:hover:border-emerald-500/30 dark:hover:bg-emerald-500/10",
+              active && "text-emerald-600 dark:text-emerald-300"
+            )}
+          >
+            <span>{link.label}</span>
+            <span
+              aria-hidden="true"
+              className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-zinc-200/70 dark:border-white/10"
+            >
+              ›
+            </span>
+          </Link>
+        </li>
+      );
+    });
+  }, [pathname, hash]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 2);
@@ -64,22 +108,7 @@ export default function Navbar() {
             aria-label="Meniu principal"
           >
             <ul className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-600 transition-colors dark:text-gray-300 sm:text-xs">
-              {NAV_LINKS.map((link) => {
-                const active = isActiveLink(pathname, hash, link.href);
-                return (
-                  <li key={link.href}>
-                    <Link
-                      href={link.href}
-                      className={classNames(
-                        "rounded-full px-3 py-1 outline-none transition-colors duration-200 hover:text-emerald-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 dark:hover:text-emerald-300",
-                        active && "text-emerald-600 dark:text-emerald-300"
-                      )}
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                );
-              })}
+              {navLinks}
             </ul>
           </nav>
 
@@ -135,28 +164,7 @@ export default function Navbar() {
         >
           <nav aria-label="Meniu principal – mobil" className="pb-4">
             <ul className="grid gap-2 text-sm font-semibold tracking-wide text-zinc-700 dark:text-zinc-200">
-              {NAV_LINKS.map((link) => {
-                const active = isActiveLink(pathname, hash, link.href);
-                return (
-                  <li key={link.href}>
-                    <Link
-                      href={link.href}
-                      className={classNames(
-                        "flex items-center justify-between rounded-2xl border border-zinc-200/70 bg-white/80 px-4 py-3 outline-none transition hover:border-emerald-200 hover:bg-emerald-50/70 dark:border-white/10 dark:bg-zinc-900/60 dark:hover:border-emerald-500/30 dark:hover:bg-emerald-500/10",
-                        active && "text-emerald-600 dark:text-emerald-300"
-                      )}
-                    >
-                      <span>{link.label}</span>
-                      <span
-                        aria-hidden="true"
-                        className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-zinc-200/70 dark:border-white/10"
-                      >
-                        ›
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
+              {mobileNavLinks}
 
               <li className="pt-1">
                 <Link
@@ -175,5 +183,9 @@ export default function Navbar() {
       </div>
     </header>
   );
-}
+});
+
+Navbar.displayName = 'Navbar';
+
+export default Navbar;
 

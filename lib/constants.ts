@@ -1,5 +1,3 @@
-import { Camera, Globe, Share2, Video } from "lucide-react";
-
 export const NAV_LINKS = [
   { href: "/", label: "Cazări turistice" },
   { href: "#atractii", label: "Atracții" },
@@ -7,10 +5,10 @@ export const NAV_LINKS = [
 ];
 
 export const SERVICES = [
-  { title: "Foto & video profesional", Icon: Camera },
-  { title: "Filmări cu drona", Icon: Video },
-  { title: "Creare website & SEO", Icon: Globe },
-  { title: "Social Media Management", Icon: Share2 },
+  { title: "Foto & video profesional", Icon: "Camera" },
+  { title: "Filmări cu drona", Icon: "Video" },
+  { title: "Creare website & SEO", Icon: "Globe" },
+  { title: "Social Media Management", Icon: "Share2" },
 ];
 
 export const TESTIMONIALE = [

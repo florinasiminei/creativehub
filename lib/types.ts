@@ -8,10 +8,6 @@ export type Filters = {
   persoaneMax: number;
 };
 
-export type WhatsAppButtonProps = {
-  phone: string;
-  message?: string;
-};
 
 export type PageProps = { 
   params: { 

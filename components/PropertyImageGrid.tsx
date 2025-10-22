@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from 'react';
-import Image from 'next/image';
-import ImageGallery from './ImageGallery';
-import { Camera } from 'lucide-react';
+import { useState } from "react";
+import Image from "next/image";
+import ImageGallery from "./ImageGallery";
+import { Camera } from "lucide-react";
 
 interface PropertyImageGridProps {
   images: string[];

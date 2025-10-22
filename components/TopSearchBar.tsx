@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AiOutlineSearch } from "react-icons/ai";
 import { FiSliders } from "react-icons/fi";
 import type { Filters, FacilityOption } from "@/lib/types";

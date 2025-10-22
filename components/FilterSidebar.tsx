@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Slider from "rc-slider";
 import "rc-slider/assets/index.css";
 import type { FacilityOption, Filters } from "@/lib/types";
