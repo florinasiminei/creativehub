@@ -116,7 +116,7 @@ const TopSearchBar = ({
               <input
                 ref={inputRef}
                 type="text"
-                placeholder="Caută locație..."
+                placeholder="Unde vrei să mergi? 🏔️"
                 value={filters.keyword}
                 onChange={handleInputChange}
                 onKeyDown={handleLocatieKeyDown}
@@ -128,26 +128,28 @@ const TopSearchBar = ({
             </div>
 
             {locatiiSugestii.length > 0 && (
-              <ul
-                ref={dropdownRef}
-                id="locatii-sugestii"
-                 className="absolute z-10 w-full mt-1 bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-lg max-h-60 overflow-auto"
-                role="listbox"
-              >
-                {locatiiSugestii.map((locatie, index) => (
-                  <li
-                    key={locatie}
-                     className={`px-4 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-700 ${
-                      index === sugestieIndex ? "bg-gray-100 dark:bg-zinc-700" : ""
-                    }`}
-                    onClick={() => selectLocatie(locatie)}
-                    role="option"
-                    aria-selected={index === sugestieIndex}
-                  >
-                    {highlightMatch(locatie, filters.keyword)}
-                  </li>
-                ))}
-              </ul>
+              <div className="absolute z-10 w-full mt-1">
+                <div className="bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg shadow-lg max-h-60 overflow-auto">
+                  <div className="p-2 text-xs text-gray-500 dark:text-gray-400 border-b border-gray-100 dark:border-zinc-700">
+                    💡 Alege o destinație
+                  </div>
+                  <ul role="listbox">
+                    {locatiiSugestii.map((locatie, index) => (
+                      <li
+                        key={locatie}
+                         className={`px-4 py-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors ${
+                          index === sugestieIndex ? "bg-emerald-50 dark:bg-emerald-900/20" : ""
+                        }`}
+                        onClick={() => selectLocatie(locatie)}
+                        role="option"
+                        aria-selected={index === sugestieIndex}
+                      >
+                        {highlightMatch(locatie, filters.keyword)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             )}
           </div>
 
@@ -162,7 +164,7 @@ const TopSearchBar = ({
               }`}
           >
             <FiSliders className="text-xl" />
-            <span className="hidden sm:inline">Filtre</span>
+            <span className="hidden sm:inline">🎛️ Filtre</span>
             {hasActiveFilters && (
               <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-medium bg-emerald-100 text-emerald-600 rounded-full">
                 {filters.facilities.length +

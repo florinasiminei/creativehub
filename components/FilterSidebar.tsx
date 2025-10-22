@@ -77,7 +77,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
         <div>
           {typeof resultsCount === "number" && (
             <span className="block text-sm text-gray-600 dark:text-gray-400">
-              {resultsCount} proprietăți
+              📍 {resultsCount} {resultsCount === 1 ? 'cazare' : 'cazări'} {resultsCount > 50 ? 'minunate' : 'disponibile'}
             </span>
           )}
         </div>
@@ -88,7 +88,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
               onClick={resetFiltre}
               className="rounded-full border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100 dark:border-zinc-600 dark:text-gray-200 dark:hover:bg-zinc-800"
             >
-              Resetează filtrele
+              🔄 Resetează tot
             </button>
           )}
         </div>
@@ -102,7 +102,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
               className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-200 dark:ring-emerald-500/30"
               onClick={clearKeyword}
             >
-              <span>{filters.keyword}</span>
+              <span>🔍 {filters.keyword}</span>
               <span aria-hidden="true">×</span>
               <span className="sr-only">Șterge căutarea</span>
             </button>
@@ -115,7 +115,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
               onClick={() => setFilters((prev) => ({ ...prev, pretMin: minPrice, pretMax: maxPrice }))}
             >
               <span>
-                Preț: {filters.pretMin} - {filters.pretMax} lei
+                💰 {filters.pretMin} - {filters.pretMax} lei
               </span>
               <span aria-hidden="true">×</span>
               <span className="sr-only">Resetează prețul</span>
@@ -135,7 +135,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
               }
             >
               <span>
-                Persoane: {filters.persoaneMin} - {filters.persoaneMax}
+                👥 {filters.persoaneMin} - {filters.persoaneMax} {filters.persoaneMin === filters.persoaneMax ? 'persoane' : ''}
               </span>
               <span aria-hidden="true">×</span>
               <span className="sr-only">Resetează numărul de persoane</span>
@@ -152,7 +152,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                 className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-200 transition hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-200 dark:ring-emerald-500/30"
                 onClick={() => toggleFacility(facilityId, false)}
               >
-                <span>{facility.name}</span>
+                <span>✨ {facility.name}</span>
                 <span aria-hidden="true">×</span>
                 <span className="sr-only">Elimină {facility.name}</span>
               </button>
@@ -163,8 +163,8 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
 
       {/* === CONTROALE EXISTENTE: Preț & Persoane (nemodificate) === */}
   <div className="mt-1 grid gap-2 md:grid-cols-2 md:gap-6 lg:grid-cols-3 lg:gap-8">
-  <div className="rounded-xl p-1 dark:bg-zinc-900/60">
-          <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Interval preț (lei / noapte)</h4>
+        <div className="rounded-xl p-1 dark:bg-zinc-900/60">
+          <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">💰 Buget pe noapte</h4>
           <div className="mt-4 flex items-center gap-3">
             <input
               type="number"
@@ -209,7 +209,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
         </div>
 
   <div className="rounded-xl p-1 dark:bg-zinc-900/60">
-          <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Număr persoane</h4>
+          <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">👥 Câți sunteți?</h4>
           <div className="mt-4 flex items-center gap-3">
             <input
               type="number"
@@ -263,7 +263,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
             aria-expanded={facilitiesOpen}
             aria-controls="facilities-panel"
           >
-            <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">Facilități</span>
+            <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">✨ Facilități</span>
 
             <span className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
               {filters.facilities.length > 0 ? `${filters.facilities.length} selectate` : "niciuna"}
@@ -288,7 +288,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                 type="text"
                 value={facilityQuery}
                 onChange={(e) => setFacilityQuery(e.target.value)}
-                placeholder="Caută facilități..."
+                placeholder="🔍 Caută facilități..."
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-100"
               />
               {filters.facilities.length > 0 && (
@@ -296,7 +296,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                   onClick={clearFacilities}
                   className="whitespace-nowrap rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100 dark:border-zinc-600 dark:text-gray-200 dark:hover:bg-zinc-800"
                 >
-                  Șterge tot
+                  🗑️ Șterge tot
                 </button>
               )}
             </div>
@@ -336,7 +336,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                     onClick={() => setFacilitiesOpen(true)}
                     className="text-sm font-medium text-emerald-600 hover:underline"
                   >
-                    Arată mai multe
+                    ✨ Arată mai multe
                   </button>
                 </div>
               )}
@@ -347,13 +347,13 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
                     onClick={() => setFacilitiesOpen(false)}
                     className="text-sm font-medium text-gray-600 hover:underline"
                   >
-                    Arată mai puține
+                    👆 Arată mai puține
                   </button>
                 </div>
               )}
 
               {filteredFacilities.length === 0 && (
-                <p className="pt-2 text-sm text-gray-500 dark:text-gray-400">Nicio facilitate găsită.</p>
+                <p className="pt-2 text-sm text-gray-500 dark:text-gray-400">🔍 Nicio facilitate găsită pentru căutarea ta.</p>
               )}
             </div>
           </div>

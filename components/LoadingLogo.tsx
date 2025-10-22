@@ -15,7 +15,7 @@ export default function LoadingLogo() {
         />
       </div>
       <p className="mt-4 text-sm text-gray-600 dark:text-gray-400 animate-pulse">
-        Se încarcă...
+        🔄 Se încarcă cazările tale...
       </p>
     </div>
   );

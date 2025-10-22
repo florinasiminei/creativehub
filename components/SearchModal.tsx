@@ -71,13 +71,13 @@ const SearchModal: React.FC<SearchModalProps> = ({
                 </button>
 
                 <Dialog.Title className="text-lg font-medium leading-6 text-gray-900 dark:text-white mb-6">
-                  Filtrează cazările
+                  🎯 Găsește-ți cazarea perfectă
                 </Dialog.Title>
                 
                 <div className="grid grid-cols-2 gap-6">
                   {/* Price Range */}
                   <div className="space-y-4">
-                    <h3 className="font-medium text-gray-900 dark:text-white">Interval preț</h3>
+                    <h3 className="font-medium text-gray-900 dark:text-white">💰 Buget pe noapte</h3>
                     <Range
                       min={minPrice}
                       max={maxPrice}
@@ -101,7 +101,7 @@ const SearchModal: React.FC<SearchModalProps> = ({
 
                   {/* Number of People */}
                   <div className="space-y-4">
-                    <h3 className="font-medium text-gray-900 dark:text-white">Număr persoane</h3>
+                    <h3 className="font-medium text-gray-900 dark:text-white">👥 Câți sunteți?</h3>
                     <Range
                       min={persoaneRange.min}
                       max={persoaneRange.max}
@@ -125,7 +125,7 @@ const SearchModal: React.FC<SearchModalProps> = ({
 
                   {/* Facilities - spans both columns */}
                   <div className="col-span-2 space-y-4">
-                    <h3 className="font-medium text-gray-900 dark:text-white">Facilități</h3>
+                    <h3 className="font-medium text-gray-900 dark:text-white">✨ Ce facilități cauți?</h3>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       {facilitiesList.map((facility) => (
                         <label
@@ -167,14 +167,14 @@ const SearchModal: React.FC<SearchModalProps> = ({
                     className="text-sm font-medium text-emerald-600 hover:text-emerald-500"
                     onClick={resetFiltre}
                   >
-                    Resetează toate
+                    🔄 Începe de la zero
                   </button>
                   <button
                     type="button"
                     className="inline-flex justify-center rounded-full border border-transparent bg-emerald-600 px-6 py-2 text-sm font-medium text-white hover:bg-emerald-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
                     onClick={onClose}
                   >
-                    Arată {resultsCount} rezultate
+                    🎉 Vezi {resultsCount} {resultsCount === 1 ? 'cazare' : 'cazări'} perfecte!
                   </button>
                 </div>
               </Dialog.Panel>
