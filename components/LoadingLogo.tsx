@@ -4,7 +4,7 @@ import Image from "next/image";
 
 export default function LoadingLogo() {
   return (
-    <div className="flex flex-col items-center justify-center p-8 min-h-[600px]">
+    <div className="flex flex-col items-center justify-center p-8">
       <div className="relative w-[140px] h-[140px] animate-pulse">
         <Image
           src="/images/iconita.svg"

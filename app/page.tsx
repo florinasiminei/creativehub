@@ -261,7 +261,7 @@ export default function Home() {
   }, [filteredCazari.length, currentPage, setCurrentPage]);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#080808] text-black dark:text-white relative">
+    <div className="min-h-screen bg-transparent text-black dark:text-white relative">
       <TopSearchBar
         filters={filters}
         setFilters={setFilters}
@@ -283,7 +283,11 @@ export default function Home() {
         <section id="cazari" className="py-8">
           <h2 className="text-xl font-medium mb-6">Cazări turistice</h2>
 
-          {loading && <LoadingLogo />}
+          {loading && (
+            <div className="flex items-center justify-center py-12 min-h-[60vh]">
+              <LoadingLogo />
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 mb-6">

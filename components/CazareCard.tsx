@@ -5,7 +5,7 @@ import { Cazare } from "../lib/utils";
 export default function CazareCard({ cazare }: { cazare: Cazare }) {
   return (
     <Link href={`/cazare/${cazare.slug}`}>
-      <article className="group bg-white transition dark:bg-transparent">
+      <article className="group transition bg-transparent dark:bg-transparent">
         <div className="relative aspect-[2.7/2] overflow-hidden rounded-xl">
           <Image
             src={cazare.image}

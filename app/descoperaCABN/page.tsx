@@ -24,13 +24,7 @@ export default function DescoperaCabn() {
   return (
     <div className="[margin-left:calc(50%-50vw)] [margin-right:calc(50%-50vw)] -mt-6 md:-mt-6 min-h-screen overflow-x-hidden bg-transparent text-black dark:text-white">
       {/* HERO full-bleed, full-screen */}
-      <section
-        className="
-          relative 
-          w-screen h-[100dvh] overflow-hidden
-          [margin-left:calc(50%-50vw)] [margin-right:calc(50%-50vw)]
-        "
-      >
+      <section className="relative min-h-[100dvh] overflow-hidden">
         <Image
           src="https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=2000&q=80"
           alt="Cabn premium"
@@ -67,7 +61,7 @@ export default function DescoperaCabn() {
         <h2 className="text-2xl font-bold mb-8">Serviciile noastre</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {SERVICES.map(({ title, Icon }) => (
-            <div key={title} className="rounded-xl border border-zinc-200/70 dark:border-white/10 p-6 bg-white dark:bg-transparent shadow-sm">
+            <div key={title} className="rounded-xl border border-zinc-200/70 dark:border-white/10 p-6 bg-transparent shadow-sm">
               <Icon className="h-7 w-7 text-emerald-500 mb-3" aria-hidden />
               <div className="font-semibold text-gray-900 dark:text-white">{title}</div>
             </div>
@@ -119,7 +113,7 @@ export default function DescoperaCabn() {
         <h2 className="text-2xl font-bold mb-8">Testimoniale</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {TESTIMONIALE.map((item) => (
-            <div key={item.title} className="rounded-xl border border-zinc-200/70 dark:border-white/10 p-6 bg-white dark:bg-transparent shadow-sm">
+            <div key={item.title} className="rounded-xl border border-zinc-200/70 dark:border-white/10 p-6 bg-transparent shadow-sm">
               <div className="text-lg font-semibold mb-2">{item.title}</div>
               <p className="text-gray-600 dark:text-gray-400 text-sm">{item.text}</p>
             </div>

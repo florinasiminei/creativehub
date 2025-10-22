@@ -64,7 +64,7 @@ const PropertyImageGrid: React.FC<PropertyImageGridProps> = ({ images, title, cl
         {/* Grid of smaller images */}
         {gridImages.slice(1).map((url: string, index: number) => (
           <div
-            key={url}
+            key={`${url}-${index}`}
             className="relative group cursor-pointer overflow-hidden"
             onClick={() => openGallery(index + 1)}
           >
@@ -95,7 +95,7 @@ const PropertyImageGrid: React.FC<PropertyImageGridProps> = ({ images, title, cl
         <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory px-6 pb-4 scrollbar-hide">
           {images.map((url: string, index: number) => (
             <div
-              key={url}
+              key={`${url}-${index}`}
               className="relative flex-shrink-0 snap-center snap-always w-[85vw] aspect-[4/3] rounded-2xl overflow-hidden shadow-sm cursor-pointer"
               onClick={() => openGallery(index)}
             >
