@@ -1,9 +1,18 @@
 "use client";
 
+// React
 import React, { useState, MouseEvent, useCallback, useEffect, useMemo } from "react";
+
+// Next.js
 import Image from "next/image";
+
+// Components
 import ReactImageGallery from "react-image-gallery";
+
+// Icons
 import { MoveLeft, MoveRight, X } from "lucide-react";
+
+// Styles
 import "react-image-gallery/styles/css/image-gallery.css";
 
 interface ImageGalleryProps {

@@ -1,11 +1,21 @@
 "use client";
 
-import React from "react";
+// React
+import React, { Fragment } from "react";
+
+// Headless UI
 import { Dialog, Transition } from "@headlessui/react";
-import { Fragment } from "react";
+
+// Icons
 import { IoClose } from "react-icons/io5";
+
+// Types
 import type { Filters, FacilityOption } from "@/lib/types";
+
+// Components
 import Slider from "rc-slider";
+
+// Styles
 import "rc-slider/assets/index.css";
 
 type SearchModalProps = {

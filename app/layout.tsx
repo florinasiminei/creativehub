@@ -1,10 +1,21 @@
+// Next.js
 import type { Metadata } from "next";
 import "./globals.css";
+
+// Components
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+
+// Themes
 import { ThemeProvider } from "next-themes";
+
+// Analytics
 import { Analytics } from "@vercel/analytics/next";
+
+// Fonts
 import { Inter, JetBrains_Mono } from "next/font/google";
+
+// Styles
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 

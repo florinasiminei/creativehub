@@ -1,6 +1,11 @@
+// Next.js
 import Image from "next/image";
 import Link from "next/link";
+
+// Icons
 import { Camera, Globe, Share2, Video } from "lucide-react";
+
+// Constants
 import { TESTIMONIALE } from "@/lib/constants";
 
 const SERVICES = [

@@ -1,12 +1,23 @@
 "use client";
 
+// React
 import { useEffect, useState } from "react";
+
+// Next.js
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+
+// Components
 import DarkModeToggle from "./DarkModeToggle";
+
+// Constants
 import { NAV_LINKS } from "@/lib/constants";
+
+// Utils
 import { classNames, isActiveLink } from "@/lib/utils";
+
+// Hooks
 import { useHash } from "@/hooks/useHash";
 
 export default function Navbar() {

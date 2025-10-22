@@ -1,10 +1,19 @@
 "use client";
 
+// React
 import { useEffect, useState } from "react";
+
+// Next.js
 import Image from "next/image";
+
+// Components
 import LoadingLogo from "@/components/LoadingLogo";
-import { supabase } from "@/lib/supabaseClient";
 import PropertyImageGrid from "@/components/PropertyImageGrid";
+
+// Supabase
+import { supabase } from "@/lib/supabaseClient";
+
+// Icons
 import { Bed, Bath, Users, Wifi, Tv, ParkingSquare, Utensils, Wind, Snowflake, MapPin } from "lucide-react";
 
 type Facility = { id: string; name: string };

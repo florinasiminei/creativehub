@@ -1,36 +1,26 @@
-﻿// app/page.tsx
+// app/page.tsx
 "use client";
 
+// React
 import { useCallback, useEffect, useMemo, useState, type SetStateAction } from "react";
+
+// External libraries
 import Fuse from "fuse.js";
+
+// Components
 import { TopSearchBar } from "@/components/TopSearchBar";
 import ListingsGrid from "@/components/ListingGrid";
 import LoadingLogo from "@/components/LoadingLogo";
 import Pagination from "@/components/Pagination";
+
+// Hooks
 import { useFuzzyCazari } from "@/hooks/useFuzzyCazari";
+
+// Lib
 import { mapListingSummary } from "@/lib/transformers";
-import { Cazare } from "@/lib/utils";
+import { Cazare, getInitialFilters } from "@/lib/utils";
 import type { FacilityOption, Filters, ListingRaw } from "@/lib/types";
 import { supabase } from "@/lib/supabaseClient";
-
-function getInitialFilters(cazari: Cazare[]): Filters {
-  const prices = cazari.map((c) => c.price);
-  const persoane = cazari.map((c) => c.numarPersoane);
-  const minPrice = prices.length ? Math.min(...prices) : 0;
-  const maxPrice = prices.length ? Math.max(...prices) : 10_000;
-  const minPers = persoane.length ? Math.min(...persoane) : 1;
-  const maxPers = persoane.length ? Math.max(...persoane) : 10;
-
-  return {
-    locatie: "",
-    keyword: "",
-    pretMin: minPrice,
-    pretMax: maxPrice,
-    facilities: [],
-    persoaneMin: minPers,
-    persoaneMax: maxPers,
-  };
-}
 
 const ITEMS_PER_PAGE = 50;
 

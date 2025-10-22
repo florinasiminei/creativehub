@@ -1,8 +1,15 @@
 "use client";
 
+// React
 import React, { useMemo, useState } from "react";
+
+// Components
 import Slider from "rc-slider";
+
+// Styles
 import "rc-slider/assets/index.css";
+
+// Types
 import type { FacilityOption, Filters } from "@/lib/types";
 
 type PersoaneRange = { min: number; max: number };

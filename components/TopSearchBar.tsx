@@ -1,9 +1,19 @@
 "use client";
 
+// React
 import React, { useEffect, useRef, useState } from "react";
+
+// Icons
 import { AiOutlineSearch } from "react-icons/ai";
 import { FiSliders } from "react-icons/fi";
+
+// Types
 import type { Filters, FacilityOption } from "@/lib/types";
+
+// Utils
+import { highlightMatch } from "@/lib/utils";
+
+// Components
 import SearchModal from "./SearchModal";
 
 type TopSearchBarProps = {
@@ -23,39 +33,6 @@ type TopSearchBarProps = {
   resultsCount?: number;
 };
 
-function highlightMatch(text: string, query: string) {
-  if (!query) return text;
-  const lowerText = text.toLowerCase();
-  const lowerQuery = query.toLowerCase();
-  if (!lowerText.includes(lowerQuery)) return text;
-
-  const parts: React.ReactNode[] = [];
-  let cursor = 0;
-  let matchIndex = lowerText.indexOf(lowerQuery, cursor);
-  let key = 0;
-
-  while (matchIndex !== -1) {
-    if (matchIndex > cursor) {
-      parts.push(text.slice(cursor, matchIndex));
-    }
-
-    const match = text.slice(matchIndex, matchIndex + lowerQuery.length);
-    parts.push(
-      <strong key={`match-${key++}`} className="text-emerald-600">
-        {match}
-      </strong>
-    );
-
-    cursor = matchIndex + lowerQuery.length;
-    matchIndex = lowerText.indexOf(lowerQuery, cursor);
-  }
-
-  if (cursor < text.length) {
-    parts.push(text.slice(cursor));
-  }
-
-  return parts;
-}
 
 const TopSearchBar = ({
   filters,

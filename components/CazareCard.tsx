@@ -1,5 +1,8 @@
+// Next.js
 import Image from "next/image";
 import Link from "next/link";
+
+// Utils
 import { Cazare } from "../lib/utils";
 
 export default function CazareCard({ cazare }: { cazare: Cazare }) {
@@ -34,7 +37,3 @@ export default function CazareCard({ cazare }: { cazare: Cazare }) {
     </Link>
   );
 }
-
-
-
-

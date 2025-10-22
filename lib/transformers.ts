@@ -1,4 +1,7 @@
+// Utils
 import { slugify, type Cazare } from "./utils";
+
+// Types
 import type { FacilityOption, ListingRaw } from "./types";
 
 export function safeNumber(value: unknown, fallback: number) {

@@ -1,8 +1,15 @@
 "use client";
 
+// React
 import React, { useState } from 'react';
+
+// Next.js
 import Image from 'next/image';
+
+// Components
 import ImageGallery from './ImageGallery';
+
+// Icons
 import { Camera } from 'lucide-react';
 
 interface PropertyImageGridProps {

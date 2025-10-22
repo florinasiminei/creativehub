@@ -1,3 +1,4 @@
+// Icons
 import { Camera, Globe, Share2, Video } from "lucide-react";
 
 export const NAV_LINKS = [

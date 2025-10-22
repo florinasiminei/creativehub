@@ -1,8 +1,13 @@
 "use client";
 
+// Themes
 import { useTheme } from "next-themes";
+
+// React
 import { useEffect, useState } from "react";
-import { Moon, Sun } from "lucide-react"; // or from "react-icons"
+
+// Icons
+import { Moon, Sun } from "lucide-react";
 
 export default function DarkModeToggle() {
   const { theme, setTheme } = useTheme();

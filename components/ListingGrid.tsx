@@ -1,4 +1,7 @@
+// Components
 import CazareCard from "./CazareCard";
+
+// Utils
 import { Cazare } from "../lib/utils";
 
 export default function ListingsGrid({ cazari }: { cazari: Cazare[] }) {

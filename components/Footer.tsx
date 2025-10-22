@@ -1,5 +1,10 @@
+// Next.js
 import Link from "next/link";
+
+// Icons
 import { FaFacebookF, FaInstagram, FaTiktok, FaYoutube } from "react-icons/fa";
+
+// Analytics
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export default function Footer() {
