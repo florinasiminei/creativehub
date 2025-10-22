@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import Fuse from "fuse.js";
-import { Cazare } from "../lib/utils";
+import { Cazare } from "../lib/types";
 import { Filters } from "../lib/types";
 
 export function useFuzzyCazari(cazari: Cazare[], filters: Filters) {

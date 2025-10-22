@@ -1,20 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Camera, Globe, Share2, Video } from "lucide-react";
-import { TESTIMONIALE } from "@/lib/constants";
-
-const SERVICES = [
-  { title: "Foto & video profesional", Icon: Camera },
-  { title: "Filmări cu drona", Icon: Video },
-  { title: "Creare website & SEO", Icon: Globe },
-  { title: "Social Media Management", Icon: Share2 },
-];
-
-const PORTFOLIO_IMAGES = [
-  "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1500530855697-80e6db1ae836?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=80",
-];
+import { TESTIMONIALE, SERVICES, PORTFOLIO_IMAGES } from "@/lib/constants";
 
 const rawWhatsApp = process.env.NEXT_PUBLIC_WHATSAPP_PHONE ?? "";
 const cleanedWhatsApp = rawWhatsApp.replace(/\D+/g, "");

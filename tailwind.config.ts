@@ -15,6 +15,10 @@ theme: {
         hover: '#10b981',   // emerald-500
       },
     },
+    fontFamily: {
+      sans: ['var(--font-geist-sans)', 'system-ui', '-apple-system', 'sans-serif'],
+      mono: ['var(--font-geist-mono)', 'ui-monospace', 'monospace'],
+    },
   },
 },
 

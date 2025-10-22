@@ -23,6 +23,20 @@ export type FacilityOption = {
   id: string;
   name: string;
 };
+
+export type Cazare = {
+  id: string;
+  title: string;
+  slug: string;
+  price: number;
+  tip: string;
+  locatie: string;
+  numarPersoane: number;
+  facilities: string[];
+  facilitiesNames: string[];
+  image: string;
+  phone?: string;
+};
 export type ListingRaw = {
   id: string;
   title: string;

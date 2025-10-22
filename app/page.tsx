@@ -1,4 +1,4 @@
-﻿// app/page.tsx
+// app/page.tsx
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type SetStateAction } from "react";
@@ -9,7 +9,7 @@ import LoadingLogo from "@/components/LoadingLogo";
 import Pagination from "@/components/Pagination";
 import { useFuzzyCazari } from "@/hooks/useFuzzyCazari";
 import { mapListingSummary } from "@/lib/transformers";
-import { Cazare } from "@/lib/utils";
+import { Cazare } from "@/lib/types";
 import type { FacilityOption, Filters, ListingRaw } from "@/lib/types";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -45,7 +45,7 @@ export default function Home() {
     pretMax: 10000,
     facilities: [],
     persoaneMin: 1,
-    persoaneMax: 15,
+    persoaneMax: 20,
   });
   const setFilters = useCallback((updater: SetStateAction<Filters>) => {
     setFiltersState((prev) => {
@@ -163,7 +163,7 @@ export default function Home() {
     setSugestieIndex(-1);
     setLocatiiSugestii(
       val.trim()
-        ? fuse.search(val).map((result) => {
+        ? fuse.search(val).map((result: any) => {
             const location = result.item;
             const count = cazari.filter((c) => c.locatie === location).length;
             return `${location} – ${count} proprietăți`;
@@ -272,7 +272,7 @@ export default function Home() {
         selectLocatie={selectLocatie}
         setLocatiiSugestii={setLocatiiSugestii}
         minPrice={minPriceAll}
-        maxPrice={maxPriceAll || 10000}
+        maxPrice={maxPriceAll}
         persoaneRange={persoaneRange}
         resetFiltre={resetFiltre}
         facilitiesList={facilitiesList}
@@ -304,11 +304,11 @@ export default function Home() {
             {!loading && !error && (
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-2 gap-y-8">
-                  <ListingsGrid 
+                  <ListingsGrid
                     cazari={filteredCazari.slice(
                       (currentPage - 1) * ITEMS_PER_PAGE,
                       currentPage * ITEMS_PER_PAGE
-                    )} 
+                    )}
                   />
                 </div>
                 <div className="text-center">
@@ -343,9 +343,8 @@ export default function Home() {
                 </button>
               </div>
             )}
-          </section>
+        </section>
       </main>
-
     </div>
   );
 }

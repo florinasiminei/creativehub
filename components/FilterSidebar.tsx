@@ -162,7 +162,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
       )}
 
       {/* === CONTROALE EXISTENTE: Preț & Persoane (nemodificate) === */}
-  <div className="mt-1 grid gap-2 md:grid-cols-2 md:gap-6 lg:grid-cols-3 lg:gap-8">
+      <div className="mt-1 grid gap-2 md:grid-cols-2 md:gap-6 lg:grid-cols-3 lg:gap-8">
   <div className="rounded-xl p-1 dark:bg-zinc-900/60">
           <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200">Interval preț (lei / noapte)</h4>
           <div className="mt-4 flex items-center gap-3">

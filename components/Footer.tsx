@@ -27,7 +27,7 @@ export default function Footer() {
 
         <div className="flex justify-center gap-6 text-xl">
           <a
-            href="https://facebook.com"
+            href="https://facebook.com/cabn.ro"
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-emerald-400 transition"
@@ -36,7 +36,7 @@ export default function Footer() {
             <FaFacebookF />
           </a>
           <a
-            href="https://instagram.com"
+            href="https://instagram.com/cabn.ro"
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-emerald-400 transition"
@@ -45,7 +45,7 @@ export default function Footer() {
             <FaInstagram />
           </a>
           <a
-            href="https://tiktok.com"
+            href="https://tiktok.com/@cabn.ro"
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-emerald-400 transition"
@@ -54,7 +54,7 @@ export default function Footer() {
             <FaTiktok />
           </a>
           <a
-            href="https://youtube.com"
+            href="https://youtube.com/@cabn.ro"
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-emerald-400 transition"
