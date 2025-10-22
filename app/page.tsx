@@ -1,4 +1,4 @@
-// app/page.tsx
+﻿// app/page.tsx
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type SetStateAction } from "react";
@@ -212,7 +212,7 @@ export default function Home() {
   if (filters.keyword.trim()) {
     activeFilterChips.push({
       key: "keyword",
-      label: `🔍 ${filters.keyword}`,
+      label: `Căutare: ${filters.keyword}`,
       onClear: () => setFilters((prev) => ({ ...prev, keyword: "", locatie: "" })),
     });
   }
@@ -220,7 +220,7 @@ export default function Home() {
   if (filters.pretMin > minPriceAll || filters.pretMax < maxPriceAll) {
     activeFilterChips.push({
       key: "price",
-      label: `💰 ${filters.pretMin} - ${filters.pretMax} lei/noapte`,
+      label: `Preț: ${filters.pretMin} - ${filters.pretMax} lei`,
       onClear: () => setFilters((prev) => ({ ...prev, pretMin: minPriceAll, pretMax: maxPriceAll })),
     });
   }
@@ -228,7 +228,7 @@ export default function Home() {
   if (filters.persoaneMin > persoaneRange.min || filters.persoaneMax < persoaneRange.max) {
     activeFilterChips.push({
       key: "people",
-      label: `👥 ${filters.persoaneMin} - ${filters.persoaneMax} ${filters.persoaneMin === filters.persoaneMax ? 'persoane' : ''}`,
+      label: `Persoane: ${filters.persoaneMin} - ${filters.persoaneMax}`,
       onClear: () =>
         setFilters((prev) => ({
           ...prev,
@@ -242,7 +242,7 @@ export default function Home() {
     const name = facilityNameMap.get(fid) ?? "Facilitate";
     activeFilterChips.push({
       key: `facility-${fid}`,
-      label: `✨ ${name}`,
+      label: `Facilitate: ${name}`,
       onClear: () =>
         setFilters((prev) => ({
           ...prev,
@@ -262,17 +262,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-transparent text-black dark:text-white relative">
-      {/* Hero section hint */}
-      {cazari.length > 0 && !filters.keyword && (
-        <div className="w-full flex justify-center py-2 bg-gradient-to-r from-emerald-50 to-blue-50 dark:from-emerald-900/20 dark:to-blue-900/20 border-b border-gray-100 dark:border-zinc-800">
-          <div className="max-w-3xl px-4 text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              💫 Scrie numele unei locații și descoperă cazări de vis! Munte, mare, oraș... tu alegi! 🏔️🌊
-            </p>
-          </div>
-        </div>
-      )}
-
       <TopSearchBar
         filters={filters}
         setFilters={setFilters}
@@ -292,30 +281,21 @@ export default function Home() {
 
       <main className="w-full px-4 lg:px-6">
         <section id="cazari" className="py-8">
-          <h2 className="text-xl font-medium mb-6">🏡 Descoperă cazările tale preferate</h2>
+          <h2 className="text-xl font-medium mb-6">Cazări turistice</h2>
 
           {loading && (
-            <div className="flex flex-col items-center justify-center py-12 min-h-[60vh]">
+            <div className="flex items-center justify-center py-12 min-h-[60vh]">
               <LoadingLogo />
-              <p className="mt-4 text-gray-500 dark:text-gray-400 animate-pulse">
-                🔍 Căutăm cele mai frumoase locuri pentru tine...
-              </p>
             </div>
           )}
 
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 mb-6">
               <div className="flex items-center">
-                <div className="text-red-600 dark:text-red-400 text-xl mr-3">😅</div>
+                <div className="text-red-600 dark:text-red-400 text-xl mr-3">⚠️</div>
                 <div>
-                  <h3 className="text-red-800 dark:text-red-200 font-semibold">Oops! Ceva nu a mers bine</h3>
+                  <h3 className="text-red-800 dark:text-red-200 font-semibold">Eroare la încărcare</h3>
                   <p className="text-red-700 dark:text-red-300 mt-1">{error}</p>
-                  <button
-                    onClick={() => window.location.reload()}
-                    className="mt-2 text-sm text-red-600 hover:text-red-500 underline"
-                  >
-                    🔄 Încearcă din nou
-                  </button>
                 </div>
               </div>
             </div>
@@ -333,29 +313,14 @@ export default function Home() {
                 </div>
                 <div className="text-center">
                   {filteredCazari.length > ITEMS_PER_PAGE && (
-                    <>
-                      <div className="mb-4 text-sm text-gray-500 dark:text-gray-400">
-                        📄 Pagina {currentPage} din {Math.ceil(filteredCazari.length / ITEMS_PER_PAGE)}
-                        {filteredCazari.length > 100 && (
-                          <span className="ml-2 text-emerald-600 dark:text-emerald-400">
-                            🎉 Wow, ai {filteredCazari.length} opțiuni minunate!
-                          </span>
-                        )}
-                      </div>
-                      <Pagination
-                        currentPage={currentPage}
-                        totalPages={Math.ceil(filteredCazari.length / ITEMS_PER_PAGE)}
-                        onPageChange={(page) => {
-                          setCurrentPage(page);
-                          window.scrollTo({ top: 0, behavior: "smooth" });
-                        }}
-                      />
-                    </>
-                  )}
-                  {filteredCazari.length > 0 && filteredCazari.length <= ITEMS_PER_PAGE && (
-                    <div className="text-sm text-gray-500 dark:text-gray-400 py-4">
-                      ✨ Toate cazările tale preferate într-un singur loc!
-                    </div>
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={Math.ceil(filteredCazari.length / ITEMS_PER_PAGE)}
+                      onPageChange={(page) => {
+                        setCurrentPage(page);
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }}
+                    />
                   )}
                 </div>
               </>
@@ -363,26 +328,18 @@ export default function Home() {
 
             {!loading && !error && filteredCazari.length === 0 && (
               <div className="text-center py-12">
-                <div className="text-6xl mb-4">🏖️</div>
+                <div className="text-6xl mb-4">😔</div>
                 <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                  Hmm... nu găsim exact ce cauți
+                  Momentan nu avem proprietăți disponibile pentru criteriile selectate.
                 </h3>
                 <p className="text-gray-500 dark:text-gray-400 mb-4">
-                  Nu-ți face griji! Hai să lărgim puțin căutarea și să descoperim împreună locuri minunate. 🌟
+                  Ajustează filtrele pentru a descoperi alte opțiuni.
                 </p>
-                <div className="space-y-2 mb-6">
-                  <p className="text-sm text-gray-400 dark:text-gray-500">💡 Încearcă să:</p>
-                  <ul className="text-sm text-gray-500 dark:text-gray-400 space-y-1">
-                    <li>• Caută o locație mai generală (ex: "Munte" în loc de "Brașov")</li>
-                    <li>• Relaxează filtrele de preț sau facilități</li>
-                    <li>• Explorează zonele învecinate</li>
-                  </ul>
-                </div>
                 <button
                   onClick={resetFiltre}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-full transition transform hover:scale-105"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-full transition"
                 >
-                  🔄 Hai să căutăm împreună!
+                  Resetează filtrele
                 </button>
               </div>
             )}
