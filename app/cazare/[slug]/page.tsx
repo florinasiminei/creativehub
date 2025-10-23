@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import LoadingLogo from "@/components/LoadingLogo";
 import { supabase } from "@/lib/supabaseClient";
@@ -22,7 +22,7 @@ type Listing = {
   highlights: string[];
 };
 
-type PageProps = { params: Promise<{ slug: string }> };
+type PageProps = { params: { slug: string } };
 
 const facilityIcons: { [key: string]: React.ReactNode } = {
   "Wi-Fi": <Wifi size={20} />,
@@ -39,7 +39,7 @@ const facilityIcons: { [key: string]: React.ReactNode } = {
 // Nota: Ã®n Next 15 tipul exact al `params` poate fi promis Ã®n some APIs,
 // aici folosim tip simplu pentru compatibilitate Ã®n componentÄƒ client.
 export default function Page({ params }: PageProps) {
-  const { slug } = use(params);
+  const { slug } = params;
   const [data, setData] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
