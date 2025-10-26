@@ -34,6 +34,9 @@ export type Cazare = {
   tip: string;
   locatie: string;
   numarPersoane: number;
+  camere: number;
+  paturi: number;
+  bai: number;
   facilities: string[];
   facilitiesNames: string[];
   image: string;

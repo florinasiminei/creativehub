@@ -15,7 +15,7 @@ Welcome to the `my-website` project! This document provides essential guidelines
 - **`app/`**: Contains pages and layouts. Follow the App Router conventions:
   - `page.tsx`: Defines the main content for a route.
   - `layout.tsx`: Defines shared layouts for routes.
-- **`components/`**: Reusable UI components (e.g., `Navbar`, `Footer`, `FilterSidebar`).
+- **`components/`**: Reusable UI components (e.g., `Navbar`, `Footer`, `SearchModal`).
 - **`lib/`**: Utility functions, types, and Supabase client setup.
 - **`hooks/`**: Custom React hooks (e.g., `useFuzzyCazari`).
 - **`public/`**: Static assets like images.

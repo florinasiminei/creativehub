@@ -5,7 +5,8 @@ import Image from "next/image";
 import LoadingLogo from "@/components/LoadingLogo";
 import { supabase } from "@/lib/supabaseClient";
 import PropertyImageGrid from "@/components/PropertyImageGrid";
-import { Bed, Bath, Users, Wifi, Tv, ParkingSquare, Utensils, Wind, Snowflake, MapPin } from "lucide-react";
+import { resolveFacilityIcon } from "@/lib/facilityIcons";
+import { MapPin, Users} from "lucide-react";
 
 type Facility = { id: string; name: string };
 type Listing = {
@@ -23,18 +24,6 @@ type Listing = {
 };
 
 type PageProps = { params: { slug: string } };
-
-const facilityIcons: { [key: string]: React.ReactNode } = {
-  "Wi-Fi": <Wifi size={20} />,
-  "TV": <Tv size={20} />,
-  "Parcare gratuitÄƒ": <ParkingSquare size={20} />,
-  "BucÄƒtÄƒrie complet utilatÄƒ": <Utensils size={20} />,
-  "Aer condiÈ›ionat": <Wind size={20} />,
-  "ÃŽncÄƒlzire": <Snowflake size={20} />,
-  "Dormitor": <Bed size={20} />,
-  "Baie privata": <Bath size={20} />,
-  "Capacitate": <Users size={20} />,
-};
 
 // Nota: Ã®n Next 15 tipul exact al `params` poate fi promis Ã®n some APIs,
 // aici folosim tip simplu pentru compatibilitate Ã®n componentÄƒ client.
@@ -69,7 +58,7 @@ export default function Page({ params }: PageProps) {
           .from("listings")
           .select(
             `
-            id, slug, title, type, location, capacity, price, phone, is_published,
+            *,
             listing_facilities(
               facilities(id, name)
             )
@@ -127,6 +116,53 @@ export default function Page({ params }: PageProps) {
 
         if (cancelled) return;
 
+        const descriptionRaw = (listing as any).description;
+        const descriptionFromDb =
+          typeof descriptionRaw === "string" && descriptionRaw.trim().length > 0
+            ? descriptionRaw.trim()
+            : "";
+
+        const highlightsRaw = (listing as any).highlights;
+        let highlightsFromDb: string[] = [];
+
+        if (Array.isArray(highlightsRaw)) {
+          highlightsFromDb = (highlightsRaw as unknown[])
+            .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+            .map((item) => item.trim());
+        } else if (typeof highlightsRaw === "string" && highlightsRaw.trim().length > 0) {
+          const rawString = highlightsRaw.trim();
+          if ((rawString.startsWith("[") && rawString.endsWith("]")) || (rawString.startsWith("{") && rawString.endsWith("}"))) {
+            try {
+              const parsed = JSON.parse(rawString);
+              if (Array.isArray(parsed)) {
+                highlightsFromDb = parsed
+                  .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+                  .map((item) => item.trim());
+              }
+            } catch (jsonError) {
+              console.warn("Nu am putut parsa highlights din JSON:", jsonError);
+            }
+          }
+
+          if (highlightsFromDb.length === 0) {
+            highlightsFromDb = rawString
+              .split(/\r?\n|[;,]+/)
+              .map((item) => item.trim())
+              .filter((item) => item.length > 0);
+          }
+        }
+
+        const descriptionFallback = `Bucurati-va de o sedere de neuitat la ${listing.title}, o proprietate exceptionala situata in inima ${listing.location}. Aceasta locatie ofera un amestec perfect de confort modern si farmec local, fiind ideala pentru cupluri, familii sau grupuri de prieteni care doresc sa exploreze frumusetea zonei.
+
+Interiorul este amenajat cu gust, oferind spatii generoase si luminoase. Fiecare detaliu a fost gandit pentru a va asigura o experienta relaxanta si placuta. De la bucataria complet utilata, perfecta pentru a pregati mese delicioase, pana la dormitoarele confortabile, totul este pregatit pentru a va simti ca acasa.`;
+
+        const highlightsFallback = [
+          "Priveliste montana superba de la balcon",
+          "Acces direct la trasee de drumetii",
+          "Liniste si intimitate deplina",
+          "Curte spatioasa cu gratar si foisor",
+        ];
+
         setData({
           id: (listing as any).id,
           title: (listing as any).title,
@@ -137,15 +173,8 @@ export default function Page({ params }: PageProps) {
           phone: (listing as any).phone ? String((listing as any).phone) : undefined,
           images: displayImages,
           facilities,
-          description: `BucuraÈ›i-vÄƒ de o È™edere de neuitat la ${listing.title}, o proprietate excepÈ›ionalÄƒ situatÄƒ Ã®n inima ${listing.location}. AceastÄƒ locaÈ›ie oferÄƒ un amestec perfect de confort modern È™i farmec local, fiind idealÄƒ pentru cupluri, familii sau grupuri de prieteni care doresc sÄƒ exploreze frumuseÈ›ile zonei.
-
-Interiorul este amenajat cu gust, oferind spaÈ›ii generoase È™i luminoase. Fiecare detaliu a fost gÃ¢ndit pentru a vÄƒ asigura o experienÈ›Äƒ relaxantÄƒ È™i plÄƒcutÄƒ. De la bucÄƒtÄƒria complet utilatÄƒ, perfectÄƒ pentru a pregÄƒti mese delicioase, pÃ¢nÄƒ la dormitoarele confortabile, totul este pregÄƒtit pentru a vÄƒ simÈ›i ca acasÄƒ.`,
-          highlights: [
-            "PriveliÈ™te montanÄƒ superbÄƒ de la balcon",
-            "Acces direct la trasee de drumeÈ›ii",
-            "LiniÈ™te È™i intimitate deplinÄƒ",
-            "Curte spaÈ›ioasÄƒ cu grÄƒtar È™i foiÈ™or",
-          ],
+          description: descriptionFromDb.length > 0 ? descriptionFromDb : descriptionFallback,
+          highlights: highlightsFromDb.length > 0 ? highlightsFromDb : highlightsFallback,
         });
       } catch (e: any) {
         const message = e?.message || (typeof e === "string" ? e : "A apÄƒrut o eroare");
@@ -239,7 +268,7 @@ Interiorul este amenajat cu gust, oferind spaÈ›ii generoase È™i luminoase.
                           className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800"
                         >
                           <div className="text-emerald-600 dark:text-emerald-400">
-                            {facilityIcons[f.name] || <Users size={20} />}
+                            {resolveFacilityIcon(f.name)}
                           </div>
                           <span className="text-sm font-medium">{f.name}</span>
                         </div>
@@ -326,3 +355,8 @@ Interiorul este amenajat cu gust, oferind spaÈ›ii generoase È™i luminoase.
     </div>
   );
 }
+
+
+
+
+

@@ -45,6 +45,30 @@ export function mapListingSummary(row: ListingRaw, fallbackImage = "/fallback.jp
   const image = coverCandidate || fallbackImage;
 
   const { ids, names } = extractFacilities(row.listing_facilities);
+  const camere = safeNumber(
+    (row as any).rooms ??
+      (row as any).camere ??
+      (row as any).num_camere ??
+      (row as any).num_rooms ??
+      (row as any).bedrooms,
+    0
+  );
+  const paturi = safeNumber(
+    (row as any).beds ??
+      (row as any).paturi ??
+      (row as any).num_paturi ??
+      (row as any).num_beds ??
+      (row as any).pat,
+    0
+  );
+  const bai = safeNumber(
+    (row as any).bathrooms ??
+      (row as any).bai ??
+      (row as any).num_bai ??
+      (row as any).num_bathrooms ??
+      (row as any).bath,
+    0
+  );
 
   return {
     id: row.id,
@@ -54,6 +78,9 @@ export function mapListingSummary(row: ListingRaw, fallbackImage = "/fallback.jp
     tip: row.type,
     locatie: row.location,
     numarPersoane: safeNumber(row.capacity, 1),
+    camere,
+    paturi,
+    bai,
     facilities: ids,
     facilitiesNames: names,
     image,

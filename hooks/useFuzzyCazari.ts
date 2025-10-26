@@ -26,6 +26,18 @@ export function useFuzzyCazari(cazari: Cazare[], filters: Filters) {
       (c) => c.numarPersoane >= filters.persoaneMin && c.numarPersoane <= filters.persoaneMax
     );
 
+    if (filters.camere > 0) {
+      result = result.filter((c) => c.camere >= filters.camere);
+    }
+
+    if (filters.paturi > 0) {
+      result = result.filter((c) => c.paturi >= filters.paturi);
+    }
+
+    if (filters.bai > 0) {
+      result = result.filter((c) => c.bai >= filters.bai);
+    }
+
     // Facilities filter (AND logic)
     if (filters.facilities.length > 0) {
       result = result.filter((c) =>

@@ -24,7 +24,6 @@ C:\Users\Florin\Desktop\Website marketing company FLO SI ALE\my-website
 +---components
 |   +---CazareCard.tsx
 |   +---DarkModeToggle.tsx
-|   +---FilterSidebar.tsx
 |   +---Footer.tsx
 |   +---ImageGallery.tsx
 |   +---ListingGrid.tsx

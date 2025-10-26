@@ -10,7 +10,7 @@ import Pagination from "@/components/Pagination";
 import { useFuzzyCazari } from "@/hooks/useFuzzyCazari";
 import { mapListingSummary } from "@/lib/transformers";
 import { Cazare } from "@/lib/utils";
-import type { FacilityOption, Filters, ListingRaw } from "@/lib/types";
+import type { FacilityOption, Filters, ListingRaw, SearchSuggestion } from "@/lib/types";
 import { supabase } from "@/lib/supabaseClient";
 
 function getInitialFilters(cazari: Cazare[]): Filters {
@@ -29,6 +29,9 @@ function getInitialFilters(cazari: Cazare[]): Filters {
     facilities: [],
     persoaneMin: minPers,
     persoaneMax: maxPers,
+    camere: 0,
+    paturi: 0,
+    bai: 0,
   };
 }
 
@@ -46,6 +49,9 @@ export default function Home() {
     facilities: [],
     persoaneMin: 1,
     persoaneMax: 15,
+    camere: 0,
+    paturi: 0,
+    bai: 0,
   });
   const setFilters = useCallback((updater: SetStateAction<Filters>) => {
     setFiltersState((prev) => {
@@ -59,6 +65,9 @@ export default function Home() {
         next.pretMax === prev.pretMax &&
         next.persoaneMin === prev.persoaneMin &&
         next.persoaneMax === prev.persoaneMax &&
+        next.camere === prev.camere &&
+        next.paturi === prev.paturi &&
+        next.bai === prev.bai &&
         next.facilities.length === prev.facilities.length &&
         next.facilities.every((value, index) => value === prev.facilities[index])
       ) {
@@ -70,7 +79,7 @@ export default function Home() {
     });
   }, [setCurrentPage, setFiltersState]);
   const [persoaneRange, setPersoaneRange] = useState({ min: 1, max: 10 });
-  const [locatiiSugestii, setLocatiiSugestii] = useState<string[]>([]);
+  const [locatiiSugestii, setLocatiiSugestii] = useState<SearchSuggestion[]>([]);
   const [sugestieIndex, setSugestieIndex] = useState(-1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -154,22 +163,267 @@ export default function Home() {
     return map;
   }, [facilitiesList]);
 
-  const locatiiUnice = useMemo(() => [...new Set(cazari.map((c) => c.locatie))], [cazari]);
-  const fuse = useMemo(() => new Fuse(locatiiUnice, { threshold: 0.3 }), [locatiiUnice]);
+  type SearchRecord = SearchSuggestion & { aliases: string[] };
+
+  const searchRecords = useMemo<SearchRecord[]>(() => {
+    type LocationEntry = {
+      label: string;
+      ids: Set<string>;
+      context?: string;
+      aliases: Set<string>;
+    };
+
+    type FacilityEntry = {
+      label: string;
+      ids: Set<string>;
+      context?: string;
+      aliases: Set<string>;
+      facilityId: string;
+    };
+
+    const destinatii = new Map<string, LocationEntry>();
+    const localitati = new Map<string, LocationEntry>();
+    const judete = new Map<string, LocationEntry>();
+    const regiuni = new Map<string, LocationEntry>();
+    const facilitati = new Map<string, FacilityEntry>();
+    const records: SearchRecord[] = [];
+
+    const ensureLocationEntry = (
+      map: Map<string, LocationEntry>,
+      key: string,
+      label: string,
+      context?: string,
+      aliasCandidates: string[] = []
+    ) => {
+      if (!map.has(key)) {
+        map.set(key, {
+          label,
+          ids: new Set<string>(),
+          context,
+          aliases: new Set<string>(),
+        });
+      }
+      const entry = map.get(key)!;
+      if (!entry.context && context) {
+        entry.context = context;
+      }
+      entry.aliases.add(label);
+      aliasCandidates.forEach((alias) => {
+        if (alias) entry.aliases.add(alias);
+      });
+      return entry;
+    };
+
+    cazari.forEach((cazare) => {
+      const propertyTitle = (cazare.title || "").trim();
+      const propertyLocation = (cazare.locatie || "").trim();
+      const locationParts = propertyLocation
+        ? propertyLocation
+            .split(",")
+            .map((part) => part.trim())
+            .filter(Boolean)
+        : [];
+
+      if (propertyTitle) {
+        const aliases = [
+          propertyTitle,
+          propertyLocation,
+          ...locationParts,
+          cazare.tip,
+        ].filter((alias): alias is string => Boolean(alias));
+
+        records.push({
+          id: `proprietate-${cazare.id}`,
+          label: propertyTitle,
+          value: propertyTitle,
+          type: "proprietate",
+          count: 1,
+          context: propertyLocation || undefined,
+          highlightRanges: undefined,
+          facilityId: undefined,
+          aliases,
+        });
+      }
+
+      if (propertyLocation) {
+        const entry = ensureLocationEntry(
+          destinatii,
+          propertyLocation.toLowerCase(),
+          propertyLocation,
+          locationParts.slice(1).join(", ") || undefined,
+          locationParts
+        );
+        entry.ids.add(cazare.id);
+      }
+
+      if (locationParts[0]) {
+        const aliasCandidates = [
+          propertyLocation,
+          ...locationParts.slice(1),
+        ];
+        const entry = ensureLocationEntry(
+          localitati,
+          locationParts[0].toLowerCase(),
+          locationParts[0],
+          locationParts.slice(1).join(", ") || propertyLocation || undefined,
+          aliasCandidates
+        );
+        entry.ids.add(cazare.id);
+      }
+
+      if (locationParts[1]) {
+        const aliasCandidates = [
+          propertyLocation,
+          locationParts[0],
+          ...locationParts.slice(2),
+        ];
+        const entry = ensureLocationEntry(
+          judete,
+          locationParts[1].toLowerCase(),
+          locationParts[1],
+          locationParts[0] || propertyLocation || undefined,
+          aliasCandidates
+        );
+        entry.ids.add(cazare.id);
+      }
+
+      if (locationParts[2]) {
+        const aliasCandidates = [
+          propertyLocation,
+          locationParts[0],
+          locationParts[1],
+          ...locationParts.slice(3),
+        ];
+        const entry = ensureLocationEntry(
+          regiuni,
+          locationParts[2].toLowerCase(),
+          locationParts[2],
+          locationParts.slice(0, 2).join(", ") || propertyLocation || undefined,
+          aliasCandidates
+        );
+        entry.ids.add(cazare.id);
+      }
+
+      cazare.facilities.forEach((facilityId, index) => {
+        const name =
+          facilityNameMap.get(facilityId) ??
+          cazare.facilitiesNames?.[index] ??
+          facilityId;
+        const normalizedId = facilityId || name;
+        if (!normalizedId || !name) return;
+        const key = normalizedId.toLowerCase();
+        if (!facilitati.has(key)) {
+          facilitati.set(key, {
+            label: name,
+            ids: new Set<string>(),
+            context: "Facilitate",
+            aliases: new Set<string>(),
+            facilityId,
+          });
+        }
+        const entry = facilitati.get(key)!;
+        entry.ids.add(cazare.id);
+        entry.aliases.add(name);
+        if (propertyLocation) {
+          entry.aliases.add(propertyLocation);
+        }
+      });
+    });
+
+    const toRecords = (
+      type: "destinatie" | "localitate" | "judet" | "regiune",
+      source: Map<string, LocationEntry>
+    ) => {
+      source.forEach((entry, key) => {
+        records.push({
+          id: `${type}-${key}`,
+          label: entry.label,
+          value: entry.label,
+          type,
+          count: entry.ids.size,
+          context: entry.context,
+          highlightRanges: undefined,
+          facilityId: undefined,
+          aliases: Array.from(entry.aliases).concat([
+            `${entry.label} ${type}`,
+            type,
+          ]),
+        });
+      });
+    };
+
+    toRecords("destinatie", destinatii);
+    toRecords("localitate", localitati);
+    toRecords("judet", judete);
+    toRecords("regiune", regiuni);
+
+    facilitati.forEach((entry, key) => {
+      records.push({
+        id: `facilitate-${key}`,
+        label: entry.label,
+        value: entry.label,
+        type: "facilitate",
+        count: entry.ids.size,
+        context: entry.context,
+        highlightRanges: undefined,
+        facilityId: entry.facilityId,
+        aliases: Array.from(entry.aliases),
+      });
+    });
+
+    return records;
+  }, [cazari, facilityNameMap]);
+
+  const suggestionFuse = useMemo(() => {
+    if (!searchRecords.length) return null;
+    return new Fuse(searchRecords, {
+      keys: [
+        { name: "label", weight: 0.7 },
+        { name: "context", weight: 0.2 },
+        { name: "aliases", weight: 0.1 },
+      ],
+      includeMatches: true,
+      threshold: 0.4,
+      ignoreLocation: true,
+      minMatchCharLength: 1,
+    });
+  }, [searchRecords]);
 
   const handleLocatieChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setFilters((prev) => ({ ...prev, locatie: val, keyword: val }));
     setSugestieIndex(-1);
-    setLocatiiSugestii(
-      val.trim()
-        ? fuse.search(val).map((result) => {
-            const location = result.item;
-            const count = cazari.filter((c) => c.locatie === location).length;
-            return `${location} – ${count} proprietăți`;
-          })
-        : []
-    );
+
+    if (!val.trim() || !suggestionFuse) {
+      setLocatiiSugestii([]);
+      return;
+    }
+
+    const results = suggestionFuse.search(val, { limit: 12 }).map((result) => {
+      const { item, matches } = result;
+
+      let highlightRanges: Array<[number, number]> = [];
+
+      if (matches) {
+        const labelHighlights = matches
+          .filter((m) => m.key === "label")
+          .flatMap((m) => m.indices as Array<[number, number]>);
+
+        if (labelHighlights.length > 0) {
+          highlightRanges = labelHighlights;
+        } else if (matches.some((m) => m.key === "aliases") && item.label.length > 0) {
+          highlightRanges = [[0, item.label.length - 1]];
+        }
+      }
+
+      const { aliases, ...suggestion } = item;
+      return {
+        ...suggestion,
+        highlightRanges,
+      };
+    });
+
+    setLocatiiSugestii(results);
   };
 
   const handleLocatieKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -187,9 +441,28 @@ export default function Home() {
     }
   };
 
-  const selectLocatie = (locatieSugestie: string) => {
-    const locatie = locatieSugestie.split(" – ")[0].trim();
-    setFilters((prev) => ({ ...prev, locatie, keyword: locatie }));
+  const locationSuggestionTypes = useMemo(
+    () => new Set<SearchSuggestion["type"]>(["destinatie", "localitate", "judet", "regiune"]),
+    []
+  );
+
+  const selectLocatie = (suggestie: SearchSuggestion) => {
+    setFilters((prev) => {
+      const isLocationSuggestion = locationSuggestionTypes.has(suggestie.type);
+      const nextFacilities =
+        suggestie.type === "facilitate" && suggestie.facilityId
+          ? prev.facilities.includes(suggestie.facilityId)
+            ? prev.facilities
+            : [...prev.facilities, suggestie.facilityId]
+          : prev.facilities;
+
+      return {
+        ...prev,
+        keyword: suggestie.value,
+        locatie: isLocationSuggestion ? suggestie.value : prev.locatie,
+        facilities: nextFacilities,
+      };
+    });
     setLocatiiSugestii([]);
     setSugestieIndex(-1);
   };
@@ -234,6 +507,42 @@ export default function Home() {
           ...prev,
           persoaneMin: persoaneRange.min,
           persoaneMax: persoaneRange.max,
+        })),
+    });
+  }
+
+  if (filters.camere > 0) {
+    activeFilterChips.push({
+      key: "rooms",
+      label: `Camere: ${filters.camere}+`,
+      onClear: () =>
+        setFilters((prev) => ({
+          ...prev,
+          camere: 0,
+        })),
+    });
+  }
+
+  if (filters.paturi > 0) {
+    activeFilterChips.push({
+      key: "beds",
+      label: `Paturi: ${filters.paturi}+`,
+      onClear: () =>
+        setFilters((prev) => ({
+          ...prev,
+          paturi: 0,
+        })),
+    });
+  }
+
+  if (filters.bai > 0) {
+    activeFilterChips.push({
+      key: "baths",
+      label: `Bai: ${filters.bai}+`,
+      onClear: () =>
+        setFilters((prev) => ({
+          ...prev,
+          bai: 0,
         })),
     });
   }
@@ -349,3 +658,5 @@ export default function Home() {
     </div>
   );
 }
+
+

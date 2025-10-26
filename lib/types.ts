@@ -6,6 +6,28 @@ export type Filters = {
   facilities: string[];
   persoaneMin: number;
   persoaneMax: number;
+  camere: number;
+  paturi: number;
+  bai: number;
+};
+
+export type SearchSuggestionType =
+  | "destinatie"
+  | "localitate"
+  | "judet"
+  | "regiune"
+  | "proprietate"
+  | "facilitate";
+
+export type SearchSuggestion = {
+  id: string;
+  label: string;
+  value: string;
+  type: SearchSuggestionType;
+  count: number;
+  context?: string;
+  highlightRanges?: Array<[number, number]>;
+  facilityId?: string;
 };
 
 export type WhatsAppButtonProps = {
@@ -32,6 +54,12 @@ export type ListingRaw = {
   location: string;
   capacity: string;
   price: string;
+  rooms?: number | string | null;
+  beds?: number | string | null;
+  bathrooms?: number | string | null;
+  camere?: number | string | null;
+  paturi?: number | string | null;
+  bai?: number | string | null;
   description?: string | null;
   highlights?: string[] | null;
   listing_images?: {
