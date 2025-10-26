@@ -224,7 +224,7 @@ const TopSearchBar = ({
 
   return (
     <>
-      <div className="relative left-1/2 right-1/2 w-screen -translate-x-1/2 border-b border-gray-200 bg-transparent py-4 shadow-sm dark:border-zinc-800">
+      <div className="relative flex w-full justify-center bg-transparent py-4 shadow-sm after:pointer-events-none after:absolute after:bottom-0 after:left-1/2 after:h-px after:w-screen after:-translate-x-1/2 after:bg-gray-200 after:content-[''] dark:after:bg-zinc-800">
         <div className="relative mx-auto flex w-full max-w-3xl gap-4 px-4">
           {/* Destination Search */}
           <div className="relative flex-1">
