@@ -1,19 +1,28 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Camera, Globe, Share2, Video } from "lucide-react";
-import { TESTIMONIALE } from "@/lib/constants";
 
 const SERVICES = [
-  { title: "Foto & video profesional", Icon: Camera },
-  { title: "Filmări cu drona", Icon: Video },
-  { title: "Creare website & SEO", Icon: Globe },
-  { title: "Social Media Management", Icon: Share2 },
-];
-
-const PORTFOLIO_IMAGES = [
-  "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1500530855697-80e6db1ae836?auto=format&fit=crop&w=1200&q=80",
-  "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1200&q=80",
+  {
+    title: "Foto & Video",
+    description: "Surprindem emoția locației tale prin conținut vizual care spune o poveste autentică și atrage clienți.",
+    Icon: Camera,
+  },
+  {
+    title: "Drone Shots",
+    description: "Realizăm imagini din aer care atrag priviri în social media și ajută oaspeții să înțeleagă mai bine zona.",
+    Icon: Video,
+  },
+  {
+    title: "Website & SEO",
+    description: "Construim site-uri simple de întreținut și ușor de găsit pe Google, ca oaspeții să te descopere de oriunde.",
+    Icon: Globe,
+  },
+  {
+    title: "Social Media Management",
+    description: "Ne ocupăm de paginile tale, cu postări menite să construiască un brand coerent.",
+    Icon: Share2,
+  },
 ];
 
 const rawWhatsApp = process.env.NEXT_PUBLIC_WHATSAPP_PHONE ?? "";
@@ -41,18 +50,18 @@ export default function DescoperaCabn() {
         {/* content */}
         <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center text-white gap-4 md:gap-6">
           <h1 className="text-3xl md:text-5xl font-bold max-w-3xl">
-            Alege nivelul de vizibilitate care se potriveşte locației tale.
+            Creștem vizibilitatea și gradul de ocupare al locației tale
           </h1>
 
           <p className="text-white/85 max-w-2xl">
-            Pachete flexibile foto-video și promovare social media, pentru orice tip de locație, create cu drag de echipa cabn.
+            De la creare de conținut la promovare, ne ocupăm de tot ce ai nevoie pentru mai mulți turiști în cazarea ta.
           </p>
 
           <Link
             href="#contact"
             className="rounded-full bg-amber-500 px-6 py-3 text-sm font-semibold text-black shadow hover:bg-amber-400 transition"
           >
-            Solicită o ofertă personalizată
+            Solicită ofertă
           </Link>
         </div>
       </section>
@@ -60,43 +69,25 @@ export default function DescoperaCabn() {
       <section id="servicii" className="max-w-7xl mx-auto px-6 py-16">
         <h2 className="text-2xl font-bold mb-8">Serviciile noastre</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {SERVICES.map(({ title, Icon }) => (
+          {SERVICES.map(({ title, description, Icon }) => (
             <div key={title} className="rounded-xl border border-zinc-200/70 dark:border-white/10 p-6 bg-transparent shadow-sm">
               <Icon className="h-7 w-7 text-emerald-500 mb-3" aria-hidden />
               <div className="font-semibold text-gray-900 dark:text-white">{title}</div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{description}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <section id="portofoliu" className="max-w-7xl mx-auto px-6 py-16">
-        <h2 className="text-2xl font-bold mb-8">Portofoliu</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {PORTFOLIO_IMAGES.map((src) => (
-            <Image
-              key={src}
-              src={src}
-              alt="Portofoliu cabn"
-              width={1200}
-              height={900}
-              loading="lazy"
-              className="w-full h-[220px] object-cover rounded-xl border"
-            />
-          ))}
-        </div>
-      </section>
-
       <section className="max-w-7xl mx-auto px-6 py-16">
-        <h2 className="text-2xl font-bold mb-8">Despre noi</h2>
+        <h2 className="text-2xl font-bold mb-8">Echipa CABN</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
           <div className="text-gray-700 dark:text-gray-300 space-y-4">
             <p>
-              cabn.ro nu este doar o agenție de marketing. Suntem o întreprindere socială care oferă oportunități
-              persoanelor vulnerabile, integrându-le în proiecte creative și sustenabile. Punem accent pe autenticitatea
-              locațiilor promovate și pe povești memorabile.
+              Suntem o echipă de profesioniști în marketing și IT care ajută proprietarii de cazări să-și facă locul vizibil și dorit online. Combinăm creativitatea cu know-how-ul tehnic pentru a transforma fiecare locație într-un brand de încredere. Ne ocupăm de tot, de la conținut la promovare, ca locația ta să atragă mai multe rezervări.
             </p>
             <span className="inline-block bg-amber-500 text-white text-xs px-3 py-1 rounded-full">
-              Întreprindere socială
+              Scrie-ne pe Whatsapp
             </span>
           </div>
           <Image
@@ -108,19 +99,6 @@ export default function DescoperaCabn() {
           />
         </div>
       </section>
-
-      <section className="max-w-7xl mx-auto px-6 py-16">
-        <h2 className="text-2xl font-bold mb-8">Testimoniale</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {TESTIMONIALE.map((item) => (
-            <div key={item.title} className="rounded-xl border border-zinc-200/70 dark:border-white/10 p-6 bg-transparent shadow-sm">
-              <div className="text-lg font-semibold mb-2">{item.title}</div>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">{item.text}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
       <section id="contact" className="max-w-3xl mx-auto px-6 py-16">
         <h2 className="text-2xl font-bold mb-6">Solicită o ofertă</h2>
         <form className="grid grid-cols-1 gap-4">
