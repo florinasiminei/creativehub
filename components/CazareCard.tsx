@@ -16,7 +16,7 @@ export default function CazareCard({ cazare }: { cazare: Cazare }) {
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
-              target.src = "/fallback.jpg";
+              target.src = "/fallback.svg";
             }}
           />
         </div>

@@ -112,7 +112,7 @@ export default function DescoperaCabn() {
             name="message"
             className="rounded-lg border border-zinc-200/70 dark:border-white/10 px-4 py-3 bg-white dark:bg-transparent"
             rows={5}
-            placeholder="Detalii proiect"
+            placeholder="Spune-ne mai multe despre locația ta și ce ai nevoie"
           />
           <button
             type="submit"

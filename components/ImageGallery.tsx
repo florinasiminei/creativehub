@@ -30,7 +30,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
   onClose,
   startIndex = 0,
 }) => {
-  const safeImages = images?.length ? images : ["/fallback.jpg"];
+  const safeImages = images?.length ? images : ["/fallback.svg"];
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [isMobile, setIsMobile] = useState(false);
   const galleryRef = React.useRef<any>(null);

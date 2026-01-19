@@ -1,12 +1,11 @@
 ﻿"use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import LoadingLogo from "@/components/LoadingLogo";
-import { supabase } from "@/lib/supabaseClient";
 import PropertyImageGrid from "@/components/PropertyImageGrid";
 import { resolveFacilityIcon } from "@/lib/facilityIcons";
 import { MapPin, Users} from "lucide-react";
+import { useSearchParams } from "next/navigation";
 
 type Facility = { id: string; name: string };
 type Listing = {
@@ -29,6 +28,7 @@ type PageProps = { params: { slug: string } };
 // aici folosim tip simplu pentru compatibilitate Ã®n componentÄƒ client.
 export default function Page({ params }: PageProps) {
   const { slug } = params;
+  const searchParams = useSearchParams();
   const [data, setData] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,34 +54,30 @@ export default function Page({ params }: PageProps) {
         setLoading(true);
         setError(null);
 
-        const { data: listing, error: listingError } = await supabase
-          .from("listings")
-          .select(
-            `
-            *,
-            listing_facilities(
-              facilities(id, name)
-            )
-          `
-          )
-          .eq("slug", slug)
-          .eq("is_published", true)
-          .maybeSingle();
+        const previewMode = searchParams.get("preview") === "1" || searchParams.get("draft") === "1";
+        const idParam = searchParams.get("id");
 
-        if (listingError) throw new Error(`Eroare la Ã®ncÄƒrcarea proprietÄƒÈ›ii: ${listingError.message}`);
-        if (!listing) throw new Error("Proprietatea nu a fost gÄƒsitÄƒ sau nu este publicatÄƒ");
-
+        let listing: any = null;
         let listingImages: Array<{ image_url: string; display_order: number }> = [];
-        const { data: images, error: imagesError } = await supabase
-          .from("listing_images")
-          .select("image_url, display_order")
-          .eq("listing_id", listing.id)
-          .order("display_order", { ascending: true });
+        let facilitiesRows: Array<{ facilities?: { id: string; name: string } | null }> = [];
 
-        if (imagesError) {
-          console.warn("Eroare la Ã®ncÄƒrcarea imaginilor:", imagesError);
-        } else {
-          listingImages = images || [];
+        const resp = await fetch('/api/listing-get', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: idParam || null, slug, requirePublished: !previewMode }),
+        });
+        const body = await resp.json();
+        if (!resp.ok) throw new Error(body?.error || 'Eroare la încărcare');
+        listing = body.listing;
+        listingImages = (body.images || []).map((i: any) => ({ image_url: i.image_url, display_order: i.display_order ?? 0 }));
+        facilitiesRows = body.facilitiesDetailed || [];
+
+        if (!listing) {
+          throw new Error(
+            previewMode
+              ? 'Proprietatea nu a fost găsită. Verifică linkul de previzualizare.'
+              : 'Proprietatea nu a fost găsită sau nu este publicată în modul public'
+          );
         }
 
         const priceRaw = (listing as any).price;
@@ -97,11 +93,6 @@ export default function Page({ params }: PageProps) {
             ? capacityRaw
             : parseInt(String(capacityRaw ?? "").match(/\d+/)?.[0] ?? "1");
 
-        const facilitiesRows =
-          ((listing as any).listing_facilities ?? []) as Array<{
-            facilities?: { id: string; name: string } | null;
-          }>;
-
         const facilities = facilitiesRows
           .map((f) =>
             f?.facilities ? { id: f.facilities.id, name: f.facilities.name } : null
@@ -112,7 +103,7 @@ export default function Page({ params }: PageProps) {
           .map((i) => i.image_url)
           .filter((url): url is string => typeof url === 'string' && url.length > 0);
         
-        let displayImages: string[] = imagesUrls.length > 0 ? imagesUrls : ["/fallback.jpg"];
+        let displayImages: string[] = imagesUrls.length > 0 ? imagesUrls : ["/fallback.svg"];
 
         if (cancelled) return;
 

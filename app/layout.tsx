@@ -14,6 +14,11 @@ const jetbrainsMono = JetBrains_Mono({ variable: "--font-geist-mono", subsets: [
 export const metadata: Metadata = {
   title: "cabn.ro - Cazare in natura",
   description: "Cazari inedite si autentice pentru escapade naturale.",
+  verification: {
+    other: {
+      "facebook-domain-verification": "hcd2j15izye7czt4zwxbqwfiuqiydw",
+    },
+  },
   icons: {
     icon: "/images/favicon.svg",
     shortcut: "/images/favicon.svg",

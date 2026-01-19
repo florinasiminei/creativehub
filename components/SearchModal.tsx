@@ -179,10 +179,10 @@ const SearchModal: React.FC<SearchModalProps> = ({
       <Dialog onClose={onClose} className="relative z-50">
         <Transition.Child
           as={Fragment}
-          enter="duration-150 ease-out"
+          enter="duration-90 ease-out"
           enterFrom="opacity-0"
           enterTo="opacity-100"
-          leave="duration-120 ease-in"
+          leave="duration-75 ease-in"
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
@@ -192,16 +192,15 @@ const SearchModal: React.FC<SearchModalProps> = ({
         <div className="fixed inset-0 flex items-end justify-center p-4 sm:items-center">
           <Transition.Child
             as={Fragment}
-            enter="duration-150 ease-out"
-            enterFrom="opacity-0 translate-y-8 sm:translate-y-0 sm:scale-[0.98]"
-            enterTo="opacity-100 translate-y-0 sm:scale-100"
-            leave="duration-110 ease-in-out"
-            leaveFrom="opacity-100 translate-y-0 sm:scale-100"
-            leaveTo="opacity-0 translate-y-2 sm:translate-y-0 sm:scale-[0.96]"
+            enter="duration-100 ease-out"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="duration-90 ease-in-out"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
           >
             <Dialog.Panel
-              className="flex w-full max-w-2xl max-h-[90vh] transform flex-col overflow-hidden rounded-3xl bg-white text-left shadow-2xl transition-transform transition-opacity duration-200 dark:bg-zinc-900"
-              style={{ willChange: "transform, opacity" }}
+              className="flex w-full max-w-2xl max-h-[90vh] flex-col overflow-hidden rounded-3xl bg-white text-left shadow-2xl transition-opacity duration-90 dark:bg-zinc-900"
             >
               <div className="relative z-20 border-b border-gray-200/70 bg-white/95 px-5 pb-4 pt-6 backdrop-blur dark:border-zinc-700/60 dark:bg-zinc-900/95">
                 <div className="relative flex items-center justify-center">
@@ -217,7 +216,10 @@ const SearchModal: React.FC<SearchModalProps> = ({
                   </button>
                 </div>
               </div>
-              <div className="relative flex-1 overflow-y-auto px-6 pb-6">
+              <div
+                className="relative flex-1 overflow-y-auto overscroll-contain px-6 pb-6"
+                style={{ WebkitOverflowScrolling: "touch" }}
+              >
                 <div className="space-y-6 pt-5">
                   <div className="rounded-2xl">
                     <div className="p-4">

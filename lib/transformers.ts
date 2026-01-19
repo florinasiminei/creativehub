@@ -37,7 +37,7 @@ export function extractFacilities(
   return { ids, names, options };
 }
 
-export function mapListingSummary(row: ListingRaw, fallbackImage = "/fallback.jpg"): Cazare {
+export function mapListingSummary(row: ListingRaw, fallbackImage = "/fallback.svg"): Cazare {
   const coverCandidate =
     Array.isArray(row.listing_images) && row.listing_images.length > 0
       ? String(row.listing_images[0]?.image_url ?? "").trim()
