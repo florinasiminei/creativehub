@@ -1,10 +1,16 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
-if (!supabaseUrl || !serviceKey) {
-  console.warn('Supabase server client: missing SUPABASE_SERVICE_ROLE_KEY or NEXT_PUBLIC_SUPABASE_URL; server uploads may fail');
+let supabaseAdmin: SupabaseClient | null = null;
+
+export function getSupabaseAdmin(): SupabaseClient {
+  if (!supabaseUrl || !serviceKey) {
+    throw new Error('Server misconfigured: missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+  }
+  if (!supabaseAdmin) {
+    supabaseAdmin = createClient(supabaseUrl, serviceKey);
+  }
+  return supabaseAdmin;
 }
-
-export const supabaseAdmin = createClient(supabaseUrl || '', serviceKey || '');

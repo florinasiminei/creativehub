@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
 export async function POST(request: Request) {
   try {
+    const supabaseAdmin = getSupabaseAdmin();
+
     const { id, slug, requirePublished } = await request.json();
     if (!id && !slug) return NextResponse.json({ error: 'Missing id or slug' }, { status: 400 });
 

@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
 export async function POST(request: Request) {
   try {
+    const supabaseAdmin = getSupabaseAdmin();
+
     const body = await request.json();
     const { id, title, location, address, price, capacity, phone, description, type, facilities, is_published } = body;
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });

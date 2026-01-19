@@ -1,10 +1,12 @@
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
 export async function POST(request: Request) {
   try {
+    const supabaseAdmin = getSupabaseAdmin();
+
     const form = await request.formData();
     const listingId = form.get('listingId') as string | null;
     if (!listingId) return NextResponse.json({ error: 'Missing listingId' }, { status: 400 });
