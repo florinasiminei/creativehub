@@ -1,11 +1,12 @@
 export const revalidate = 0;
 
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { mapListingSummary } from "@/lib/transformers";
 import type { ListingRaw } from "@/lib/types";
 import DraftActions from "@/components/DraftActions";
 
 export default async function DraftsPage() {
+  const supabaseAdmin = getSupabaseAdmin();
   const { data, error } = await supabaseAdmin
     .from("listings")
     .select("id, title, slug, type, location, capacity, price, phone, is_published, listing_images(image_url, display_order)")
