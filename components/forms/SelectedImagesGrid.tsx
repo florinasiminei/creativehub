@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import { ArrowUp, ArrowDown, Trash2 } from 'lucide-react';
 
 type SelectedImagesGridProps = {
@@ -34,14 +35,14 @@ export default function SelectedImagesGrid({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <div className="text-sm font-medium">{title}</div>
-        <div className="text-xs text-gray-500">{subtitle}</div>
+        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{title}</div>
+        <div className="text-xs text-gray-500 dark:text-gray-400">{subtitle}</div>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         {files.map((f, idx) => (
           <div
             key={`${f.name}-${idx}`}
-            className={`rounded-xl overflow-hidden border bg-white shadow-sm ${
+            className={`rounded-xl overflow-hidden border bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${
               draggingIdx === idx ? 'ring-2 ring-emerald-500' : ''
             } ${failedSet.has(f.name) ? 'border-red-400 ring-1 ring-red-300' : ''}`}
             draggable
@@ -53,12 +54,21 @@ export default function SelectedImagesGrid({
             onDragEnd={onDragEnd}
           >
             <div className="relative h-48 bg-gray-50 touch-pan-y">
-              {previews[idx] && <img src={previews[idx]} alt={`Imagine ${idx + 1}`} className="h-full w-full object-cover" />}
+              {previews[idx] && (
+                <Image
+                  src={previews[idx]}
+                  alt={`Imagine ${idx + 1}`}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  className="object-cover"
+                  unoptimized
+                />
+              )}
               <div className="absolute top-2 left-2 text-xs px-2 py-1 rounded-full bg-white/80 text-gray-700 shadow">#{idx + 1}</div>
             </div>
-            <div className="flex items-center gap-2 px-3 py-2 border-t bg-white">
+            <div className="flex items-center gap-2 px-3 py-2 border-t bg-white dark:border-zinc-800 dark:bg-zinc-900">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{f.name}</p>
+                <p className="text-sm font-medium truncate text-gray-900 dark:text-gray-100">{f.name}</p>
               </div>
               <div className="flex items-center gap-1">
                 <button
@@ -66,7 +76,7 @@ export default function SelectedImagesGrid({
                   onClick={() => onMove(idx, idx - 1)}
                   disabled={idx === 0}
                   aria-label="Mută în sus"
-                  className="h-8 w-8 rounded-full border text-xs font-semibold disabled:opacity-40 flex items-center justify-center"
+                  className="h-8 w-8 rounded-full border text-xs font-semibold disabled:opacity-40 flex items-center justify-center dark:border-zinc-700 dark:text-gray-100"
                 >
                   <ArrowUp size={14} />
                 </button>
@@ -75,7 +85,7 @@ export default function SelectedImagesGrid({
                   onClick={() => onMove(idx, idx + 1)}
                   disabled={idx === files.length - 1}
                   aria-label="Mută în jos"
-                  className="h-8 w-8 rounded-full border text-xs font-semibold disabled:opacity-40 flex items-center justify-center"
+                  className="h-8 w-8 rounded-full border text-xs font-semibold disabled:opacity-40 flex items-center justify-center dark:border-zinc-700 dark:text-gray-100"
                 >
                   <ArrowDown size={14} />
                 </button>
@@ -83,7 +93,7 @@ export default function SelectedImagesGrid({
                   type="button"
                   onClick={() => onRemove(idx)}
                   aria-label="Șterge imaginea"
-                  className="h-8 w-8 rounded-full border text-xs font-semibold text-red-600 flex items-center justify-center"
+                  className="h-8 w-8 rounded-full border text-xs font-semibold text-red-600 flex items-center justify-center dark:border-zinc-700"
                 >
                   <Trash2 size={14} />
                 </button>

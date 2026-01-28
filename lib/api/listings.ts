@@ -39,13 +39,33 @@ export async function uploadListingImages(
     headers: inviteToken ? { 'x-invite-token': inviteToken } : undefined,
     body: fd,
   });
-  const body = await resp.json();
+  const contentType = resp.headers.get('content-type') || '';
+  let body: any = null;
+  if (contentType.includes('application/json')) {
+    try {
+      body = await resp.json();
+    } catch {
+      body = null;
+    }
+  } else {
+    try {
+      body = await resp.text();
+    } catch {
+      body = null;
+    }
+  }
   if (!resp.ok) {
     const failedCount = Array.isArray(body?.failed) ? body.failed.length : 0;
+    const serverMsg =
+      typeof body === 'string'
+        ? body
+        : body?.error || body?.message || null;
     const msg =
       failedCount > 0
         ? `Nu s-au incarcat toate imaginile (${failedCount} esuate).`
-        : body?.error || 'Eroare la incarcarea imaginilor';
+        : resp.status === 413
+          ? serverMsg || 'Fisierul este prea mare. Incearca imagini mai mici sau mai putine simultan.'
+          : serverMsg || 'Eroare la incarcarea imaginilor';
     const err = new Error(msg) as Error & { failed?: Array<{ name: string; reason: string }> };
     if (Array.isArray(body?.failed)) err.failed = body.failed;
     throw err;

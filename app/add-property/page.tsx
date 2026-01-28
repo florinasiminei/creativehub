@@ -35,14 +35,6 @@ type LocationData = {
 function AddPropertyPageContent() {
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get('token');
-  if (!inviteToken) {
-    return (
-      <div className="max-w-3xl mx-auto px-6 py-16">
-        <h1 className="text-2xl font-semibold mb-2">Acces restrictionat</h1>
-        <p className="text-gray-600">Ai nevoie de un link valid pentru a adauga o proprietate.</p>
-      </div>
-    );
-  }
   const [formData, setFormData] = useState<SimpleForm>({
     titlu: '',
     judet: '',
@@ -206,6 +198,15 @@ function AddPropertyPageContent() {
       setLoading(false);
     }
   };
+
+  if (!inviteToken) {
+    return (
+      <div className="max-w-3xl mx-auto px-6 py-16">
+        <h1 className="text-2xl font-semibold mb-2">Acces restrictionat</h1>
+        <p className="text-gray-600">Ai nevoie de un link valid pentru a adauga o proprietate.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl 2xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-10">

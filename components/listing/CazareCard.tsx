@@ -13,7 +13,7 @@ export default function CazareCard({ cazare }: { cazare: Cazare }) {
             alt={`Imagine ${cazare.title}`}
             loading="lazy"
             className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+            sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1536px) 25vw, 16vw"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.src = "/fallback.svg";

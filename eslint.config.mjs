@@ -1,8 +1,13 @@
-import nextConfig from 'eslint-config-next';
+import { FlatCompat } from '@eslint/eslintrc';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-/**
- * @type {import('eslint').Linter.FlatConfig[]}
- */
-const config = [...nextConfig];
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const compat = new FlatCompat({ baseDirectory: __dirname });
+
+const config = [
+  { ignores: ['.next/**', 'node_modules/**'] },
+  ...compat.extends('next', 'next/core-web-vitals'),
+];
 
 export default config;

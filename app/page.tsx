@@ -148,7 +148,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [setFilters]);
 
   useEffect(() => {
     let mounted = true;

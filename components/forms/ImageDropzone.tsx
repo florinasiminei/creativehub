@@ -22,10 +22,10 @@ export default function ImageDropzone({
   onFilesSelected,
 }: ImageDropzoneProps) {
   const stateClass = isInvalid
-    ? 'border-red-400 bg-red-50'
+    ? 'border-red-400 bg-red-50 dark:border-red-500 dark:bg-red-950/40'
     : isActive
-      ? 'border-emerald-400 bg-emerald-50'
-      : 'border-emerald-200 bg-emerald-50/40 hover:border-emerald-400';
+      ? 'border-emerald-400 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-950/40'
+      : 'border-emerald-200 bg-emerald-50/40 hover:border-emerald-400 dark:border-emerald-800 dark:bg-emerald-950/20 dark:hover:border-emerald-500';
   return (
     <label
       className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-6 text-center cursor-pointer transition ${stateClass}`}
@@ -41,8 +41,8 @@ export default function ImageDropzone({
         onFilesSelected(list);
       }}
     >
-      <div className="text-sm font-medium text-emerald-800">{title}</div>
-      <div className="text-xs text-gray-600">{subtitle}</div>
+      <div className="text-sm font-medium text-emerald-800 dark:text-emerald-300">{title}</div>
+      <div className="text-xs text-gray-600 dark:text-gray-400">{subtitle}</div>
       <input
         type="file"
         accept={accept}
@@ -54,7 +54,7 @@ export default function ImageDropzone({
           e.currentTarget.value = '';
         }}
       />
-      <span className="text-xs text-gray-500">{helper}</span>
+      <span className="text-xs text-gray-500 dark:text-gray-400">{helper}</span>
     </label>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import DraftActions from "@/components/DraftActions";
 import type { Cazare } from "@/lib/utils";
@@ -159,7 +160,7 @@ export default function DraftsClient({ listings }: Props) {
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 sm:gap-5">
-        {ordered.map((d) => {
+        {ordered.map((d, index) => {
           const isDragging = dragId === d.id;
           const isOver = overId === d.id && dragId !== d.id;
           const detailsHref = `/edit-property/${d.id}`;
@@ -198,7 +199,14 @@ export default function DraftsClient({ listings }: Props) {
               } ${isOver ? "ring-2 ring-emerald-400" : ""}`}
             >
               <div className="relative aspect-[2.7/2] overflow-hidden rounded-t-2xl">
-                <img src={d.image} className="h-full w-full object-cover" alt={d.title} />
+                <Image
+                  src={d.image}
+                  alt={d.title}
+                  fill
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 16vw"
+                  className="object-cover"
+                  priority={index < 2}
+                />
               </div>
               <div className="p-4">
                 <div className="flex items-center gap-2 text-xs">

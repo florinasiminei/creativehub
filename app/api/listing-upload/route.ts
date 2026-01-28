@@ -3,6 +3,12 @@ export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
+import sharp from 'sharp';
+
+const MAX_IMAGE_WIDTH = 2400;
+const WEBP_QUALITY = 82;
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+const MAX_OUTPUT_BYTES = 6 * 1024 * 1024;
 
 export async function POST(request: Request) {
   try {
@@ -34,11 +40,44 @@ export async function POST(request: Request) {
 
     for (let i = 0; i < files.length; i++) {
       const f = files[i];
+      if (typeof f.size === 'number' && f.size > MAX_UPLOAD_BYTES) {
+        failures.push({ name: f.name, reason: 'file_too_large' });
+        continue;
+      }
       // @ts-ignore - File from formData
-      const buffer = Buffer.from(await (f as any).arrayBuffer());
-      const name = `${Date.now()}_${Math.random().toString(36).slice(2)}_${f.name.replace(/[^a-zA-Z0-9.\-_]/g, '')}`;
+      const originalBuffer = Buffer.from(await (f as any).arrayBuffer());
+      const safeBaseRaw = f.name.replace(/[^a-zA-Z0-9.\-_]/g, '').replace(/\.[^.]+$/, '');
+      const safeBase = safeBaseRaw || 'image';
+      let buffer = originalBuffer;
+      let contentType = f.type;
+      let extension = f.name.split('.').pop() || 'bin';
+
+      if (f.type.startsWith('image/')) {
+        try {
+          buffer = await sharp(originalBuffer)
+            .rotate()
+            .resize({ width: MAX_IMAGE_WIDTH, withoutEnlargement: true })
+            .webp({ quality: WEBP_QUALITY })
+            .toBuffer();
+          contentType = 'image/webp';
+          extension = 'webp';
+          if (buffer.length > MAX_OUTPUT_BYTES) {
+            buffer = await sharp(originalBuffer)
+              .rotate()
+              .resize({ width: 1920, withoutEnlargement: true })
+              .webp({ quality: 74 })
+              .toBuffer();
+          }
+        } catch (err) {
+          console.warn('Image optimization failed, using original file:', (err as Error)?.message || err);
+        }
+      }
+
+      const name = `${Date.now()}_${Math.random().toString(36).slice(2)}_${safeBase}.${extension}`;
       const path = `listings/${listingId}/${name}`;
-      const { error: upErr } = await supabaseAdmin.storage.from('listing-images').upload(path, buffer, { cacheControl: '3600', upsert: false, contentType: f.type });
+      const { error: upErr } = await supabaseAdmin.storage
+        .from('listing-images')
+        .upload(path, buffer, { cacheControl: '31536000', upsert: false, contentType });
       if (upErr) {
         console.warn('Could not upload', upErr.message);
         failures.push({ name: f.name, reason: upErr.message || 'upload_failed' });
