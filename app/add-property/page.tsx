@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import ListingForm from '@/components/forms/ListingForm';
 import useImageSelection from '@/hooks/useImageSelection';
@@ -33,6 +33,8 @@ type LocationData = {
 };
 
 export default function AddPropertyPage() {
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get('token');
   const [formData, setFormData] = useState<SimpleForm>({
     titlu: '',
     judet: '',
@@ -53,6 +55,7 @@ export default function AddPropertyPage() {
   const router = useRouter();
   const { uploading, uploadedCount, upload } = useImageUploads({
     onError: (msg) => setMessage(msg),
+    inviteToken,
   });
   const [locationData, setLocationData] = useState<LocationData | null>(null);
   const {
@@ -138,7 +141,7 @@ export default function AddPropertyPage() {
         is_published: false,
       };
       // create listing via server endpoint to avoid RLS errors
-      const { id: listingId } = await createListing(payload, selectedFacilities);
+      const { id: listingId } = await createListing(payload, selectedFacilities, inviteToken);
 
       // facilities were already passed to the server endpoint and inserted there.
 

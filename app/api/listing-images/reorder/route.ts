@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { rateLimit } from '@/lib/rateLimit';
 
 export async function POST(req: Request) {
   try {
+    const limit = rateLimit(req, { windowMs: 60_000, max: 60, keyPrefix: 'listing-images-reorder' });
+    if (!limit.ok) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } });
+    }
+
     const supabaseAdmin = getSupabaseAdmin();
 
     const body = await req.json();

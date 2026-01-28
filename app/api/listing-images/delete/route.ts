@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { rateLimit } from '@/lib/rateLimit';
 
 export async function POST(request: Request) {
   try {
+    const limit = rateLimit(request, { windowMs: 60_000, max: 40, keyPrefix: 'listing-images-delete' });
+    if (!limit.ok) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } });
+    }
+
     const supabaseAdmin = getSupabaseAdmin();
 
     const payload = await request.json();

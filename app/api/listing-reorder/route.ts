@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { rateLimit } from "@/lib/rateLimit";
 
 export async function POST(request: Request) {
   try {
+    const limit = rateLimit(request, { windowMs: 60_000, max: 60, keyPrefix: "listing-reorder" });
+    if (!limit.ok) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(limit.retryAfter) } });
+    }
+
     const { ids, reset } = await request.json();
     if (!Array.isArray(ids) || ids.length === 0) {
       return NextResponse.json({ error: "Missing ids." }, { status: 400 });

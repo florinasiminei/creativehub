@@ -2,12 +2,18 @@
 import { NextResponse } from 'next/server';
 import { slugify } from '@/lib/utils';
 import { createClient } from '@supabase/supabase-js';
+import { rateLimit } from '@/lib/rateLimit';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
 export async function POST(request: Request) {
   try {
+    const limit = rateLimit(request, { windowMs: 60_000, max: 30, keyPrefix: 'add-property' });
+    if (!limit.ok) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } });
+    }
+
     if (!supabaseUrl || !serviceKey) {
       // Fail fast with a clear error, but only when the route is hit (avoids build-time crashes)
       return NextResponse.json(

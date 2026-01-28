@@ -3,9 +3,10 @@ import { uploadListingImages } from '@/lib/api/listings';
 
 type UseImageUploadsOptions = {
   onError?: (message: string) => void;
+  inviteToken?: string | null;
 };
 
-export default function useImageUploads({ onError }: UseImageUploadsOptions = {}) {
+export default function useImageUploads({ onError, inviteToken }: UseImageUploadsOptions = {}) {
   const [uploading, setUploading] = useState(false);
   const [uploadedCount, setUploadedCount] = useState(0);
 
@@ -14,7 +15,7 @@ export default function useImageUploads({ onError }: UseImageUploadsOptions = {}
     setUploading(true);
     setUploadedCount(0);
     try {
-      const body = await uploadListingImages(listingId, files, startIndex);
+      const body = await uploadListingImages(listingId, files, startIndex, inviteToken);
       const uploaded = body.uploaded || [];
       setUploadedCount(uploaded.length);
       return { uploaded };

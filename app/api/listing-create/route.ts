@@ -1,8 +1,22 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { rateLimit } from '@/lib/rateLimit';
 
 export async function POST(req: Request) {
   try {
+    const requiredToken = process.env.INVITE_TOKEN;
+    if (requiredToken) {
+      const token = req.headers.get('x-invite-token');
+      if (!token || token !== requiredToken) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+    }
+
+    const limit = rateLimit(req, { windowMs: 60_000, max: 40, keyPrefix: 'listing-create' });
+    if (!limit.ok) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } });
+    }
+
     const supabaseAdmin = getSupabaseAdmin();
 
     const body = await req.json();
