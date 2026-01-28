@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { uploadListingImages } from '@/lib/api/listings';
+import { supabase } from '@/lib/supabaseClient';
+import { completeListingUpload, requestListingUploadUrls } from '@/lib/api/listings';
 
 type UseImageUploadsOptions = {
   onError?: (message: string) => void;
@@ -11,7 +12,12 @@ export default function useImageUploads({ onError, inviteToken }: UseImageUpload
   const [uploadedCount, setUploadedCount] = useState(0);
 
   const compressImage = async (file: File, targetBytes: number) => {
-    if (!file.type.startsWith('image/') || file.type === 'image/svg+xml') return file;
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    const looksLikeImage = ['jpg', 'jpeg', 'png', 'webp', 'avif', 'heic'].includes(ext);
+    if (
+      (!file.type.startsWith('image/') && !looksLikeImage) ||
+      file.type === 'image/svg+xml'
+    ) return file;
     if (typeof window === 'undefined') return file;
     if (file.size <= targetBytes) return file;
 
@@ -53,50 +59,97 @@ export default function useImageUploads({ onError, inviteToken }: UseImageUpload
     setUploading(true);
     setUploadedCount(0);
     try {
-      const MAX_BATCH_BYTES = 3.5 * 1024 * 1024; // keep under platform request limits
-      const TARGET_FILE_BYTES = 1.8 * 1024 * 1024;
+      const HARD_MAX_BYTES = 50 * 1024 * 1024;
+      const TARGET_FILE_BYTES = 8 * 1024 * 1024;
 
       const failed: Array<{ name: string; reason: string }> = [];
-      const prepared: File[] = [];
-      for (const f of files) {
-        const processed = await compressImage(f, TARGET_FILE_BYTES);
-        if (processed.size > MAX_BATCH_BYTES) {
+      const prepared: Array<{ index: number; file: File; originalName: string }> = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        if (typeof f.size === 'number' && f.size > HARD_MAX_BYTES) {
           failed.push({ name: f.name, reason: 'file_too_large' });
           continue;
         }
-        prepared.push(processed);
+        const processed = await compressImage(f, TARGET_FILE_BYTES);
+        if (typeof processed.size === 'number' && processed.size > HARD_MAX_BYTES) {
+          failed.push({ name: f.name, reason: 'file_too_large' });
+          continue;
+        }
+        prepared.push({ index: i, file: processed, originalName: f.name });
       }
+
       if (failed.length > 0) {
-        const err = new Error('Unele imagini sunt prea mari pentru upload. Incearca imagini mai mici.');
+        const err = new Error('Unele imagini sunt prea mari pentru upload (maxim 50MB).');
         (err as any).failed = failed;
         throw err;
       }
 
-      let uploadedAll: any[] = [];
-      let batch: File[] = [];
-      let batchBytes = 0;
-      let currentIndex = startIndex;
+      const signBody = await requestListingUploadUrls(
+        listingId,
+        prepared.map((p) => ({
+          index: p.index,
+          name: p.file.name,
+          type: p.file.type,
+          size: p.file.size,
+        })),
+        startIndex,
+        inviteToken
+      );
 
-      const flushBatch = async () => {
-        if (batch.length === 0) return;
-        const body = await uploadListingImages(listingId, batch, currentIndex, inviteToken);
-        const uploaded = body.uploaded || [];
-        uploadedAll = uploadedAll.concat(uploaded);
-        setUploadedCount((prev) => prev + uploaded.length);
-        currentIndex += batch.length;
-        batch = [];
-        batchBytes = 0;
-      };
-
-      for (const file of prepared) {
-        const size = typeof file.size === 'number' ? file.size : 0;
-        if (batch.length > 0 && batchBytes + size > MAX_BATCH_BYTES) {
-          await flushBatch();
-        }
-        batch.push(file);
-        batchBytes += size;
+      const signFailed = Array.isArray(signBody.failed) ? signBody.failed : [];
+      if (signFailed.length > 0) {
+        const nameByIndex = new Map(prepared.map((p) => [p.index, p.originalName]));
+        const mapped = signFailed.map((f) => ({
+          name: nameByIndex.get(f.index) || f.name || 'unknown',
+          reason: f.reason || 'signed_url_failed',
+        }));
+        const err = new Error('Nu s-au incarcat toate imaginile.');
+        (err as any).failed = mapped;
+        throw err;
       }
-      await flushBatch();
+
+      const uploads = Array.isArray(signBody.uploads) ? signBody.uploads : [];
+      const uploadedAll: any[] = [];
+      for (const uploadItem of uploads) {
+        const entry = prepared.find((p) => p.index === uploadItem.index);
+        if (!entry) {
+          failed.push({ name: 'unknown', reason: 'missing_file' });
+          continue;
+        }
+
+        const { error } = await supabase.storage
+          .from('listing-images')
+          .uploadToSignedUrl(
+            uploadItem.path,
+            uploadItem.token,
+            entry.file,
+            { contentType: entry.file.type || 'application/octet-stream' }
+          );
+        if (error) {
+          failed.push({ name: entry.originalName, reason: error.message || 'upload_failed' });
+          continue;
+        }
+
+        try {
+          const completed = await completeListingUpload(
+            listingId,
+            uploadItem.path,
+            uploadItem.display_order,
+            inviteToken
+          );
+          uploadedAll.push(completed);
+          setUploadedCount((prev) => prev + 1);
+        } catch (err: any) {
+          failed.push({ name: entry.originalName, reason: err?.message || 'insert_failed' });
+        }
+      }
+
+      if (failed.length > 0) {
+        const err = new Error('Nu s-au incarcat toate imaginile.');
+        (err as any).failed = failed;
+        throw err;
+      }
 
       return { uploaded: uploadedAll };
     } catch (err: any) {

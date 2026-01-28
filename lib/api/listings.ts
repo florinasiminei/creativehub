@@ -76,6 +76,48 @@ export async function uploadListingImages(
   };
 }
 
+export async function requestListingUploadUrls(
+  listingId: string,
+  files: Array<{ index: number; name: string; type?: string; size?: number }>,
+  startIndex = 0,
+  inviteToken?: string | null
+) {
+  const resp = await fetch('/api/listing-upload-sign', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(inviteToken ? { 'x-invite-token': inviteToken } : {}),
+    },
+    body: JSON.stringify({ listingId, files, startIndex }),
+  });
+  const body = await resp.json();
+  if (!resp.ok) throw new Error(body?.error || 'Eroare la semnarea upload-ului');
+  return body as {
+    uploads?: Array<{ index: number; path: string; token: string; display_order: number }>;
+    failed?: Array<{ index: number; name: string; reason: string }>;
+  };
+}
+
+export async function completeListingUpload(
+  listingId: string,
+  path: string,
+  displayOrder: number,
+  inviteToken?: string | null,
+  alt?: string | null
+) {
+  const resp = await fetch('/api/listing-upload-complete', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(inviteToken ? { 'x-invite-token': inviteToken } : {}),
+    },
+    body: JSON.stringify({ listingId, path, displayOrder, alt }),
+  });
+  const body = await resp.json();
+  if (!resp.ok) throw new Error(body?.error || 'Eroare la finalizarea upload-ului');
+  return body as { id: string; url: string; display_order: number };
+}
+
 export async function deleteListing(id: string) {
   const resp = await fetch('/api/listing-delete', {
     method: 'POST',

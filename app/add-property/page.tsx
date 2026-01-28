@@ -174,10 +174,11 @@ function AddPropertyPageContent() {
           }
           const failed = Array.isArray(err?.failed) ? err.failed : [];
           setFailedUploads(failed);
-          setMessage(
-            failed.length > 0
-              ? 'Nu s-au incarcat toate imaginile.'
-              : err?.message || 'Eroare la incarcarea imaginilor'
+      setMessage(
+            err?.message ||
+              (failed.length > 0
+                ? 'Nu s-au incarcat toate imaginile.'
+                : 'Eroare la incarcarea imaginilor')
           );
           return;
         }
@@ -185,7 +186,7 @@ function AddPropertyPageContent() {
 
       setMessage(`Anunt creat cu id ${listingId}.`);
       try {
-        router.push(`/confirmaction=created&id=${listingId}&status=draft`);
+        router.push(`/confirm?action=created&id=${listingId}&status=draft`);
       } catch (err) {
         // ignore if router unavailable
       }
@@ -273,7 +274,7 @@ function AddPropertyPageContent() {
                     <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-red-500" />
                     <span>
                       <span className="font-medium">{f.name}</span>
-                      {f.reason ? ` — ${f.reason}` : ''}
+                      {f.reason ? ` — ${f.reason === 'file_too_large' ? 'fisier prea mare' : f.reason}` : ''}
                     </span>
                   </li>
                 ))}
