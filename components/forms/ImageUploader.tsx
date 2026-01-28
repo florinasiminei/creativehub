@@ -11,6 +11,7 @@ type ImageUploaderProps = {
   dropzoneHelper: string;
   accept: string;
   isActive: boolean;
+  isInvalid?: boolean;
   onActiveChange: (active: boolean) => void;
   onFilesSelected: (files: File[]) => void;
   files: File[];
@@ -23,6 +24,7 @@ type ImageUploaderProps = {
   onRemove: (idx: number) => void;
   selectedTitle: string;
   selectedSubtitle: string;
+  selectedFailedNames?: string[];
   existingImages?: ExistingImage[];
   existingTitle?: string;
   existingSubtitle?: string;
@@ -40,6 +42,7 @@ export default function ImageUploader({
   dropzoneHelper,
   accept,
   isActive,
+  isInvalid = false,
   onActiveChange,
   onFilesSelected,
   files,
@@ -52,6 +55,7 @@ export default function ImageUploader({
   onRemove,
   selectedTitle,
   selectedSubtitle,
+  selectedFailedNames = [],
   existingImages = [],
   existingTitle,
   existingSubtitle,
@@ -70,6 +74,7 @@ export default function ImageUploader({
         helper={dropzoneHelper}
         accept={accept}
         isActive={isActive}
+        isInvalid={isInvalid}
         onActiveChange={onActiveChange}
         onFilesSelected={onFilesSelected}
       />
@@ -99,6 +104,7 @@ export default function ImageUploader({
         onDragEnd={onDragEnd}
         onMove={onMove}
         onRemove={onRemove}
+        failedNames={selectedFailedNames}
       />
     </div>
   );

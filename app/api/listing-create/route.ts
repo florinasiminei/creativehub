@@ -20,11 +20,41 @@ export async function POST(req: Request) {
     const supabaseAdmin = getSupabaseAdmin();
 
     const body = await req.json();
-    const { title, slug, location, address, price, capacity, phone, type, description, facilities, latitude, longitude, search_radius } = body;
+    const {
+      title,
+      slug,
+      location,
+      address,
+      price,
+      capacity,
+      phone,
+      type,
+      description,
+      facilities,
+      lat,
+      lng,
+      latitude,
+      longitude,
+      search_radius,
+      display_order,
+    } = body;
 
     if (!title || !location) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
+
+    const toNumber = (value: unknown) => {
+      if (value === null || value === undefined) return null;
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+      if (typeof value === 'string') {
+        const parsed = parseFloat(value);
+        return Number.isFinite(parsed) ? parsed : null;
+      }
+      return null;
+    };
+
+    const parsedLat = toNumber(lat) ?? toNumber(latitude);
+    const parsedLng = toNumber(lng) ?? toNumber(longitude);
 
     const payload: any = {
       title,
@@ -36,29 +66,45 @@ export async function POST(req: Request) {
       phone: phone || null,
       type: type || 'cabana',
       description: description || null,
-      latitude: latitude || null,
-      longitude: longitude || null,
+      lat: parsedLat,
+      lng: parsedLng,
       search_radius: search_radius || 5,
       is_published: false,
     };
 
-    // Try to assign a display_order when the column exists.
-    try {
-      const { data: orderRows, error: orderErr } = await supabaseAdmin
-        .from('listings')
-        .select('display_order')
-        .order('display_order', { ascending: false, nullsFirst: false })
-        .limit(1);
-      if (!orderErr) {
-        const lastOrder = orderRows?.[0]?.display_order;
-        const nextOrder = typeof lastOrder === 'number' ? lastOrder + 1 : 0;
-        payload.display_order = nextOrder;
+    if (Object.prototype.hasOwnProperty.call(body, 'display_order')) {
+      payload.display_order = display_order ?? null;
+    } else {
+      // Try to assign a display_order when the column exists.
+      try {
+        const { data: orderRows, error: orderErr } = await supabaseAdmin
+          .from('listings')
+          .select('display_order')
+          .order('display_order', { ascending: false, nullsFirst: false })
+          .limit(1);
+        if (!orderErr) {
+          const lastOrder = orderRows?.[0]?.display_order;
+          const nextOrder = typeof lastOrder === 'number' ? lastOrder + 1 : 0;
+          payload.display_order = nextOrder;
+        }
+      } catch {
+        // ignore if column does not exist yet
       }
-    } catch {
-      // ignore if column does not exist yet
     }
 
-    const { data, error } = await supabaseAdmin.from('listings').insert(payload).select('id').single();
+    let { data, error } = await supabaseAdmin.from('listings').insert(payload).select('id').single();
+    if (error && /lat|lng|latitude|longitude|search_radius/i.test(error.message || '')) {
+      const fallbackPayload = { ...payload };
+      const message = String(error.message || '');
+      if (/search_radius/i.test(message) && !/lat|lng|latitude|longitude/i.test(message)) {
+        delete fallbackPayload.search_radius;
+      } else {
+        delete fallbackPayload.lat;
+        delete fallbackPayload.lng;
+        delete fallbackPayload.search_radius;
+      }
+      ({ data, error } = await supabaseAdmin.from('listings').insert(fallbackPayload).select('id').single());
+    }
     if (error) {
       console.error('Error inserting listing', error);
       return NextResponse.json({ error: error.message || 'Insert failed' }, { status: 500 });

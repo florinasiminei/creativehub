@@ -25,8 +25,34 @@ export async function POST(request: Request) {
     if (description !== undefined) updateData.description = description;
     if (type !== undefined) updateData.type = type;
     if (is_published !== undefined) updateData.is_published = is_published;
+    const toNumber = (value: unknown) => {
+      if (value === null || value === undefined) return null;
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+      if (typeof value === 'string') {
+        const parsed = parseFloat(value);
+        return Number.isFinite(parsed) ? parsed : null;
+      }
+      return null;
+    };
+    if ((body as any).lat !== undefined) updateData.lat = toNumber((body as any).lat);
+    if ((body as any).lng !== undefined) updateData.lng = toNumber((body as any).lng);
+    if ((body as any).latitude !== undefined && updateData.lat === undefined) updateData.lat = toNumber((body as any).latitude);
+    if ((body as any).longitude !== undefined && updateData.lng === undefined) updateData.lng = toNumber((body as any).longitude);
+    if ((body as any).search_radius !== undefined) updateData.search_radius = (body as any).search_radius;
 
-    const { error: upErr } = await supabaseAdmin.from('listings').update(updateData).eq('id', id);
+    let { error: upErr } = await supabaseAdmin.from('listings').update(updateData).eq('id', id);
+    if (upErr && /lat|lng|latitude|longitude|search_radius/i.test(upErr.message || '')) {
+      const fallbackUpdate = { ...updateData };
+      const message = String(upErr.message || '');
+      if (/search_radius/i.test(message) && !/lat|lng|latitude|longitude/i.test(message)) {
+        delete fallbackUpdate.search_radius;
+      } else {
+        delete fallbackUpdate.lat;
+        delete fallbackUpdate.lng;
+        delete fallbackUpdate.search_radius;
+      }
+      ({ error: upErr } = await supabaseAdmin.from('listings').update(fallbackUpdate).eq('id', id));
+    }
     if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
 
     // update facilities

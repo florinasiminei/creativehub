@@ -40,8 +40,29 @@ export async function uploadListingImages(
     body: fd,
   });
   const body = await resp.json();
-  if (!resp.ok) throw new Error(body?.error || 'Eroare la incarcarea imaginilor');
-  return body as { uploaded?: Array<{ id: string; url: string; display_order: number }> };
+  if (!resp.ok) {
+    const failedCount = Array.isArray(body?.failed) ? body.failed.length : 0;
+    const msg =
+      failedCount > 0
+        ? `Nu s-au incarcat toate imaginile (${failedCount} esuate).`
+        : body?.error || 'Eroare la incarcarea imaginilor';
+    const err = new Error(msg) as Error & { failed?: Array<{ name: string; reason: string }> };
+    if (Array.isArray(body?.failed)) err.failed = body.failed;
+    throw err;
+  }
+  return body as {
+    uploaded?: Array<{ id: string; url: string; display_order: number }>;
+    failed?: Array<{ name: string; reason: string }>;
+  };
+}
+
+export async function deleteListing(id: string) {
+  const resp = await fetch('/api/listing-delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id }),
+  });
+  if (!resp.ok) throw new Error('Nu am putut sterge listarea');
 }
 
 export async function deleteListingImage(id: string) {

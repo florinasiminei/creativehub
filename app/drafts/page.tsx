@@ -14,7 +14,7 @@ export default async function DraftsPage() {
   const { data, error } = await supabaseAdmin
     .from("listings")
     .select(baseSelect)
-    .order("display_order", { ascending: true, nullsFirst: false })
+    .order("display_order", { ascending: true, nullsFirst: true })
     .order("created_at", { ascending: false });
 
   if (error) console.error(error);

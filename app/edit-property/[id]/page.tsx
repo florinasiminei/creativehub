@@ -54,6 +54,7 @@ export default function EditPropertyPage({ params }: any) {
   const [draggingExistingIdx, setDraggingExistingIdx] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [locationData, setLocationData] = useState<LocationData | null>(null);
+  const [showValidation, setShowValidation] = useState(false);
   const { uploading, upload } = useImageUploads({
     onError: (msg) => setMessage(msg),
   });
@@ -100,9 +101,15 @@ export default function EditPropertyPage({ params }: any) {
             telefon: listing.phone || '',
             tip: listing.type || 'cabana',
           });
+          const latValue = listing.lat ?? listing.latitude;
+          const lngValue = listing.lng ?? listing.longitude;
+          const parsedLat =
+            typeof latValue === 'number' ? latValue : latValue ? parseFloat(String(latValue)) : 0;
+          const parsedLng =
+            typeof lngValue === 'number' ? lngValue : lngValue ? parseFloat(String(lngValue)) : 0;
           setLocationData({
-            latitude: listing.latitude || 0,
-            longitude: listing.longitude || 0,
+            latitude: Number.isFinite(parsedLat) ? parsedLat : 0,
+            longitude: Number.isFinite(parsedLng) ? parsedLng : 0,
             county: listing.location || '',
             city: listing.address || '',
             radius: listing.search_radius || 1,
@@ -129,16 +136,17 @@ export default function EditPropertyPage({ params }: any) {
     setSelectedFacilities(prev => prev.includes(idf) ? prev.filter(x => x !== idf) : [...prev, idf]);
   };
 
-  const { error: validationError } = useListingForm({
+  const { error: validationError, invalidFields, imagesInvalid } = useListingForm({
     requiredFields: [
-      { value: formData.titlu, label: 'Titlu' },
-      { value: formData.judet, label: 'Județ' },
-      { value: formData.localitate, label: 'Localitate' },
-      { value: formData.pret, label: 'Preț' },
-      { value: formData.capacitate, label: 'Capacitate' },
-      { value: formData.telefon, label: 'Telefon' },
+      { key: 'titlu', value: formData.titlu, label: 'Titlu' },
+      { key: 'judet', value: formData.judet, label: 'Jude??' },
+      { key: 'localitate', value: formData.localitate, label: 'Localitate' },
+      { key: 'pret', value: formData.pret, label: 'Pre??' },
+      { key: 'capacitate', value: formData.capacitate, label: 'Capacitate' },
+      { key: 'telefon', value: formData.telefon, label: 'Telefon' },
     ],
     phone: formData.telefon,
+    phoneKey: 'telefon',
     imagesCount: images.length + files.length,
     minImages: 5,
     maxImages: 10,
@@ -164,10 +172,16 @@ export default function EditPropertyPage({ params }: any) {
   const handleUpdate = async (e: FormEvent) => {
     e.preventDefault();
     setMessage(null);
+    setShowValidation(true);
     if (validationError) {
       setMessage(validationError);
       return;
     }
+    const hasCoords =
+      locationData !== null &&
+      Number.isFinite(locationData.latitude) &&
+      Number.isFinite(locationData.longitude) &&
+      (locationData.latitude !== 0 || locationData.longitude !== 0);
 
     setLoading(true);
     try {
@@ -194,8 +208,8 @@ export default function EditPropertyPage({ params }: any) {
         description: formData.descriere,
         type: formData.tip,
         facilities: selectedFacilities,
-        latitude: locationData?.latitude || null,
-        longitude: locationData?.longitude || null,
+        lat: hasCoords ? Number(locationData?.latitude ?? null) : null,
+        lng: hasCoords ? Number(locationData?.longitude ?? null) : null,
         search_radius: locationData?.radius || 1,
       };
       await updateListing(updatePayload);
@@ -207,7 +221,7 @@ export default function EditPropertyPage({ params }: any) {
       }
 
       setMessage('Modificările au fost salvate.');
-      router.push(`/confirm?action=updated&id=${id}&status=draft`);
+      router.push('/drafts?updated=1');
     } catch (err) {
       console.error(err);
       setMessage(err instanceof Error ? err.message : 'A apărut o eroare');
@@ -240,9 +254,14 @@ export default function EditPropertyPage({ params }: any) {
           onLocationSelect={(location) => setLocationData(location)}
           initialCounty={formData.judet}
           initialCity={formData.localitate}
+          initialLat={locationData?.latitude ?? null}
+          initialLng={locationData?.longitude ?? null}
           dropzoneTitle="Încarcă imagini noi (minim 5, maxim 10 total)"
           dropzoneSubtitle="Selectează fișiere și ordonează-le înainte de publicare"
           dropzoneHelper="Click pentru a selecta"
+          showValidation={showValidation}
+          invalidFields={invalidFields}
+          imagesInvalid={imagesInvalid}
           isDropActive={isDropActive}
           onDropActiveChange={setIsDropActive}
           onFilesSelected={appendFiles}
@@ -274,9 +293,21 @@ export default function EditPropertyPage({ params }: any) {
           <div className="text-sm text-gray-600">
             {uploading ? `Se încarcă imaginile... ${(images.length + files.length)}/${files.length}` : 'Verifică datele și salvează modificările.'}
           </div>
-          <button type="submit" disabled={loading || uploading} className="w-full sm:w-auto bg-emerald-600 text-white px-5 py-2.5 rounded-full shadow hover:bg-emerald-700 disabled:opacity-60">
-            {loading ? 'Se salvează...' : 'Salvează modificări'}
-          </button>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <Link
+              href="/drafts"
+              className="w-full sm:w-auto text-center px-5 py-2.5 rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50"
+            >
+              Anulează
+            </Link>
+            <button
+              type="submit"
+              disabled={loading || uploading}
+              className="w-full sm:w-auto bg-emerald-600 text-white px-5 py-2.5 rounded-full shadow hover:bg-emerald-700 disabled:opacity-60"
+            >
+              {loading ? 'Se salvează...' : 'Salvează modificări'}
+            </button>
+          </div>
         </div>
 
         {message && <div className="text-sm text-gray-700" role="status" aria-live="polite">{message}</div>}
@@ -284,3 +315,4 @@ export default function EditPropertyPage({ params }: any) {
     </div>
   )
 }
+

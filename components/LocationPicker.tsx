@@ -7,9 +7,11 @@ interface LocationPickerProps {
   onLocationSelect: (location: { latitude: number; longitude: number; county: string; city: string; radius: number }) => void;
   initialCounty?: string;
   initialCity?: string;
+  initialLat?: number | null;
+  initialLng?: number | null;
 }
 
-export default function LocationPicker({ onLocationSelect, initialCounty, initialCity }: LocationPickerProps) {
+export default function LocationPicker({ onLocationSelect, initialCounty, initialCity, initialLat, initialLng }: LocationPickerProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const circleRef = useRef<google.maps.Circle | null>(null);
@@ -53,8 +55,26 @@ export default function LocationPicker({ onLocationSelect, initialCounty, initia
     document.head.appendChild(script);
   }, []);
 
-  // Auto-center map on user's location (device) with IP fallback
+  // Seed selected location from initial coords (edit mode)
   useEffect(() => {
+    if (typeof initialLat === 'number' && typeof initialLng === 'number') {
+      if (Number.isFinite(initialLat) && Number.isFinite(initialLng) && (initialLat !== 0 || initialLng !== 0)) {
+        setSelectedLocation({ lat: initialLat, lng: initialLng });
+        setIsConfirmed(true);
+        return;
+      }
+    }
+  }, [initialLat, initialLng]);
+
+  // Auto-center map on user's location (device) with IP fallback (add mode only)
+  useEffect(() => {
+    const hasInitialCoords =
+      typeof initialLat === 'number' &&
+      typeof initialLng === 'number' &&
+      Number.isFinite(initialLat) &&
+      Number.isFinite(initialLng) &&
+      (initialLat !== 0 || initialLng !== 0);
+    if (hasInitialCoords) return;
     let didSet = false;
 
     const setLocation = (lat: number, lng: number) => {

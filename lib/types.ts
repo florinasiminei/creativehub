@@ -59,6 +59,8 @@ export type ListingRaw = {
   display_order?: number | null;
   latitude?: number | null;
   longitude?: number | null;
+  lat?: number | null;
+  lng?: number | null;
   search_radius?: number | null;
   listing_images?: {
     image_url: string | null;

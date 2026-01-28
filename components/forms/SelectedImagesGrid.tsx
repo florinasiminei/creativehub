@@ -1,4 +1,5 @@
 import React from 'react';
+import { ArrowUp, ArrowDown, Trash2 } from 'lucide-react';
 
 type SelectedImagesGridProps = {
   title: string;
@@ -11,6 +12,7 @@ type SelectedImagesGridProps = {
   onDragEnd: () => void;
   onMove: (from: number, to: number) => void;
   onRemove: (idx: number) => void;
+  failedNames?: string[];
 };
 
 export default function SelectedImagesGrid({
@@ -24,8 +26,10 @@ export default function SelectedImagesGrid({
   onDragEnd,
   onMove,
   onRemove,
+  failedNames = [],
 }: SelectedImagesGridProps) {
   if (files.length === 0) return null;
+  const failedSet = new Set(failedNames);
 
   return (
     <div className="space-y-3">
@@ -37,7 +41,9 @@ export default function SelectedImagesGrid({
         {files.map((f, idx) => (
           <div
             key={`${f.name}-${idx}`}
-            className={`rounded-xl overflow-hidden border bg-white shadow-sm ${draggingIdx === idx ? 'ring-2 ring-emerald-500' : ''}`}
+            className={`rounded-xl overflow-hidden border bg-white shadow-sm ${
+              draggingIdx === idx ? 'ring-2 ring-emerald-500' : ''
+            } ${failedSet.has(f.name) ? 'border-red-400 ring-1 ring-red-300' : ''}`}
             draggable
             onDragStart={() => onDragStart(idx)}
             onDragOver={(e) => {
@@ -55,9 +61,32 @@ export default function SelectedImagesGrid({
                 <p className="text-sm font-medium truncate">{f.name}</p>
               </div>
               <div className="flex items-center gap-1">
-                <button type="button" onClick={() => onMove(idx, idx - 1)} disabled={idx === 0} className="h-8 w-8 rounded-full border text-xs font-semibold disabled:opacity-40">?</button>
-                <button type="button" onClick={() => onMove(idx, idx + 1)} disabled={idx === files.length - 1} className="h-8 w-8 rounded-full border text-xs font-semibold disabled:opacity-40">?</button>
-                <button type="button" onClick={() => onRemove(idx)} className="h-8 w-8 rounded-full border text-xs font-semibold text-red-600">?</button>
+                <button
+                  type="button"
+                  onClick={() => onMove(idx, idx - 1)}
+                  disabled={idx === 0}
+                  aria-label="Mută în sus"
+                  className="h-8 w-8 rounded-full border text-xs font-semibold disabled:opacity-40 flex items-center justify-center"
+                >
+                  <ArrowUp size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onMove(idx, idx + 1)}
+                  disabled={idx === files.length - 1}
+                  aria-label="Mută în jos"
+                  className="h-8 w-8 rounded-full border text-xs font-semibold disabled:opacity-40 flex items-center justify-center"
+                >
+                  <ArrowDown size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onRemove(idx)}
+                  aria-label="Șterge imaginea"
+                  className="h-8 w-8 rounded-full border text-xs font-semibold text-red-600 flex items-center justify-center"
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
             </div>
           </div>

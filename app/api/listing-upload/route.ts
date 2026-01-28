@@ -30,6 +30,7 @@ export async function POST(request: Request) {
     const startIndexRaw = form.get('startIndex') as string | null;
     const startIndex = startIndexRaw ? Number(startIndexRaw) || 0 : 0;
     const results: Array<{ id: string; url: string; display_order: number; alt?: string | null }> = [];
+    const failures: Array<{ name: string; reason: string }> = [];
 
     for (let i = 0; i < files.length; i++) {
       const f = files[i];
@@ -40,22 +41,34 @@ export async function POST(request: Request) {
       const { error: upErr } = await supabaseAdmin.storage.from('listing-images').upload(path, buffer, { cacheControl: '3600', upsert: false, contentType: f.type });
       if (upErr) {
         console.warn('Could not upload', upErr.message);
+        failures.push({ name: f.name, reason: upErr.message || 'upload_failed' });
         continue;
       }
       const { data: publicData } = supabaseAdmin.storage.from('listing-images').getPublicUrl(path);
       const url = (publicData as any)?.publicUrl || (publicData as any)?.public_url || '';
-      if (!url) continue;
+      if (!url) {
+        failures.push({ name: f.name, reason: 'public_url_missing' });
+        continue;
+      }
       // insert row in listing_images table using server key
       const alt = alts[i] || null;
       const { data: inserted, error: imgErr } = await supabaseAdmin.from('listing_images').insert([{ listing_id: listingId, image_url: url, display_order: startIndex + i, alt }]).select('id, image_url, display_order').single();
       if (imgErr || !inserted) {
         console.warn('Could not insert listing_images', imgErr?.message);
+        failures.push({ name: f.name, reason: imgErr?.message || 'insert_failed' });
         continue;
       }
       results.push({ id: String(inserted.id), url, display_order: startIndex + i, alt });
     }
 
-    return NextResponse.json({ uploaded: results });
+    if (failures.length > 0) {
+      return NextResponse.json(
+        { error: 'Partial upload', uploaded: results, failed: failures },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ uploaded: results, failed: [] });
   } catch (err: any) {
     console.error(err);
     return NextResponse.json({ error: err?.message || 'Unknown error' }, { status: 500 });

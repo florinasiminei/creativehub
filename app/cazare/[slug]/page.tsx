@@ -20,6 +20,9 @@ type Listing = {
   facilities: Facility[];
   description: string;
   highlights: string[];
+  latitude?: number | null;
+  longitude?: number | null;
+  searchRadius?: number | null;
 };
 
 type PageProps = { params: { slug: string } };
@@ -37,7 +40,7 @@ export default function Page({ params }: PageProps) {
   const telHref = sanitizedPhone || data?.phone?.trim() || "";
   const whatsappNumber = (sanitizedPhone || fallbackWhatsappNumber).replace(/\D/g, "");
   const whatsappHref = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-    data ? `Buna! Sunt interesat de ${data.title}.` : "Buna! Sunt interesat de proprietate."
+    data ? `Bună! Sunt interesat de ${data.title}.` : "Bună! Sunt interesat de proprietate."
   )}`;
 
   useEffect(() => {
@@ -78,8 +81,8 @@ export default function Page({ params }: PageProps) {
         if (!listing) {
           throw new Error(
             previewMode
-              ? "Proprietatea nu a fost gasita. Verifica linkul de previzualizare."
-              : "Proprietatea nu a fost gasita sau nu este publicata in modul public"
+              ? "Proprietatea nu a fost găsită. Verifică linkul de previzualizare."
+              : "Proprietatea nu a fost găsită sau nu este publicată în modul public"
           );
         }
 
@@ -147,15 +150,15 @@ export default function Page({ params }: PageProps) {
           }
         }
 
-        const descriptionFallback = `Bucurati-va de o sedere de neuitat la ${listing.title}, o proprietate exceptionala situata in inima ${listing.location}. Aceasta locatie ofera un amestec perfect de confort modern si farmec local, fiind ideala pentru cupluri, familii sau grupuri de prieteni care doresc sa exploreze frumusetea zonei.
+        const descriptionFallback = `Bucurați-vă de o ședere de neuitat la ${listing.title}, o proprietate excepțională situată în inima ${listing.location}. Această locație oferă un amestec perfect de confort modern și farmec local, fiind ideală pentru cupluri, familii sau grupuri de prieteni care doresc să exploreze frumusețea zonei.
 
-Interiorul este amenajat cu gust, oferind spatii generoase si luminoase. Fiecare detaliu a fost gandit pentru a va asigura o experienta relaxanta si placuta. De la bucataria complet utilata, perfecta pentru a pregati mese delicioase, pana la dormitoarele confortabile, totul este pregatit pentru a va simti ca acasa.`;
+Interiorul este amenajat cu gust, oferind spații generoase și luminoase. Fiecare detaliu a fost gândit pentru a vă asigura o experiență relaxantă și plăcută. De la bucătăria complet utilată, perfectă pentru a pregăti mese delicioase, până la dormitoarele confortabile, totul este pregătit pentru a vă simți ca acasă.`;
 
         const highlightsFallback = [
-          "Priveliste montana superba de la balcon",
-          "Acces direct la trasee de drumetii",
-          "Liniste si intimitate deplina",
-          "Curte spatioasa cu gratar si foisor",
+          "Priveliște montană superbă de la balcon",
+          "Acces direct la trasee de drumeții",
+          "Liniște și intimitate deplină",
+          "Curte spațioasă cu grătar și foișor",
         ];
 
         setData({
@@ -170,6 +173,9 @@ Interiorul este amenajat cu gust, oferind spatii generoase si luminoase. Fiecare
           facilities,
           description: descriptionFromDb.length > 0 ? descriptionFromDb : descriptionFallback,
           highlights: highlightsFromDb.length > 0 ? highlightsFromDb : highlightsFallback,
+          latitude: (listing as any).lat ?? (listing as any).latitude ?? null,
+          longitude: (listing as any).lng ?? (listing as any).longitude ?? null,
+          searchRadius: (listing as any).search_radius ?? null,
         });
       } catch (e: any) {
         const message = e?.message || (typeof e === "string" ? e : "A apărut o eroare");
@@ -261,10 +267,54 @@ Interiorul este amenajat cu gust, oferind spatii generoase si luminoase. Fiecare
                 )}
 
                 <div>
-                  <h2 className="text-2xl font-bold mb-4 border-b pb-2">Locație pe hartă</h2>
-                  <div className="aspect-w-16 aspect-h-9 bg-gray-200 dark:bg-zinc-800 rounded-lg flex items-center justify-center">
-                    <p className="text-gray-500">Hartă în curând</p>
+                  <div className="flex items-center justify-between gap-3 mb-4 border-b pb-2">
+                    <h2 className="text-2xl font-bold">Locație pe hartă</h2>
+                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600/80">Google Maps</span>
                   </div>
+                  {(() => {
+                    const lat = Number(data.latitude);
+                    const lng = Number(data.longitude);
+                    const hasCoords = Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0);
+                    const locationQuery = encodeURIComponent(data.location || "");
+                    const mapSrc = hasCoords
+                      ? `https://www.google.com/maps?q=${lat},${lng}&z=14&output=embed`
+                      : `https://www.google.com/maps?q=${locationQuery}&z=12&output=embed`;
+                    const directionsHref = hasCoords
+                      ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
+                      : `https://www.google.com/maps/dir/?api=1&destination=${locationQuery}`;
+                    return (
+                      <div className="rounded-2xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-sm">
+                        <div className="relative overflow-hidden rounded-2xl aspect-[16/9] bg-gray-50 dark:bg-zinc-800">
+                          <iframe
+                            title="Google Maps"
+                            src={mapSrc}
+                            className="absolute inset-0 h-full w-full"
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                          />
+                          {!hasCoords && (
+                            <div className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-emerald-700 shadow dark:bg-zinc-900/80 dark:text-emerald-200">
+                              Zonă aproximativă
+                            </div>
+                          )}
+                        </div>
+                        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-600 dark:text-gray-400">
+                          <span className="inline-flex items-center gap-2">
+                            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                            {data.location}
+                          </span>
+                          <a
+                            href={directionsHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center rounded-full border border-emerald-200 px-4 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800/60 dark:text-emerald-200 dark:hover:bg-emerald-900/30"
+                          >
+                            Get directions
+                          </a>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 

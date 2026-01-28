@@ -1,4 +1,5 @@
 import React from 'react';
+import { ArrowUp, ArrowDown, Trash2 } from 'lucide-react';
 
 type ExistingImage = { id: string; image_url: string; alt?: string | null };
 
@@ -53,9 +54,32 @@ export default function ExistingImagesGrid({
             <div className="flex items-center gap-2 px-3 py-2 border-t bg-white">
               <div className="text-sm font-medium truncate">#{idx + 1}</div>
               <div className="flex items-center gap-1 ml-auto">
-                <button type="button" onClick={() => onMove(idx, idx - 1)} disabled={idx === 0} className="h-8 w-8 rounded-full border text-xs font-semibold disabled:opacity-40">?</button>
-                <button type="button" onClick={() => onMove(idx, idx + 1)} disabled={idx === images.length - 1} className="h-8 w-8 rounded-full border text-xs font-semibold disabled:opacity-40">?</button>
-                <button type="button" onClick={() => onDelete(img)} className="h-8 w-8 rounded-full border text-xs font-semibold text-red-600">?</button>
+                <button
+                  type="button"
+                  onClick={() => onMove(idx, idx - 1)}
+                  disabled={idx === 0}
+                  aria-label="Mută în sus"
+                  className="h-8 w-8 rounded-full border text-xs font-semibold disabled:opacity-40 flex items-center justify-center"
+                >
+                  <ArrowUp size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onMove(idx, idx + 1)}
+                  disabled={idx === images.length - 1}
+                  aria-label="Mută în jos"
+                  className="h-8 w-8 rounded-full border text-xs font-semibold disabled:opacity-40 flex items-center justify-center"
+                >
+                  <ArrowDown size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDelete(img)}
+                  aria-label="Șterge imaginea"
+                  className="h-8 w-8 rounded-full border text-xs font-semibold text-red-600 flex items-center justify-center"
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
             </div>
           </div>

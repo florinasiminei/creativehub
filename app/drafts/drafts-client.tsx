@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import DraftActions from "@/components/DraftActions";
 import type { Cazare } from "@/lib/utils";
 
@@ -24,11 +24,18 @@ function moveItem<T>(items: T[], fromIndex: number, toIndex: number) {
 
 export default function DraftsClient({ listings }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [ordered, setOrdered] = useState(listings);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [showUpdatedNotice, setShowUpdatedNotice] = useState(false);
+
+  useEffect(() => {
+    const updated = searchParams.get("updated") === "1";
+    setShowUpdatedNotice(updated);
+  }, [searchParams]);
 
   useEffect(() => {
     setOrdered(listings);
@@ -108,15 +115,15 @@ export default function DraftsClient({ listings }: Props) {
     <div className="px-4 sm:px-6 lg:px-8 py-8 max-w-[120rem] mx-auto">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
         <div>
-          <p className="text-sm uppercase tracking-[0.2em] text-emerald-700 font-semibold">Administrare cazari</p>
-          <h1 className="text-3xl font-semibold mt-2">Toate listarile (draft + publicate)</h1>
-          <p className="text-sm text-gray-600 mt-1">Editeaza, publica sau sterge orice intrare direct din acest panou.</p>
+          <p className="text-sm uppercase tracking-[0.2em] text-emerald-700 font-semibold">Administrare cazări</p>
+          <h1 className="text-3xl font-semibold mt-2">Toate listările (draft + publicate)</h1>
+          <p className="text-sm text-gray-600 mt-1">Editează, publică sau șterge orice intrare direct din acest panou.</p>
         </div>
         <div className="text-sm text-gray-700 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100">Total: {ordered.length}</div>
       </div>
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
-        <p className="text-sm text-gray-600">Trage si lasa cardurile pentru reordonare. Salveaza cand ai terminat.</p>
+        <p className="text-sm text-gray-600">Trage și lasă cardurile pentru reordonare. Salvează când ai terminat.</p>
         <div className="flex items-center gap-2">
           {statusMessage && <span className="text-xs text-gray-500">{statusMessage}</span>}
           <button
@@ -124,24 +131,38 @@ export default function DraftsClient({ listings }: Props) {
             className="px-3 py-2 text-sm rounded-lg border border-gray-200 text-gray-700 disabled:opacity-60"
             disabled={saving || !isDirty}
           >
-            Reseteaza ordinea
+            Resetează ordinea
           </button>
           <button
             onClick={saveOrder}
             className="px-3 py-2 text-sm rounded-lg bg-emerald-600 text-white disabled:opacity-60"
             disabled={saving || !isDirty}
           >
-            {saving ? "Se salveaza..." : "Salveaza ordinea"}
+            {saving ? "Se salvează..." : "Salvează ordinea"}
           </button>
         </div>
       </div>
 
-      {ordered.length === 0 && <div className="text-sm text-gray-700">Nu exista listari.</div>}
+      {ordered.length === 0 && <div className="text-sm text-gray-700">Nu există listări.</div>}
+      {showUpdatedNotice && (
+        <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 flex items-center justify-between">
+          <span>Modificările au fost salvate cu succes.</span>
+          <button
+            type="button"
+            onClick={() => setShowUpdatedNotice(false)}
+            className="text-emerald-700 hover:text-emerald-900"
+            aria-label="Închide"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 sm:gap-5">
         {ordered.map((d) => {
           const isDragging = dragId === d.id;
           const isOver = overId === d.id && dragId !== d.id;
+          const detailsHref = `/edit-property/${d.id}`;
           return (
             <div
               key={d.id}
@@ -154,6 +175,11 @@ export default function DraftsClient({ listings }: Props) {
                 }
                 event.dataTransfer.effectAllowed = "move";
                 setDragId(d.id);
+              }}
+              onClick={(event) => {
+                const target = event.target as HTMLElement;
+                if (dragId || target.closest("button") || target.closest("a")) return;
+                router.push(detailsHref);
               }}
               onDragEnd={() => {
                 setDragId(null);

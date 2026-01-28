@@ -6,6 +6,7 @@ type ImageDropzoneProps = {
   helper: string;
   accept: string;
   isActive: boolean;
+  isInvalid?: boolean;
   onActiveChange: (active: boolean) => void;
   onFilesSelected: (files: File[]) => void;
 };
@@ -16,14 +17,18 @@ export default function ImageDropzone({
   helper,
   accept,
   isActive,
+  isInvalid = false,
   onActiveChange,
   onFilesSelected,
 }: ImageDropzoneProps) {
+  const stateClass = isInvalid
+    ? 'border-red-400 bg-red-50'
+    : isActive
+      ? 'border-emerald-400 bg-emerald-50'
+      : 'border-emerald-200 bg-emerald-50/40 hover:border-emerald-400';
   return (
     <label
-      className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-6 text-center cursor-pointer transition ${
-        isActive ? 'border-emerald-400 bg-emerald-50' : 'border-emerald-200 bg-emerald-50/40 hover:border-emerald-400'
-      }`}
+      className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-6 text-center cursor-pointer transition ${stateClass}`}
       onDragOver={(e) => {
         e.preventDefault();
         onActiveChange(true);
