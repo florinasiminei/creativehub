@@ -111,7 +111,8 @@ export default function LocationPicker({ onLocationSelect, initialCounty, initia
 
   useEffect(() => {
     if (mapRef.current) {
-      mapRef.current.setOptions({ styles: isDarkMode ? DARK_MAP_STYLE : [] });
+      mapRef.current.setMapTypeId(isDarkMode ? 'roadmap' : 'roadmap');
+      mapRef.current.set('styles', isDarkMode ? DARK_MAP_STYLE : []);
     }
   }, [isDarkMode]);
 
@@ -515,6 +516,11 @@ export default function LocationPicker({ onLocationSelect, initialCounty, initia
     </div>
   );
 }
+
+
+
+
+
 
 
 

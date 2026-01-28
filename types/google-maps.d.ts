@@ -65,6 +65,8 @@ declare namespace google {
       setCenter(latlng: LatLng | LatLngLiteral): void;
       setZoom(zoom: number): void;
       fitBounds(bounds: LatLngBounds): void;
+      setMapTypeId(mapTypeId: string): void;
+      set(key: string, value: any): void;
       addListener(eventName: string, handler: Function): void;
       controls: ControlPosition[];
     }
