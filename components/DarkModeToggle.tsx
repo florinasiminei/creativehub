@@ -12,7 +12,7 @@ export default function DarkModeToggle() {
 
   if (!mounted) return <div className="w-6 h-6" />; // Prevent hydration mismatch
 
-  const currentTheme = (theme === "system" ? systemTheme : theme) ?? "light";
+  const currentTheme = (theme === "system" ? systemTheme : theme) || "light";
 
   return (
     <button

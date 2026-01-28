@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useState, type SetStateAction } from "react";
 import Fuse from "fuse.js";
 import { TopSearchBar } from "@/components/TopSearchBar";
-import ListingsGrid from "@/components/ListingGrid";
+import ListingsGrid from "@/components/listing/ListingGrid";
 import LoadingLogo from "@/components/LoadingLogo";
 import Pagination from "@/components/Pagination";
 import { useFuzzyCazari } from "@/hooks/useFuzzyCazari";
@@ -92,20 +92,35 @@ export default function Home() {
         setLoading(true);
         setError(null);
 
-        const { data, error } = await supabase
-          .from("listings")
-          .select(
-            `
-            id, title, slug, type, location, capacity, price, phone, is_published,
+        const baseSelect = `
+            id, title, slug, type, location, capacity, price, phone, is_published, display_order,
             listing_images(image_url, display_order),
             listing_facilities(
               facilities(id, name)
             )
-          `
-          )
+          `;
+
+        const withOrder = await supabase
+          .from("listings")
+          .select(baseSelect)
           .eq("is_published", true)
+          .order("display_order", { ascending: true, nullsFirst: false })
           .order("display_order", { foreignTable: "listing_images", ascending: true })
           .limit(1, { foreignTable: "listing_images" });
+
+        let data = withOrder.data;
+        let error = withOrder.error;
+
+        if (error && String(error.message || "").includes("display_order")) {
+          const fallback = await supabase
+            .from("listings")
+            .select(baseSelect)
+            .eq("is_published", true)
+            .order("display_order", { foreignTable: "listing_images", ascending: true })
+            .limit(1, { foreignTable: "listing_images" });
+          data = fallback.data;
+          error = fallback.error;
+        }
 
         if (error) throw error;
 
@@ -306,8 +321,8 @@ export default function Home() {
 
       cazare.facilities.forEach((facilityId, index) => {
         const name =
-          facilityNameMap.get(facilityId) ??
-          cazare.facilitiesNames?.[index] ??
+          facilityNameMap.get(facilityId) ||
+          cazare.facilitiesNames?.[index] ||
           facilityId;
         const normalizedId = facilityId || name;
         if (!normalizedId || !name) return;
@@ -548,7 +563,7 @@ export default function Home() {
   }
 
   filters.facilities.forEach((fid) => {
-    const name = facilityNameMap.get(fid) ?? "Facilitate";
+    const name = facilityNameMap.get(fid) || "Facilitate";
     activeFilterChips.push({
       key: `facility-${fid}`,
       label: `Facilitate: ${name}`,

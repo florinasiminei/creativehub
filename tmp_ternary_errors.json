@@ -1,0 +1,262 @@
+[
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\app\\page.tsx",
+    "line": 326,
+    "snippet": "facilityId;"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\app\\add-property\\page.tsx",
+    "line": 157,
+    "snippet": "router.push(`/confirm?action=created&id=${listingId}&status=draft`);"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\app\\add-property\\page.tsx",
+    "line": 165,
+    "snippet": "setMessage(err?.message || 'A apărut o eroare');"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\app\\api\\listing-create\\route.ts",
+    "line": 39,
+    "snippet": "const lastOrder = orderRows?.[0]?.display_order;"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\app\\api\\listing-get\\route.ts",
+    "line": 19,
+    "snippet": "const listingId = data?.id;"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\app\\api\\listing-images\\delete\\route.ts",
+    "line": 9,
+    "snippet": "const id = payload?.id;"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\app\\api\\listing-upload\\route.ts",
+    "line": 32,
+    "snippet": "const url = (publicData as any)?.publicUrl || (publicData as any)?.public_url || '';"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\app\\api\\listing-upload\\route.ts",
+    "line": 38,
+    "snippet": "console.warn('Could not insert listing_images', imgErr?.message);"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\app\\cazare\\[slug]\\page.tsx",
+    "line": 36,
+    "snippet": "const sanitizedPhone = data?.phone ? data.phone.replace(/[^\\d+]/g, \"\") : \"\";"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\app\\cazare\\[slug]\\page.tsx",
+    "line": 37,
+    "snippet": "const telHref = sanitizedPhone || data?.phone?.trim() || \"\";"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\app\\cazare\\[slug]\\page.tsx",
+    "line": 41,
+    "snippet": ")}`;"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\app\\cazare\\[slug]\\page.tsx",
+    "line": 70,
+    "snippet": "if (!resp.ok) throw new Error(body?.error || \"Eroare la încărcare\");"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\app\\cazare\\[slug]\\page.tsx",
+    "line": 72,
+    "snippet": "listingImages = (body.images || []).map((i: any) => ({ image_url: i.image_url, display_order: i.display_order ? 0 }));"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\app\\cazare\\[slug]\\page.tsx",
+    "line": 89,
+    "snippet": ": parseInt(String(priceRaw ? \"0\").replace(/\\D/g, \"\")) || 0;"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\app\\cazare\\[slug]\\page.tsx",
+    "line": 94,
+    "snippet": ": parseInt(String(capacityRaw ? \"\").match(/\\d+/)?.[0] ? \"1\");"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\app\\cazare\\[slug]\\page.tsx",
+    "line": 141,
+    "snippet": ".split(/\\r?\\n|[;,]+/)"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\app\\cazare\\[slug]\\page.tsx",
+    "line": 172,
+    "snippet": "const message = e?.message || (typeof e === \"string\" ? e : \"A apărut o eroare\");"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\app\\confirm\\confirm-client.tsx",
+    "line": 52,
+    "snippet": ");"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\app\\descoperaCABN\\page.tsx",
+    "line": 28,
+    "snippet": "const rawWhatsApp = process.env.NEXT_PUBLIC_WHATSAPP_PHONE ? \"\";"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\app\\drafts\\drafts-client.tsx",
+    "line": 76,
+    "snippet": "if (!resp.ok) throw new Error(body?.error || \"Nu am putut salva ordinea.\");"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\app\\drafts\\drafts-client.tsx",
+    "line": 97,
+    "snippet": "if (!resp.ok) throw new Error(body?.error || \"Nu am putut reseta ordinea.\");"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\app\\drafts\\page.tsx",
+    "line": 25,
+    "snippet": "const statusField = (row as any).status?.toString().toLowerCase();"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\app\\edit-property\\[id]\\page.tsx",
+    "line": 200,
+    "snippet": "};"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\app\\edit-property\\[id]\\page.tsx",
+    "line": 210,
+    "snippet": "router.push(`/confirm?action=updated&id=${id}&status=draft`);"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\components\\DraftActions.tsx",
+    "line": 75,
+    "snippet": ");"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\components\\LocationPicker.tsx",
+    "line": 28,
+    "snippet": "const hasGoogle = () => typeof window !== 'undefined' && !!(window as any).google?.maps;"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\components\\LocationPicker.tsx",
+    "line": 46,
+    "snippet": "script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`;"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\components\\SearchModal.tsx",
+    "line": 149,
+    "snippet": "entries.push(facility);"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\components\\TopSearchBar.tsx",
+    "line": 214,
+    "snippet": ".filter((group) => group.items.length > 0);"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\components\\TopSearchBar.tsx",
+    "line": 279,
+    "snippet": "suggestionIndexMap.get(suggestie.id) ? -1;"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\components\\TopSearchBar.tsx",
+    "line": 285,
+    "snippet": ": null;"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\components\\WhatsAppButton.tsx",
+    "line": 10,
+    "snippet": "const href = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\components\\forms\\ExistingImagesGrid.tsx",
+    "line": 65,
+    "snippet": ");"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\components\\forms\\ImageUploader.tsx",
+    "line": 104,
+    "snippet": ");"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\components\\forms\\SelectedImagesGrid.tsx",
+    "line": 67,
+    "snippet": ");"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\components\\listing\\ImageGallery.tsx",
+    "line": 33,
+    "snippet": "const safeImages = images?.length ? images : [\"/fallback.svg\"];"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\components\\listing\\ImageGallery.tsx",
+    "line": 58,
+    "snippet": "galleryRef.current.slideToIndex(startIndex, false);"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\hooks\\useImageSelection.ts",
+    "line": 30,
+    "snippet": "onLimit?.(`Poti incarca maximum ${maxFiles} imagini.`);"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\hooks\\useImageUploads.ts",
+    "line": 22,
+    "snippet": "onError?.(err?.message || 'Eroare la incarcarea imaginilor');"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\lib\\facilityIcons.tsx",
+    "line": 54,
+    "snippet": "return match?.icon ? <Users size={20} />;"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\lib\\transformers.ts",
+    "line": 9,
+    "snippet": "const digits = value.match(/[\\d.,]+/g)?.join(\"\") || \"\";"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\lib\\transformers.ts",
+    "line": 10,
+    "snippet": "const normalized = digits.replace(/[.,](?=\\d{3}\\b)/g, \"\");"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\lib\\transformers.ts",
+    "line": 21,
+    "snippet": "const facility = entry?.facilities;"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\lib\\transformers.ts",
+    "line": 23,
+    "snippet": "ids.push(facility.id);"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\lib\\transformers.ts",
+    "line": 34,
+    "snippet": ": \"\";"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\lib\\transformers.ts",
+    "line": 45,
+    "snippet": ");"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\lib\\transformers.ts",
+    "line": 53,
+    "snippet": ");"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\lib\\transformers.ts",
+    "line": 61,
+    "snippet": ");"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\lib\\api\\listings.ts",
+    "line": 8,
+    "snippet": "if (!resp.ok) throw new Error(body?.error || 'Eroare la creare anunț');"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\lib\\api\\listings.ts",
+    "line": 19,
+    "snippet": "if (!resp.ok) throw new Error(body?.error || 'Eroare la actualizare');"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\lib\\api\\listings.ts",
+    "line": 31,
+    "snippet": "if (!resp.ok) throw new Error(body?.error || 'Eroare la încărcarea imaginilor');"
+  },
+  {
+    "file": "c:\\Users\\Florin\\Desktop\\Website marketing company FLO SI ALE\\my-website\\lib\\validation\\listing.ts",
+    "line": 9,
+    "snippet": "const valid = /^\\+?[0-9\\-()]{6,20}$/.test(clean);"
+  }
+]

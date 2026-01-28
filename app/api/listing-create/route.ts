@@ -6,7 +6,7 @@ export async function POST(req: Request) {
     const supabaseAdmin = getSupabaseAdmin();
 
     const body = await req.json();
-    const { title, slug, location, address, price, capacity, phone, type, description, facilities } = body;
+    const { title, slug, location, address, price, capacity, phone, type, description, facilities, latitude, longitude, search_radius } = body;
 
     if (!title || !location) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -22,8 +22,27 @@ export async function POST(req: Request) {
       phone: phone || null,
       type: type || 'cabana',
       description: description || null,
+      latitude: latitude || null,
+      longitude: longitude || null,
+      search_radius: search_radius || 5,
       is_published: false,
     };
+
+    // Try to assign a display_order when the column exists.
+    try {
+      const { data: orderRows, error: orderErr } = await supabaseAdmin
+        .from('listings')
+        .select('display_order')
+        .order('display_order', { ascending: false, nullsFirst: false })
+        .limit(1);
+      if (!orderErr) {
+        const lastOrder = orderRows?.[0]?.display_order;
+        const nextOrder = typeof lastOrder === 'number' ? lastOrder + 1 : 0;
+        payload.display_order = nextOrder;
+      }
+    } catch {
+      // ignore if column does not exist yet
+    }
 
     const { data, error } = await supabaseAdmin.from('listings').insert(payload).select('id').single();
     if (error) {

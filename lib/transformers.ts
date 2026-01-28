@@ -1,12 +1,12 @@
 import { slugify, type Cazare } from "./utils";
-import type { FacilityOption, ListingRaw } from "./types";
+import type { ListingRaw } from "./types";
 
-export function safeNumber(value: unknown, fallback: number) {
+function safeNumber(value: unknown, fallback: number) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string") {
     const parsed = Number(value);
     if (Number.isFinite(parsed)) return parsed;
-    const digits = value.match(/[\d.,]+/g)?.join("") ?? "";
+    const digits = value.match(/[\d.,]+/g)?.join("") || "";
     const normalized = digits.replace(/[.,](?=\d{3}\b)/g, "");
     const numeric = Number(normalized.replace(",", "."));
     if (Number.isFinite(numeric)) return numeric;
@@ -14,27 +14,17 @@ export function safeNumber(value: unknown, fallback: number) {
   return fallback;
 }
 
-export function extractFacilities(
-  listingFacilities: ListingRaw["listing_facilities"]
-): {
-  ids: string[];
-  names: string[];
-  options: FacilityOption[];
-} {
+function extractFacilities(listingFacilities: ListingRaw["listing_facilities"]) {
   const ids: string[] = [];
   const names: string[] = [];
-  const options: FacilityOption[] = [];
-
-  for (const entry of listingFacilities ?? []) {
+  for (const entry of listingFacilities || []) {
     const facility = entry?.facilities;
     if (facility?.id && facility?.name) {
       ids.push(facility.id);
       names.push(facility.name);
-      options.push({ id: facility.id, name: facility.name });
     }
   }
-
-  return { ids, names, options };
+  return { ids, names };
 }
 
 export function mapListingSummary(row: ListingRaw, fallbackImage = "/fallback.svg"): Cazare {

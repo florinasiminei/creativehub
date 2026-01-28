@@ -1,41 +1,76 @@
 "use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 type Props = {
   id: string;
   isPublished: boolean;
   slug?: string;
+  onStatusChange?: (newStatus: "publicat" | "draft") => void;
 };
 
-export default function DraftActions({ id, isPublished, slug }: Props) {
+export default function DraftActions({ id, isPublished, slug, onStatusChange }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const togglePublish = async () => {
     setLoading(true);
-    await fetch('/api/listing-update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, is_published: !isPublished }) });
-    setLoading(false);
-    router.refresh();
+    try {
+      const response = await fetch("/api/listing-update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, is_published: !isPublished }),
+      });
+      if (response.ok && onStatusChange) {
+        onStatusChange(!isPublished ? "publicat" : "draft");
+      } else {
+        router.refresh();
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const remove = async () => {
-    if (!confirm('Sigur vrei să ștergi această cazare?')) return;
+    if (!confirm("Sigur vrei sa stergi aceasta cazare?")) return;
     setLoading(true);
-    await fetch('/api/listing-delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
-    setLoading(false);
-    router.refresh();
+    try {
+      await fetch("/api/listing-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      router.refresh();
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="flex items-center gap-2 mt-3 flex-wrap">
-      <a href={`/edit-property/${id}`} className="px-3 py-1 bg-gray-100 rounded">Editează</a>
-      <button onClick={togglePublish} className="px-3 py-1 bg-blue-600 text-white rounded disabled:opacity-60" disabled={loading}>
-        {isPublished ? 'Retrage (draft)' : 'Publică'}
+      <a href={`/edit-property/${id}`} className="px-3 py-1 bg-gray-100 rounded">
+        Editeaza
+      </a>
+      <button
+        onClick={togglePublish}
+        className="px-3 py-1 bg-blue-600 text-white rounded disabled:opacity-60"
+        disabled={loading}
+      >
+        {isPublished ? "Retrage (draft)" : "Publica"}
       </button>
-      <button onClick={remove} className="px-3 py-1 bg-red-100 text-red-700 rounded disabled:opacity-60" disabled={loading}>Șterge</button>
-      {slug && <a href={`/cazare/${slug}?preview=1&id=${id}`} className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded">Vezi</a>}
+      <button
+        onClick={remove}
+        className="px-3 py-1 bg-red-100 text-red-700 rounded disabled:opacity-60"
+        disabled={loading}
+      >
+        Sterge
+      </button>
+      {slug && (
+        <a href={`/cazare/${slug}?preview=1&id=${id}`} className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded">
+          Vezi
+        </a>
+      )}
     </div>
   );
 }

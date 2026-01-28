@@ -47,11 +47,11 @@ const sections = [
       },
       {
         subtitle: "Restrictionare si opozitie",
-        text: "Poti cere limitarea prelucrarii sau te poti opune anumitor activitati de prelucrare, inclusiv celor de marketing direct.",
+        text: "Poți cere limitarea prelucrării sau te poți opune anumitor activități de prelucrare, inclusiv celor de marketing direct.",
       },
       {
         subtitle: "Portabilitate si stergere",
-        text: "Poti solicita transferul datelor catre un alt furnizor sau stergerea lor, in limitele prevazute de lege.",
+        text: "Poți solicita transferul datelor către un alt furnizor sau ștergerea lor, în limitele prevăzute de lege.",
       },
     ],
   },
@@ -68,7 +68,7 @@ const sections = [
   {
     title: "Contact",
     content:
-      "Pentru solicitari legate de protectia datelor personale ne poti scrie la privacy@cabn.ro sau ne poti contacta prin formularul de pe site.",
+      "Pentru solicitări legate de protecția datelor personale ne poți scrie la privacy@cabn.ro sau ne poți contacta prin formularul de pe site.",
   },
 ];
 

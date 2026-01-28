@@ -280,7 +280,7 @@ const TopSearchBar = ({
                         const isActive = globalIndex === sugestieIndex;
                         const facilityIcon =
                           suggestie.type === "facilitate"
-                            ? facilityIconMap.get(suggestie.facilityId ?? "") ??
+                            ? facilityIconMap.get(suggestie.facilityId || "") ||
                               resolveFacilityIcon(suggestie.label)
                             : null;
                         return (

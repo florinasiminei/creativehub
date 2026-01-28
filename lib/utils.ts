@@ -9,13 +9,6 @@ export function slugify(text: string) {
     .replace(/^-+|-+$/g, "");
 }
 
-export function normalize(str: string) {
-  return str
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-}
-
 export function classNames(...cls: (string | false | null | undefined)[]) {
   return cls.filter(Boolean).join(" ");
 }

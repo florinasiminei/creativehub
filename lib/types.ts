@@ -35,12 +35,6 @@ export type WhatsAppButtonProps = {
   message?: string;
 };
 
-export type PageProps = { 
-  params: { 
-    slug: string 
-  } 
-};
-
 export type FacilityOption = {
   id: string;
   name: string;
@@ -62,6 +56,10 @@ export type ListingRaw = {
   bai?: number | string | null;
   description?: string | null;
   highlights?: string[] | null;
+  display_order?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  search_radius?: number | null;
   listing_images?: {
     image_url: string | null;
     display_order: number | null;

@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Cazare } from "../lib/utils";
+import { Cazare } from "@/lib/utils";
 
 export default function CazareCard({ cazare }: { cazare: Cazare }) {
   return (

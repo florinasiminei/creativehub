@@ -1,10 +1,10 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import LoadingLogo from "@/components/LoadingLogo";
-import PropertyImageGrid from "@/components/PropertyImageGrid";
+import PropertyImageGrid from "@/components/listing/PropertyImageGrid";
 import { resolveFacilityIcon } from "@/lib/facilityIcons";
-import { MapPin, Users} from "lucide-react";
+import { MapPin, Users } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
 type Facility = { id: string; name: string };
@@ -24,8 +24,8 @@ type Listing = {
 
 type PageProps = { params: { slug: string } };
 
-// Nota: Ã®n Next 15 tipul exact al `params` poate fi promis Ã®n some APIs,
-// aici folosim tip simplu pentru compatibilitate Ã®n componentÄƒ client.
+// Note: in Next 15 the exact type of `params` can be a promise in some APIs,
+// here we use a simple type for client component compatibility.
 export default function Page({ params }: PageProps) {
   const { slug } = params;
   const searchParams = useSearchParams();
@@ -37,7 +37,7 @@ export default function Page({ params }: PageProps) {
   const telHref = sanitizedPhone || data?.phone?.trim() || "";
   const whatsappNumber = (sanitizedPhone || fallbackWhatsappNumber).replace(/\D/g, "");
   const whatsappHref = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-    data ? `Bun\u0103! Sunt interesat de ${data.title}.` : "Bun\u0103! Sunt interesat de proprietate."
+    data ? `Buna! Sunt interesat de ${data.title}.` : "Buna! Sunt interesat de proprietate."
   )}`;
 
   useEffect(() => {
@@ -61,22 +61,25 @@ export default function Page({ params }: PageProps) {
         let listingImages: Array<{ image_url: string; display_order: number }> = [];
         let facilitiesRows: Array<{ facilities?: { id: string; name: string } | null }> = [];
 
-        const resp = await fetch('/api/listing-get', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const resp = await fetch("/api/listing-get", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: idParam || null, slug, requirePublished: !previewMode }),
         });
         const body = await resp.json();
-        if (!resp.ok) throw new Error(body?.error || 'Eroare la încărcare');
+        if (!resp.ok) throw new Error(body?.error || "Eroare la încărcare");
         listing = body.listing;
-        listingImages = (body.images || []).map((i: any) => ({ image_url: i.image_url, display_order: i.display_order ?? 0 }));
+        listingImages = (body.images || []).map((i: any) => ({
+          image_url: i.image_url,
+          display_order: i.display_order ?? 0,
+        }));
         facilitiesRows = body.facilitiesDetailed || [];
 
         if (!listing) {
           throw new Error(
             previewMode
-              ? 'Proprietatea nu a fost găsită. Verifică linkul de previzualizare.'
-              : 'Proprietatea nu a fost găsită sau nu este publicată în modul public'
+              ? "Proprietatea nu a fost gasita. Verifica linkul de previzualizare."
+              : "Proprietatea nu a fost gasita sau nu este publicata in modul public"
           );
         }
 
@@ -91,19 +94,17 @@ export default function Page({ params }: PageProps) {
         const capacity =
           typeof capacityRaw === "number"
             ? capacityRaw
-            : parseInt(String(capacityRaw ?? "").match(/\d+/)?.[0] ?? "1");
+            : parseInt(String(capacityRaw ?? "").match(/\d+/)?.[0] ?? "1", 10);
 
         const facilities = facilitiesRows
-          .map((f) =>
-            f?.facilities ? { id: f.facilities.id, name: f.facilities.name } : null
-          )
+          .map((f) => (f?.facilities ? { id: f.facilities.id, name: f.facilities.name } : null))
           .filter(Boolean) as Facility[];
 
         const imagesUrls = listingImages
           .map((i) => i.image_url)
-          .filter((url): url is string => typeof url === 'string' && url.length > 0);
-        
-        let displayImages: string[] = imagesUrls.length > 0 ? imagesUrls : ["/fallback.svg"];
+          .filter((url): url is string => typeof url === "string" && url.length > 0);
+
+        const displayImages = imagesUrls.length > 0 ? imagesUrls : ["/fallback.svg"];
 
         if (cancelled) return;
 
@@ -122,7 +123,10 @@ export default function Page({ params }: PageProps) {
             .map((item) => item.trim());
         } else if (typeof highlightsRaw === "string" && highlightsRaw.trim().length > 0) {
           const rawString = highlightsRaw.trim();
-          if ((rawString.startsWith("[") && rawString.endsWith("]")) || (rawString.startsWith("{") && rawString.endsWith("}"))) {
+          if (
+            (rawString.startsWith("[") && rawString.endsWith("]")) ||
+            (rawString.startsWith("{") && rawString.endsWith("}"))
+          ) {
             try {
               const parsed = JSON.parse(rawString);
               if (Array.isArray(parsed)) {
@@ -168,7 +172,7 @@ Interiorul este amenajat cu gust, oferind spatii generoase si luminoase. Fiecare
           highlights: highlightsFromDb.length > 0 ? highlightsFromDb : highlightsFallback,
         });
       } catch (e: any) {
-        const message = e?.message || (typeof e === "string" ? e : "A apÄƒrut o eroare");
+        const message = e?.message || (typeof e === "string" ? e : "A apărut o eroare");
         if (!cancelled) setError(String(message));
       } finally {
         if (!cancelled) setLoading(false);
@@ -179,7 +183,7 @@ Interiorul este amenajat cu gust, oferind spatii generoase si luminoase. Fiecare
     return () => {
       cancelled = true;
     };
-  }, [slug]); // Folosim slug-ul validat
+  }, [slug, searchParams]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-transparent text-black dark:text-white">
@@ -193,11 +197,9 @@ Interiorul este amenajat cu gust, oferind spatii generoase si luminoase. Fiecare
         {error && (
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 mb-6">
             <div className="flex items-center">
-              <div className="text-red-600 dark:text-red-400 text-xl mr-3">âš ï¸</div>
+              <div className="text-red-600 dark:text-red-400 text-xl mr-3">!</div>
               <div>
-                <h3 className="text-red-800 dark:text-red-200 font-semibold">
-                  Eroare la Ã®ncÄƒrcare
-                </h3>
+                <h3 className="text-red-800 dark:text-red-200 font-semibold">Eroare la încărcare</h3>
                 <p className="text-red-700 dark:text-red-300 mt-1">{error}</p>
               </div>
             </div>
@@ -210,18 +212,22 @@ Interiorul este amenajat cu gust, oferind spatii generoase si luminoase. Fiecare
               <h1 className="text-4xl font-extrabold mb-2 tracking-tight">{data.title}</h1>
 
               <div className="text-gray-600 dark:text-gray-400 mb-6 flex flex-wrap items-center gap-x-4 gap-y-1 text-base">
-                <span className="flex items-center gap-1.5"> <MapPin size={16} /> {data.location}</span>
-                <span>·</span>
+                <span className="flex items-center gap-1.5">
+                  <MapPin size={16} /> {data.location}
+                </span>
+                <span>|</span>
                 <span>{data.type}</span>
-                <span>·</span>
-                <span className="flex items-center gap-1.5"><Users size={16} /> {data.capacity} persoane</span>
+                <span>|</span>
+                <span className="flex items-center gap-1.5">
+                  <Users size={16} /> {data.capacity} persoane
+                </span>
               </div>
 
               <div className="mb-8">
-                <PropertyImageGrid 
-                  images={data.images} 
+                <PropertyImageGrid
+                  images={data.images}
                   title={data.title}
-                  className="w-full border border-gray-200 dark:border-zinc-800" 
+                  className="w-full border border-gray-200 dark:border-zinc-800"
                 />
               </div>
             </div>
@@ -234,20 +240,6 @@ Interiorul este amenajat cu gust, oferind spatii generoase si luminoase. Fiecare
                     {data.description}
                   </p>
                 </div>
-
-                {data.highlights.length > 0 && (
-                  <div>
-                    <h2 className="text-2xl font-bold mb-4 border-b pb-2">Ce ne place la această locație</h2>
-                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
-                      {data.highlights.map((highlight, i) => (
-                        <li key={i} className="flex items-center gap-3">
-                          <span className="text-emerald-500">•</span>
-                          <span className="text-gray-800 dark:text-gray-200">{highlight}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
 
                 {data.facilities.length > 0 && (
                   <div>
@@ -346,8 +338,3 @@ Interiorul este amenajat cu gust, oferind spatii generoase si luminoase. Fiecare
     </div>
   );
 }
-
-
-
-
-

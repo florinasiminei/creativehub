@@ -10,14 +10,44 @@ import "slick-carousel/slick/slick-theme.css";
 
 const inter = Inter({ variable: "--font-geist-sans", subsets: ["latin"], display: "swap" });
 const jetbrainsMono = JetBrains_Mono({ variable: "--font-geist-mono", subsets: ["latin"], display: "swap" });
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cabn.ro";
 
 export const metadata: Metadata = {
-  title: "cabn.ro - Cazare in natura",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "cabn.ro - Cazare in natura",
+    template: "%s | cabn.ro",
+  },
   description: "Cazari inedite si autentice pentru escapade naturale.",
+  alternates: {
+    canonical: "/",
+  },
   verification: {
     other: {
       "facebook-domain-verification": "hcd2j15izye7czt4zwxbqwfiuqiydw",
     },
+  },
+  openGraph: {
+    type: "website",
+    locale: "ro_RO",
+    url: siteUrl,
+    siteName: "cabn.ro",
+    title: "cabn.ro - Cazare in natura",
+    description: "Cazari inedite si autentice pentru escapade naturale.",
+    images: [
+      {
+        url: "/images/logo.svg",
+        width: 1200,
+        height: 630,
+        alt: "cabn.ro",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "cabn.ro - Cazare in natura",
+    description: "Cazari inedite si autentice pentru escapade naturale.",
+    images: ["/images/logo.svg"],
   },
   icons: {
     icon: "/images/favicon.svg",
