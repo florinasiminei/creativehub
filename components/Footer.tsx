@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FaFacebookF, FaInstagram, FaTiktok, FaYoutube } from "react-icons/fa";
+import { FaFacebookF, FaInstagram, FaTiktok, FaWhatsapp } from "react-icons/fa";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export default function Footer() {
@@ -11,6 +11,12 @@ export default function Footer() {
         </p>
 
         <div className="mb-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-zinc-600 dark:text-zinc-300">
+          <Link
+            href="/contact"
+            className="hover:text-emerald-500 transition dark:hover:text-emerald-300"
+          >
+            Contact
+          </Link>
           <Link
             href="/politica-confidentialitate"
             className="hover:text-emerald-500 transition dark:hover:text-emerald-300"
@@ -27,7 +33,7 @@ export default function Footer() {
 
         <div className="flex justify-center gap-6 text-xl">
           <a
-            href="https://facebook.com"
+            href="https://www.facebook.com/cabn.ro"
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-emerald-400 transition"
@@ -36,7 +42,7 @@ export default function Footer() {
             <FaFacebookF />
           </a>
           <a
-            href="https://instagram.com"
+            href="https://www.instagram.com/cabn.ro/"
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-emerald-400 transition"
@@ -45,7 +51,7 @@ export default function Footer() {
             <FaInstagram />
           </a>
           <a
-            href="https://tiktok.com"
+            href="https://www.tiktok.com/@cabn.ro"
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-emerald-400 transition"
@@ -54,13 +60,13 @@ export default function Footer() {
             <FaTiktok />
           </a>
           <a
-            href="https://youtube.com"
+            href="https://wa.me/40745298008"
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-emerald-400 transition"
-            aria-label="YouTube"
+            aria-label="WhatsApp"
           >
-            <FaYoutube />
+            <FaWhatsapp />
           </a>
         </div>
       </div>

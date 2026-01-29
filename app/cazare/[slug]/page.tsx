@@ -35,6 +35,8 @@ export default function Page({ params }: PageProps) {
   const [data, setData] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAllFacilities, setShowAllFacilities] = useState(false);
+  const [facilityLimit, setFacilityLimit] = useState(8);
   const fallbackWhatsappNumber = String(process.env.NEXT_PUBLIC_WHATSAPP_PHONE || "");
   const sanitizedPhone = data?.phone ? data.phone.replace(/[^\d+]/g, "") : "";
   const telHref = sanitizedPhone || data?.phone?.trim() || "";
@@ -100,7 +102,16 @@ export default function Page({ params }: PageProps) {
             : parseInt(String(capacityRaw ?? "").match(/\d+/)?.[0] ?? "1", 10);
 
         const facilities = facilitiesRows
-          .map((f) => (f?.facilities ? { id: f.facilities.id, name: f.facilities.name } : null))
+          .map((f: any) => {
+            if (!f) return null;
+            if (f.facilities?.id && f.facilities?.name) {
+              return { id: String(f.facilities.id), name: String(f.facilities.name) };
+            }
+            if (f.id && f.name) {
+              return { id: String(f.id), name: String(f.name) };
+            }
+            return null;
+          })
           .filter(Boolean) as Facility[];
 
         const imagesUrls = listingImages
@@ -191,6 +202,20 @@ Interiorul este amenajat cu gust, oferind spații generoase și luminoase. Fieca
     };
   }, [slug, searchParams]);
 
+  useEffect(() => {
+    const getLimit = () => {
+      if (typeof window === "undefined") return 8;
+      const width = window.innerWidth;
+      if (width >= 768) return 8; // md: 4 columns x 2 rows
+      if (width >= 640) return 6; // sm: 3 columns x 2 rows
+      return 4; // base: 2 columns x 2 rows
+    };
+    const update = () => setFacilityLimit(getLimit());
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
   return (
     <div className="min-h-screen bg-white dark:bg-transparent text-black dark:text-white">
       <main className="max-w-6xl mx-auto px-4 py-10">
@@ -247,24 +272,51 @@ Interiorul este amenajat cu gust, oferind spații generoase și luminoase. Fieca
                   </p>
                 </div>
 
-                {data.facilities.length > 0 && (
-                  <div>
-                    <h2 className="text-2xl font-bold mb-4 border-b pb-2">Facilități oferite</h2>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                      {data.facilities.map((f) => (
-                        <div
-                          key={f.id}
-                          className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800"
-                        >
-                          <div className="text-emerald-600 dark:text-emerald-400">
-                            {resolveFacilityIcon(f.name)}
+                {(() => {
+                  const visibleFacilities = showAllFacilities
+                    ? data.facilities
+                    : data.facilities.slice(0, facilityLimit);
+                  const hasMoreFacilities = data.facilities.length > facilityLimit;
+                  return (
+                    <div>
+                      <div className="flex flex-wrap items-center justify-between gap-3 mb-4 border-b pb-2">
+                        <h2 className="text-2xl font-bold">Facilitati oferite</h2>
+                      </div>
+                      {data.facilities.length === 0 ? (
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Nu sunt facilitati selectate pentru aceasta cazare.
+                        </p>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                            {visibleFacilities.map((f) => (
+                              <div
+                                key={f.id}
+                                className="flex items-center gap-2 rounded-lg border border-gray-200/80 bg-white/70 px-2.5 py-2 shadow-sm transition hover:-translate-y-[1px] hover:border-emerald-200/80 dark:border-zinc-800 dark:bg-zinc-900/60"
+                              >
+                                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300">
+                                  {resolveFacilityIcon(f.name)}
+                                </div>
+                                <span className="text-xs font-medium text-gray-900 dark:text-gray-100">
+                                  {f.name}
+                                </span>
+                              </div>
+                            ))}
                           </div>
-                          <span className="text-sm font-medium">{f.name}</span>
-                        </div>
-                      ))}
+                          {hasMoreFacilities && (
+                            <button
+                              type="button"
+                              onClick={() => setShowAllFacilities((prev) => !prev)}
+                              className="mt-3 text-xs font-semibold text-emerald-700 hover:text-emerald-900 dark:text-emerald-300"
+                            >
+                              {showAllFacilities ? "Arata mai putin" : "Arata toate"}
+                            </button>
+                          )}
+                        </>
+                      )}
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 <div>
                   <div className="flex items-center justify-between gap-3 mb-4 border-b pb-2">
@@ -288,7 +340,7 @@ Interiorul este amenajat cu gust, oferind spații generoase și luminoase. Fieca
                           <iframe
                             title="Google Maps"
                             src={mapSrc}
-                            className="absolute inset-0 h-full w-full"
+                            className="absolute inset-0 h-full w-full filter dark:invert dark:hue-rotate-180 dark:saturate-75 dark:brightness-90 dark:contrast-90"
                             loading="lazy"
                             referrerPolicy="no-referrer-when-downgrade"
                           />

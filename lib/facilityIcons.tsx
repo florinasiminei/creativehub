@@ -16,6 +16,11 @@ import {
   Wind,
   Utensils,
   SunMedium,
+  WashingMachine,
+  Fan,
+  PawPrint,
+  Coffee,
+  Sparkles,
 } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -40,12 +45,17 @@ const facilityIconMatchers: Array<{ pattern: RegExp; icon: ReactNode }> = [
   { pattern: /piscina|hot\s*tub|jacuzzi|ciubar/u, icon: <Waves size={20} /> },
   { pattern: /incalzire|caldura|radiator|heat/u, icon: <ThermometerSun size={20} /> },
   { pattern: /ventilatie|ventilator/u, icon: <Wind size={20} /> },
+  { pattern: /masina de spalat|spalat rufe|washing machine|washer/u, icon: <WashingMachine size={20} /> },
+  { pattern: /uscator|dryer|drying/u, icon: <Fan size={20} /> },
   { pattern: /semineu|fireplace|firepit|soba/u, icon: <Flame size={20} /> },
+  { pattern: /sauna|spa/u, icon: <Sparkles size={20} /> },
+  { pattern: /pet friendly|animale|animal|dog|cat/u, icon: <PawPrint size={20} /> },
+  { pattern: /mic dejun|breakfast|brunch/u, icon: <Coffee size={20} /> },
   { pattern: /dormitor|pat|bed|camera de dormit/u, icon: <Bed size={20} /> },
   { pattern: /baie|dus|toaleta|sanitar/u, icon: <Bath size={20} /> },
   { pattern: /capacitate|persoane|locuri/u, icon: <Users size={20} /> },
   { pattern: /harta|mapa|gps|localizare/u, icon: <MapPin size={20} /> },
-  { pattern: /terasa|foisor|veranda/u, icon: <SunMedium size={20} /> },
+  { pattern: /terasa|balcon|foisor|veranda/u, icon: <SunMedium size={20} /> },
 ];
 
 export const resolveFacilityIcon = (name: unknown) => {

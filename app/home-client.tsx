@@ -10,6 +10,7 @@ import LoadingLogo from "@/components/LoadingLogo";
 import Pagination from "@/components/Pagination";
 import { useFuzzyCazari } from "@/hooks/useFuzzyCazari";
 import { mapListingSummary } from "@/lib/transformers";
+import { sortFacilitiesByPriority } from "@/lib/facilitiesCatalog";
 import { Cazare } from "@/lib/utils";
 import type { FacilityOption, Filters, ListingRaw, SearchSuggestion } from "@/lib/types";
 import { supabase } from "@/lib/supabaseClient";
@@ -112,7 +113,7 @@ export default function Home() {
           .from("listings")
           .select(baseSelect)
           .eq("is_published", true)
-          .order("display_order", { ascending: true, nullsFirst: false })
+          .order("display_order", { ascending: false, nullsFirst: false })
           .order("display_order", { foreignTable: "listing_images", ascending: true })
           .limit(1, { foreignTable: "listing_images" });
 
@@ -164,7 +165,7 @@ export default function Home() {
       .from("facilities")
       .select("id, name")
       .then(({ data }) => {
-        if (mounted) setFacilitiesList(data || []);
+        if (mounted) setFacilitiesList(sortFacilitiesByPriority((data || []) as FacilityOption[]));
       });
     return () => {
       mounted = false;

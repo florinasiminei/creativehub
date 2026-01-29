@@ -9,6 +9,7 @@ import useImageSelection from '@/hooks/useImageSelection';
 import useImageUploads from '@/hooks/useImageUploads';
 import useListingForm from '@/hooks/useListingForm';
 import { deleteListingImage, reorderListingImages, updateListing } from '@/lib/api/listings';
+import { sortFacilitiesByPriority } from '@/lib/facilitiesCatalog';
 
 type FacilityOption = { id: string; name: string };
 type ListingImage = { id: string; image_url: string; alt?: string | null };
@@ -17,8 +18,12 @@ type FormData = {
   titlu: string;
   judet: string;
   localitate: string;
+  sat: string;
   pret: string;
   capacitate: string;
+  camere: string;
+  paturi: string;
+  bai: string;
   descriere: string;
   telefon: string;
   tip: string;
@@ -29,6 +34,15 @@ type LocationData = {
   longitude: number;
   county: string;
   city: string;
+};
+
+const splitAddress = (address: string) => {
+  const trimmed = address.trim();
+  const match = trimmed.match(/^(.*)\s*\((.*)\)\s*$/);
+  if (match) {
+    return { localitate: match[1].trim(), sat: match[2].trim() };
+  }
+  return { localitate: trimmed, sat: '' };
 };
 
 export default function EditPropertyPage({ params }: any) {
@@ -42,8 +56,12 @@ export default function EditPropertyPage({ params }: any) {
     titlu: '',
     judet: '',
     localitate: '',
+    sat: '',
     pret: '',
     capacitate: '2',
+    camere: '1',
+    paturi: '1',
+    bai: '1',
     descriere: '',
     telefon: '',
     tip: 'cabana',
@@ -95,12 +113,17 @@ export default function EditPropertyPage({ params }: any) {
         if (!mounted) return;
 
         if (listing) {
+          const { localitate, sat } = splitAddress(listing.address || '');
           setFormData({
             titlu: listing.title || '',
             judet: listing.location || '',
-            localitate: listing.address || '',
+            localitate,
+            sat,
             pret: listing.price?.toString() || '',
             capacitate: (listing.capacity || 1).toString(),
+            camere: (listing.camere ?? listing.rooms ?? listing.num_camere ?? listing.num_rooms ?? listing.bedrooms ?? 0).toString(),
+            paturi: (listing.paturi ?? listing.beds ?? listing.num_paturi ?? listing.num_beds ?? listing.pat ?? 0).toString(),
+            bai: (listing.bai ?? listing.bathrooms ?? listing.num_bai ?? listing.num_bathrooms ?? listing.bath ?? 0).toString(),
             descriere: listing.description || '',
             telefon: listing.phone || '',
             tip: listing.type || 'cabana',
@@ -115,11 +138,11 @@ export default function EditPropertyPage({ params }: any) {
             latitude: Number.isFinite(parsedLat) ? parsedLat : 0,
             longitude: Number.isFinite(parsedLng) ? parsedLng : 0,
             county: listing.location || '',
-            city: listing.address || '',
+            city: localitate,
           });
         }
 
-        if (facilities) setFacilitiesList(facilities as FacilityOption[]);
+        if (facilities) setFacilitiesList(sortFacilitiesByPriority(facilities as FacilityOption[]));
         if (selected) setSelectedFacilities(Array.isArray(selected) ? selected : (selected || []));
         if (imgs) setImages(imgs as ListingImage[]);
       } catch (err) {
@@ -146,9 +169,9 @@ export default function EditPropertyPage({ params }: any) {
   const { error: validationError, invalidFields, imagesInvalid } = useListingForm({
     requiredFields: [
       { key: 'titlu', value: formData.titlu, label: 'Titlu' },
-      { key: 'judet', value: formData.judet, label: 'Jude??' },
+      { key: 'judet', value: formData.judet, label: 'Jude?' },
       { key: 'localitate', value: formData.localitate, label: 'Localitate' },
-      { key: 'pret', value: formData.pret, label: 'Pre??' },
+      { key: 'pret', value: formData.pret, label: 'Pre?' },
       { key: 'capacitate', value: formData.capacitate, label: 'Capacitate' },
       { key: 'telefon', value: formData.telefon, label: 'Telefon' },
     ],
@@ -157,6 +180,11 @@ export default function EditPropertyPage({ params }: any) {
     imagesCount: images.length + files.length,
     minImages: 5,
     maxImages: 10,
+    description: formData.descriere,
+    descriptionKey: 'descriere',
+    descriptionMin: 200,
+    descriptionMax: 320,
+    enforceDescription: isClient,
   });
 
   const moveImage = (from: number, to: number) => {
@@ -212,9 +240,15 @@ export default function EditPropertyPage({ params }: any) {
         id,
         title: formData.titlu,
         location: locationData?.county || formData.judet,
-        address: locationData?.city || formData.localitate,
+        address:
+          (locationData?.city || formData.localitate)
+            ? `${locationData?.city || formData.localitate}${formData.sat ? ` (${formData.sat})` : ''}`
+            : null,
         price: Number(formData.pret) || 0,
         capacity: Number(formData.capacitate) || 1,
+        camere: Number(formData.camere) || 0,
+        paturi: Number(formData.paturi) || 0,
+        bai: Number(formData.bai) || 0,
         phone: formData.telefon,
         description: formData.descriere,
         type: formData.tip,
@@ -303,6 +337,8 @@ export default function EditPropertyPage({ params }: any) {
             await deleteListingImage(img.id);
             setImages(prev => prev.filter(it => it.id !== img.id));
           }}
+          descriptionMin={200}
+          descriptionMax={320}
         />
 
         {isClient && (

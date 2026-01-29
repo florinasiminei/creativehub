@@ -24,13 +24,41 @@ export async function POST(request: Request) {
     // also fetch related images and facilities
     const listingId = data?.id;
     const { data: images } = await supabaseAdmin.from('listing_images').select('*').eq('listing_id', listingId).order('display_order', { ascending: true });
-    const { data: facilityRows } = await supabaseAdmin.from('listing_facilities').select('facility_id, facilities(id, name)').eq('listing_id', listingId);
+    const { data: facilityRows } = await supabaseAdmin
+      .from('listing_facilities')
+      .select('facility_id, facilities(id, name)')
+      .eq('listing_id', listingId);
+
+    const facilitiesMap = new Map<string, { id: string; name: string }>();
+    const missingIds: string[] = [];
+    (facilityRows || []).forEach((row: any) => {
+      const fid = row?.facilities?.id || row?.facility_id;
+      const name = row?.facilities?.name;
+      if (!fid) return;
+      if (name) {
+        facilitiesMap.set(String(fid), { id: String(fid), name: String(name) });
+      } else {
+        missingIds.push(String(fid));
+      }
+    });
+
+    if (missingIds.length > 0) {
+      const { data: fallbackFacilities } = await supabaseAdmin
+        .from('facilities')
+        .select('id, name')
+        .in('id', Array.from(new Set(missingIds)));
+      (fallbackFacilities || []).forEach((f: any) => {
+        if (f?.id && f?.name) {
+          facilitiesMap.set(String(f.id), { id: String(f.id), name: String(f.name) });
+        }
+      });
+    }
 
     return NextResponse.json({
       listing: data,
       images: images || [],
       facilities: (facilityRows || []).map((r: any) => (r.facilities ? r.facilities.id : r.facility_id)),
-      facilitiesDetailed: (facilityRows || []).map((r: any) => r.facilities).filter(Boolean),
+      facilitiesDetailed: Array.from(facilitiesMap.values()),
     });
   } catch (err: any) {
     console.error(err);

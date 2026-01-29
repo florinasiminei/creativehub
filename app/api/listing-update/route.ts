@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     const supabaseAdmin = getSupabaseAdmin();
 
     const body = await request.json();
-    const { id, title, location, address, price, capacity, phone, description, type, facilities, is_published } = body;
+    const { id, title, location, address, price, capacity, phone, description, type, facilities, is_published, camere, paturi, bai } = body;
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
     const updateData: any = {};
@@ -36,12 +36,39 @@ export async function POST(request: Request) {
     };
     if ((body as any).lat !== undefined) updateData.lat = toNumber((body as any).lat);
     if ((body as any).lng !== undefined) updateData.lng = toNumber((body as any).lng);
+    if (camere !== undefined) updateData.camere = toNumber(camere);
+    if (paturi !== undefined) updateData.paturi = toNumber(paturi);
+    if (bai !== undefined) updateData.bai = toNumber(bai);
     if ((body as any).latitude !== undefined && updateData.lat === undefined) updateData.lat = toNumber((body as any).latitude);
     if ((body as any).longitude !== undefined && updateData.lng === undefined) updateData.lng = toNumber((body as any).longitude);
     if ((body as any).search_radius !== undefined) updateData.search_radius = (body as any).search_radius;
 
+    // If publishing and display_order is missing, assign the next counter value.
+    if (is_published === true) {
+      try {
+        const { data: currentRow, error: currentErr } = await supabaseAdmin
+          .from('listings')
+          .select('display_order')
+          .eq('id', id)
+          .single();
+        if (!currentErr && (currentRow?.display_order === null || currentRow?.display_order === undefined)) {
+          const { data: orderRows, error: orderErr } = await supabaseAdmin
+            .from('listings')
+            .select('display_order')
+            .order('display_order', { ascending: false, nullsFirst: false })
+            .limit(1);
+          if (!orderErr) {
+            const maxOrder = orderRows?.[0]?.display_order;
+            updateData.display_order = typeof maxOrder === 'number' ? maxOrder + 1 : 1;
+          }
+        }
+      } catch {
+        // ignore if column does not exist yet
+      }
+    }
+
     let { error: upErr } = await supabaseAdmin.from('listings').update(updateData).eq('id', id);
-    if (upErr && /lat|lng|latitude|longitude|search_radius/i.test(upErr.message || '')) {
+    if (upErr && /lat|lng|latitude|longitude|search_radius|camere|paturi|bai|rooms|beds|bathrooms/i.test(upErr.message || '')) {
       const fallbackUpdate = { ...updateData };
       const message = String(upErr.message || '');
       if (/search_radius/i.test(message) && !/lat|lng|latitude|longitude/i.test(message)) {
@@ -50,6 +77,11 @@ export async function POST(request: Request) {
         delete fallbackUpdate.lat;
         delete fallbackUpdate.lng;
         delete fallbackUpdate.search_radius;
+      }
+      if (/camere|paturi|bai|rooms|beds|bathrooms/i.test(message)) {
+        delete fallbackUpdate.camere;
+        delete fallbackUpdate.paturi;
+        delete fallbackUpdate.bai;
       }
       ({ error: upErr } = await supabaseAdmin.from('listings').update(fallbackUpdate).eq('id', id));
     }

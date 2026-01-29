@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       const id = ids[index];
       const { error } = await supabaseAdmin
         .from("listings")
-        .update({ display_order: index })
+        .update({ display_order: index + 1 })
         .eq("id", id);
       if (error) {
         if (String(error.message || "").includes("display_order")) {

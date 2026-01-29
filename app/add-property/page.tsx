@@ -8,6 +8,7 @@ import useImageSelection from '@/hooks/useImageSelection';
 import useImageUploads from '@/hooks/useImageUploads';
 import useListingForm from '@/hooks/useListingForm';
 import { createListing, deleteListing } from '@/lib/api/listings';
+import { sortFacilitiesByPriority } from '@/lib/facilitiesCatalog';
 
 type FacilityOption = { id: string; name: string };
 
@@ -15,8 +16,12 @@ type SimpleForm = {
   titlu: string;
   judet: string;
   localitate: string;
+  sat: string;
   pret: string; // keep as string for easy input
   capacitate: string;
+  camere: string;
+  paturi: string;
+  bai: string;
   descriere: string;
   telefon: string;
   tip: string;
@@ -41,8 +46,12 @@ function AddPropertyPageContent() {
     titlu: '',
     judet: '',
     localitate: '',
+    sat: '',
     pret: '',
     capacitate: '2',
+    camere: '1',
+    paturi: '1',
+    bai: '1',
     descriere: '',
     telefon: '',
     tip: 'cabana',
@@ -87,7 +96,7 @@ function AddPropertyPageContent() {
     async function fetchFacilities() {
       try {
         const { data } = await supabase.from('facilities').select('id, name');
-        if (mounted && data) setFacilitiesList(data as FacilityOption[]);
+        if (mounted && data) setFacilitiesList(sortFacilitiesByPriority(data as FacilityOption[]));
       } catch (e) {
         // ignore
       }
@@ -149,6 +158,11 @@ function AddPropertyPageContent() {
     imagesCount: files.length,
     minImages: isClient ? 5 : 0,
     maxImages: 10,
+    description: formData.descriere,
+    descriptionKey: 'descriere',
+    descriptionMin: 200,
+    descriptionMax: 320,
+    enforceDescription: isClient,
   });
 
   const handleSubmit = async (e: FormEvent) => {
@@ -184,14 +198,20 @@ function AddPropertyPageContent() {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '');
       const uniqueSuffix = Math.random().toString(36).slice(2, 6);
-      const payload = {
-        title: formData.titlu,
-        slug: `${safeBaseSlug}-${uniqueSuffix}`,
-        // store county in `location` and city/village in `address`
-        location: locationData?.county || formData.judet,
-        address: locationData?.city || formData.localitate || null,
-        price: Number(formData.pret) || 0,
-        capacity: Number(formData.capacitate) || 1,
+    const payload = {
+      title: formData.titlu,
+      slug: `${safeBaseSlug}-${uniqueSuffix}`,
+      // store county in `location` and city/village in `address`
+      location: locationData?.county || formData.judet,
+      address:
+        (locationData?.city || formData.localitate)
+          ? `${locationData?.city || formData.localitate}${formData.sat ? ` (${formData.sat})` : ''}`
+          : null,
+      price: Number(formData.pret) || 0,
+      capacity: Number(formData.capacitate) || 1,
+        camere: Number(formData.camere) || 0,
+        paturi: Number(formData.paturi) || 0,
+        bai: Number(formData.bai) || 0,
         phone: formData.telefon || null,
         type: formData.tip,
         description: formData.descriere || null,
@@ -200,7 +220,6 @@ function AddPropertyPageContent() {
         lng: hasCoords ? Number(locationData?.longitude ?? null) : null,
         // images uploaded separately
         is_published: false,
-        display_order: null,
       };
       // create listing via server endpoint to avoid RLS errors
       const { id: listingId } = await createListing(payload, selectedFacilities, inviteToken);
@@ -236,7 +255,21 @@ function AddPropertyPageContent() {
       } catch (err) {
         // ignore if router unavailable
       }
-      setFormData({ titlu: '', judet: '', localitate: '', pret: '', capacitate: '2', descriere: '', telefon: '', tip: 'cabana', honeypot: '' });
+      setFormData({
+        titlu: '',
+        judet: '',
+        localitate: '',
+        sat: '',
+        pret: '',
+        capacitate: '2',
+        camere: '1',
+        paturi: '1',
+        bai: '1',
+        descriere: '',
+        telefon: '',
+        tip: 'cabana',
+        honeypot: '',
+      });
       setSelectedFacilities([]);
       resetFiles();
     } catch (err: any) {
@@ -306,6 +339,8 @@ function AddPropertyPageContent() {
           selectedImagesTitle="Galeria imaginilor adaugate"
           selectedImagesSubtitle="Foloseste sagetile pentru a reordona (5-10 imagini)"
           selectedFailedNames={failedUploads.map((f) => f.name)}
+          descriptionMin={200}
+          descriptionMax={320}
         />
 
         {/* honeypot */}

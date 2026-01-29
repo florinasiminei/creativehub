@@ -37,6 +37,9 @@ export async function POST(req: Request) {
       longitude,
       search_radius,
       display_order,
+      camere,
+      paturi,
+      bai,
     } = body;
 
     if (!title || !location) {
@@ -55,6 +58,9 @@ export async function POST(req: Request) {
 
     const parsedLat = toNumber(lat) ?? toNumber(latitude);
     const parsedLng = toNumber(lng) ?? toNumber(longitude);
+    const parsedCamere = toNumber(camere);
+    const parsedPaturi = toNumber(paturi);
+    const parsedBai = toNumber(bai);
 
     const payload: any = {
       title,
@@ -63,6 +69,9 @@ export async function POST(req: Request) {
       address: address || null,
       price: price || 0,
       capacity: capacity || 1,
+      camere: parsedCamere,
+      paturi: parsedPaturi,
+      bai: parsedBai,
       phone: phone || null,
       type: type || 'cabana',
       description: description || null,
@@ -75,7 +84,7 @@ export async function POST(req: Request) {
     if (Object.prototype.hasOwnProperty.call(body, 'display_order')) {
       payload.display_order = display_order ?? null;
     } else {
-      // Try to assign a display_order when the column exists.
+      // Use an incrementing counter so newer listings get higher values.
       try {
         const { data: orderRows, error: orderErr } = await supabaseAdmin
           .from('listings')
@@ -83,8 +92,8 @@ export async function POST(req: Request) {
           .order('display_order', { ascending: false, nullsFirst: false })
           .limit(1);
         if (!orderErr) {
-          const lastOrder = orderRows?.[0]?.display_order;
-          const nextOrder = typeof lastOrder === 'number' ? lastOrder + 1 : 0;
+          const maxOrder = orderRows?.[0]?.display_order;
+          const nextOrder = typeof maxOrder === 'number' ? maxOrder + 1 : 1;
           payload.display_order = nextOrder;
         }
       } catch {
@@ -93,7 +102,7 @@ export async function POST(req: Request) {
     }
 
     let { data, error } = await supabaseAdmin.from('listings').insert(payload).select('id').single();
-    if (error && /lat|lng|latitude|longitude|search_radius/i.test(error.message || '')) {
+    if (error && /lat|lng|latitude|longitude|search_radius|camere|paturi|bai|rooms|beds|bathrooms/i.test(error.message || '')) {
       const fallbackPayload = { ...payload };
       const message = String(error.message || '');
       if (/search_radius/i.test(message) && !/lat|lng|latitude|longitude/i.test(message)) {
@@ -102,6 +111,11 @@ export async function POST(req: Request) {
         delete fallbackPayload.lat;
         delete fallbackPayload.lng;
         delete fallbackPayload.search_radius;
+      }
+      if (/camere|paturi|bai|rooms|beds|bathrooms/i.test(message)) {
+        delete fallbackPayload.camere;
+        delete fallbackPayload.paturi;
+        delete fallbackPayload.bai;
       }
       ({ data, error } = await supabaseAdmin.from('listings').insert(fallbackPayload).select('id').single());
     }

@@ -39,6 +39,7 @@ export default function LocationPicker({ onLocationSelect, initialCounty, initia
   const [predictions, setPredictions] = useState<any[]>([]);
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     if (onConfirmChange) onConfirmChange(isConfirmed);
@@ -231,9 +232,12 @@ export default function LocationPicker({ onLocationSelect, initialCounty, initia
     }
 
     const service: any = new (google.maps.places as any).AutocompleteService();
-    service.getPlacePredictions({ input: searchValue, types: ['geocode'] }, (preds: any[] | null) => {
+    service.getPlacePredictions(
+      { input: searchValue, types: ['geocode'], componentRestrictions: { country: 'ro' } },
+      (preds: any[] | null) => {
       setPredictions(preds || []);
-    });
+      },
+    );
   }, [searchValue, isLoaded]);
 
   useEffect(() => {
@@ -277,6 +281,32 @@ export default function LocationPicker({ onLocationSelect, initialCounty, initia
       }
     });
   };
+
+  const handleSearchSubmit = useCallback(() => {
+    const query = searchValue.trim();
+    if (!query) return;
+    if (!(window as any).google?.maps) return;
+    setIsSearching(true);
+    const geocoder = new google.maps.Geocoder();
+    geocoder.geocode({ address: query, region: 'RO', componentRestrictions: { country: 'RO' } }, (results, status) => {
+      setIsSearching(false);
+      if (status === google.maps.GeocoderStatus.OK && results?.[0]?.geometry?.location) {
+        const loc = results[0].geometry.location;
+        const lat = loc.lat();
+        const lng = loc.lng();
+        setSelectedLocation({ lat, lng });
+        setIsConfirmed(false);
+        setLocationName(results[0].formatted_address || query);
+        setPredictions([]);
+        if (mapRef.current) {
+          mapRef.current.setCenter({ lat, lng });
+          mapRef.current.setZoom(15);
+        }
+      } else {
+        alert('Nu am gasit adresa cautata. Incearca o denumire mai precisa.');
+      }
+    });
+  }, [searchValue]);
 
   const handleUseMyLocation = () => {
     if (!navigator.geolocation) {
@@ -346,60 +376,74 @@ export default function LocationPicker({ onLocationSelect, initialCounty, initia
       {/* Map always visible with integrated search and controls */}
       <div className="rounded-2xl border bg-white shadow-md overflow-hidden dark:border-zinc-800 dark:bg-zinc-900">
         {/* Header with search and location button */}
-        <div className="p-4 border-b border-gray-200 space-y-3 bg-gradient-to-r from-white to-emerald-50 dark:border-zinc-800 dark:from-zinc-900 dark:to-emerald-900/20">
-          {/* Search input */}
-          <div className="relative">
-            <input
-              id="location-search-input"
-              type="text"
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }
-              }}
-              placeholder="🔍 Caută o adresă, localitate..."
-              autoComplete="off"
-              className="w-full px-4 py-3 pl-11 rounded-lg border border-gray-300 bg-white text-gray-900 focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition dark:border-zinc-700 dark:bg-zinc-950 dark:text-gray-100"
-            />
-            <MapPin className="absolute left-3.5 top-3.5 w-4 h-4 text-gray-400 dark:text-gray-500" />
+        <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-white to-emerald-50 dark:border-zinc-800 dark:from-zinc-900 dark:to-emerald-900/20">
+          <div className="space-y-2">
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+              <div className="relative flex-1">
+                <input
+                  id="location-search-input"
+                  type="text"
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleSearchSubmit();
+                    }
+                  }}
+                  placeholder="🔍 Caută o adresă, localitate..."
+                  autoComplete="off"
+                  className="w-full h-9 px-4 pl-11 rounded-lg border border-gray-300 bg-white text-sm text-gray-900 shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition dark:border-zinc-700 dark:bg-zinc-950 dark:text-gray-100"
+                />
+                <MapPin className="absolute left-3.5 top-3.5 w-4 h-4 text-gray-400 dark:text-gray-500" />
 
-            {/* Autocomplete predictions dropdown */}
-            {searchValue && predictions.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 border border-gray-200 rounded-lg bg-white shadow-lg z-50 max-h-72 overflow-y-auto dark:border-zinc-800 dark:bg-zinc-900">
-                {predictions.map((p, idx) => (
-                  <button
-                    key={p.place_id || idx}
-                    type="button"
-                    onClick={() => {
-                      setSearchValue(p.description || '');
-                      onSelectPrediction(p);
-                    }}
-                    className="w-full text-left px-4 py-3 hover:bg-emerald-50 border-b border-gray-100 last:border-b-0 transition flex items-start gap-3"
-                  >
-                    <MapPin className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0 dark:text-emerald-400" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate dark:text-gray-100">{p.main_text || p.description}</p>
-                      {p.secondary_text && <p className="text-xs text-gray-500 truncate dark:text-gray-400">{p.secondary_text}</p>}
-                    </div>
-                  </button>
-                ))}
+                {/* Autocomplete predictions dropdown */}
+                {searchValue && predictions.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-2 border border-gray-200 rounded-lg bg-white shadow-lg z-50 max-h-72 overflow-y-auto dark:border-zinc-800 dark:bg-zinc-900">
+                    {predictions.map((p, idx) => (
+                      <button
+                        key={p.place_id || idx}
+                        type="button"
+                        onClick={() => {
+                          setSearchValue(p.description || '');
+                          onSelectPrediction(p);
+                        }}
+                        className="w-full text-left px-4 py-3 hover:bg-emerald-50 border-b border-gray-100 last:border-b-0 transition flex items-start gap-3"
+                      >
+                        <MapPin className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0 dark:text-emerald-400" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate dark:text-gray-100">{p.main_text || p.description}</p>
+                          {p.secondary_text && <p className="text-xs text-gray-500 truncate dark:text-gray-400">{p.secondary_text}</p>}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button
+                  type="button"
+                  onClick={handleSearchSubmit}
+                  disabled={isSearching || !searchValue.trim()}
+                  className="h-9 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition text-sm font-semibold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isSearching ? 'Caută...' : 'Caută'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleUseMyLocation}
+                  className="h-9 px-3 rounded-lg border border-emerald-200 text-emerald-700 bg-white hover:bg-emerald-50 transition text-sm font-semibold shadow-sm dark:bg-zinc-900 dark:border-emerald-900/40 dark:text-emerald-300"
+                >
+                  📍 Folosește locația mea
+                </button>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Poti folosi cautarea exacta sau sugestiile din lista.
+            </p>
           </div>
-
-          {/* Use my location button */}
-          <button
-            type="button"
-            onClick={handleUseMyLocation}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition font-medium shadow-md dark:bg-emerald-500 dark:hover:bg-emerald-600"
-          >
-            📍 Folosește locația mea
-          </button>
         </div>
-
         {/* Map container */}
         <div ref={mapContainerRef} className="w-full h-96 bg-gray-50 dark:bg-zinc-900" />
       </div>
@@ -445,6 +489,7 @@ export default function LocationPicker({ onLocationSelect, initialCounty, initia
     </div>
   );
 }
+
 
 
 

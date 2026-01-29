@@ -1,4 +1,7 @@
-﻿import React from 'react';
+"use client";
+
+import React, { useEffect, useMemo, useState } from 'react';
+import { Combobox } from '@headlessui/react';
 import ListingFormSection from './ListingFormSection';
 import FacilitiesPicker from './FacilitiesPicker';
 import ImageUploader from './ImageUploader';
@@ -10,8 +13,12 @@ type ListingFormFields = {
   titlu: string;
   judet: string;
   localitate: string;
+  sat: string;
   pret: string;
   capacitate: string;
+  camere: string;
+  paturi: string;
+  bai: string;
   descriere: string;
   telefon: string;
   tip: string;
@@ -65,6 +72,8 @@ type ListingFormProps = {
   onExistingDragEnd?: () => void;
   onExistingMove?: (from: number, to: number) => void;
   onExistingDelete?: (img: { id: string; image_url: string; alt?: string | null }) => void;
+  descriptionMin?: number;
+  descriptionMax?: number;
 };
 
 export default function ListingForm({
@@ -108,6 +117,8 @@ export default function ListingForm({
   onExistingDragEnd,
   onExistingMove,
   onExistingDelete,
+  descriptionMin,
+  descriptionMax,
 }: ListingFormProps) {
   const isInvalid = (key: string) => showValidation && invalidFields.includes(key);
   const inputClass = (invalid: boolean) =>
@@ -118,6 +129,76 @@ export default function ListingForm({
     } dark:text-gray-100 dark:placeholder:text-gray-500`;
   const labelClass = (invalid: boolean) =>
     `flex flex-col ${invalid ? 'text-red-700 dark:text-red-300' : 'text-gray-900 dark:text-gray-100'}`;
+
+  const [locationsData, setLocationsData] = useState<Record<string, Array<{ nume: string }>> | null>(null);
+  const [locationsError, setLocationsError] = useState<string | null>(null);
+  const [countyQuery, setCountyQuery] = useState('');
+  const [cityQuery, setCityQuery] = useState('');
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadLocations() {
+      try {
+        const resp = await fetch('/data/ro-orase-dupa-judet.min.json');
+        if (!resp.ok) throw new Error('Nu am putut încărca județele.');
+        const data = (await resp.json()) as Record<string, Array<{ nume: string }>>;
+        if (mounted) setLocationsData(data);
+      } catch (err) {
+        if (mounted) setLocationsError(err instanceof Error ? err.message : 'Eroare la încărcarea localităților');
+      }
+    }
+    loadLocations();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const normalize = (value: string) =>
+    value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+
+  const counties = useMemo(() => (locationsData ? Object.keys(locationsData) : []), [locationsData]);
+  const filteredCounties = useMemo(() => {
+    const query = normalize(countyQuery);
+    if (!query) return counties;
+    return counties.filter((county) => normalize(county).includes(query));
+  }, [counties, countyQuery]);
+
+  const resolvedCounty = useMemo(() => {
+    if (!locationsData || !formData.judet) return '';
+    if (locationsData[formData.judet]) return formData.judet;
+    const normalized = normalize(formData.judet);
+    return counties.find((county) => normalize(county) === normalized) || '';
+  }, [locationsData, formData.judet, counties]);
+
+  const localities = useMemo(() => {
+    if (!locationsData || !resolvedCounty) return [];
+    return locationsData[resolvedCounty] || [];
+  }, [locationsData, resolvedCounty]);
+
+  const filteredLocalities = useMemo(() => {
+    const query = normalize(cityQuery);
+    if (!query) return localities;
+    return localities.filter((loc) => normalize(loc.nume).includes(query));
+  }, [localities, cityQuery]);
+
+  const countyHasMatch = !formData.judet || Boolean(resolvedCounty);
+  const showCountyMatchError = showValidation && !countyHasMatch;
+  const showCountyRequiredError = isInvalid('judet');
+  const showCountyError = showCountyMatchError || showCountyRequiredError;
+
+  const descriptionLength = formData.descriere ? formData.descriere.length : 0;
+  const hasDescriptionLimits = typeof descriptionMin === 'number' || typeof descriptionMax === 'number';
+  const descriptionRangeLabel =
+    typeof descriptionMin === 'number' && typeof descriptionMax === 'number'
+      ? `${descriptionMin}-${descriptionMax}`
+      : typeof descriptionMin === 'number'
+        ? `minim ${descriptionMin}`
+        : typeof descriptionMax === 'number'
+          ? `maxim ${descriptionMax}`
+          : '';
 
   return (
     <>
@@ -135,27 +216,147 @@ export default function ListingForm({
           />
         </label>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <label className={labelClass(isInvalid('judet'))}>
-          <span className="text-sm font-medium">Județ</span>
-            <input
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className={labelClass(showCountyError)}>
+            <span className="text-sm font-medium">Județ</span>
+            <Combobox
               value={formData.judet}
-              onChange={(e) => onChange('judet', e.target.value)}
-              required
-              autoComplete="address-level1"
-              className={inputClass(isInvalid('judet'))}
-              aria-invalid={isInvalid('judet')}
-            />
-          </label>
-          <label className={labelClass(isInvalid('localitate'))}>
+              onChange={(value) => {
+                if (!value) return;
+                onChange('judet', value);
+                onChange('localitate', '');
+                onChange('sat', '');
+                setCountyQuery('');
+                setCityQuery('');
+              }}
+            >
+              <div className="relative mt-1 w-full">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                  <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden="true">
+                    <path
+                      d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15z"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+                <Combobox.Input
+                  className={`${inputClass(showCountyError)} w-full pl-10`}
+                  displayValue={(value: string) => value}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    setCountyQuery(next);
+                    onChange('judet', next);
+                    onChange('localitate', '');
+                    onChange('sat', '');
+                    setCityQuery('');
+                  }}
+                  onBlur={() => {
+                    if (resolvedCounty && formData.judet !== resolvedCounty) {
+                      onChange('judet', resolvedCounty);
+                    }
+                  }}
+                  autoComplete="off"
+                  placeholder="Caută județ"
+                  aria-invalid={showCountyError}
+                />
+                <Combobox.Options className="absolute left-0 right-0 z-20 mt-2 max-h-64 w-full box-border overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+                  {filteredCounties.length === 0 && (
+                    <div className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
+                      Nu am găsit județe.
+                    </div>
+                  )}
+                  {filteredCounties.map((county) => (
+                    <Combobox.Option
+                      key={county}
+                      value={county}
+                      className={({ active }) =>
+                        `cursor-pointer px-3 py-2 text-sm ${
+                          active
+                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'
+                            : 'text-gray-700 dark:text-gray-200'
+                        }`
+                      }
+                    >
+                      {county}
+                    </Combobox.Option>
+                  ))}
+                </Combobox.Options>
+              </div>
+            </Combobox>
+            {showCountyMatchError && (
+              <span className="text-xs text-red-600 mt-1">Selectează un județ din listă.</span>
+            )}
+            {locationsError && (
+              <span className="text-xs text-red-500 mt-1">{locationsError}</span>
+            )}
+          </div>
+          <div className={labelClass(isInvalid('localitate'))}>
             <span className="text-sm font-medium">Localitate</span>
-            <input
+            <Combobox
               value={formData.localitate}
-              onChange={(e) => onChange('localitate', e.target.value)}
-              required
-              autoComplete="address-level2"
-              className={inputClass(isInvalid('localitate'))}
-              aria-invalid={isInvalid('localitate')}
+              onChange={(value) => {
+                if (!value) return;
+                onChange('localitate', value);
+                onChange('sat', '');
+                setCityQuery('');
+              }}
+            >
+              <div className="relative mt-1 w-full">
+                <Combobox.Input
+                  className={`${inputClass(isInvalid('localitate'))} w-full`}
+                  displayValue={(value: string) => value}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    setCityQuery(next);
+                    onChange('localitate', next);
+                    onChange('sat', '');
+                  }}
+                  autoComplete="off"
+                  placeholder={resolvedCounty ? 'Caută localitate' : 'Selectează județ mai întâi'}
+                  aria-invalid={isInvalid('localitate')}
+                  disabled={!resolvedCounty}
+                />
+                {resolvedCounty && (
+                  <Combobox.Options className="absolute left-0 right-0 z-20 mt-2 max-h-64 w-full box-border overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+                    {filteredLocalities.length === 0 && (
+                      <div className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
+                        Nu am găsit localități.
+                      </div>
+                    )}
+                    {filteredLocalities.map((loc) => (
+                      <Combobox.Option
+                        key={`${loc.nume}-${resolvedCounty}`}
+                        value={loc.nume}
+                        className={({ active }) =>
+                          `cursor-pointer px-3 py-2 text-sm ${
+                            active
+                              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'
+                              : 'text-gray-700 dark:text-gray-200'
+                          }`
+                        }
+                      >
+                        {loc.nume}
+                      </Combobox.Option>
+                    ))}
+                  </Combobox.Options>
+                )}
+              </div>
+            </Combobox>
+          </div>
+
+          <label className={labelClass(isInvalid('sat'))}>
+            <span className="text-sm font-medium">
+              Sat <span className="text-gray-500 dark:text-gray-400">(optional)</span>
+            </span>
+            <input
+              value={formData.sat}
+              onChange={(e) => onChange('sat', e.target.value)}
+              autoComplete="off"
+              className={`${inputClass(isInvalid('sat'))} w-full`}
+              aria-invalid={isInvalid('sat')}
             />
           </label>
         </div>
@@ -189,6 +390,45 @@ export default function ListingForm({
           </label>
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <label className={labelClass(isInvalid('camere'))}>
+            <span className="text-sm font-medium">Numar camere</span>
+            <input
+              value={formData.camere}
+              onChange={(e) => onChange('camere', e.target.value)}
+              type="number"
+              inputMode="numeric"
+              min={0}
+              className={inputClass(isInvalid('camere'))}
+              aria-invalid={isInvalid('camere')}
+            />
+          </label>
+          <label className={labelClass(isInvalid('paturi'))}>
+            <span className="text-sm font-medium">Numar paturi</span>
+            <input
+              value={formData.paturi}
+              onChange={(e) => onChange('paturi', e.target.value)}
+              type="number"
+              inputMode="numeric"
+              min={0}
+              className={inputClass(isInvalid('paturi'))}
+              aria-invalid={isInvalid('paturi')}
+            />
+          </label>
+          <label className={labelClass(isInvalid('bai'))}>
+            <span className="text-sm font-medium">Numar bai</span>
+            <input
+              value={formData.bai}
+              onChange={(e) => onChange('bai', e.target.value)}
+              type="number"
+              inputMode="numeric"
+              min={0}
+              className={inputClass(isInvalid('bai'))}
+              aria-invalid={isInvalid('bai')}
+            />
+          </label>
+        </div>
+
         <label className={labelClass(isInvalid('telefon'))}>
           <span className="text-sm font-medium">Telefon</span>
           <input
@@ -211,9 +451,14 @@ export default function ListingForm({
             className={inputClass(isInvalid('tip'))}
             aria-invalid={isInvalid('tip')}
           >
-            <option value="cabana">Cabană</option>
-            <option value="apartment">Apartament</option>
-            <option value="vila">Vilă</option>
+            <option value="cabana">Cabana</option>
+            <option value="a-frame">A-Frame</option>
+            <option value="vila">Vila</option>
+            <option value="pensiune">Pensiune</option>
+            <option value="casa">Casa</option>
+            <option value="tiny house">Tiny house</option>
+            <option value="apartament">Apartament</option>
+            <option value="hotel">Hotel</option>
           </select>
         </label>
 
@@ -228,6 +473,12 @@ export default function ListingForm({
             rows={4}
             aria-invalid={isInvalid('descriere')}
           />
+          {hasDescriptionLimits && (
+            <span className="text-xs text-gray-500 mt-1 dark:text-gray-400">
+              Recomandat {descriptionRangeLabel} caractere. {descriptionLength}
+              {typeof descriptionMax === 'number' ? `/${descriptionMax}` : ''}
+            </span>
+          )}
         </label>
 
         <FacilitiesPicker facilities={facilities} selected={selectedFacilities} onToggle={onToggleFacility} />
