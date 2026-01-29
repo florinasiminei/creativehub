@@ -82,7 +82,12 @@ export function getCookieValue(cookieHeader: string | null, name: string) {
   const parts = cookieHeader.split(";").map((part) => part.trim());
   for (const part of parts) {
     if (!part.startsWith(`${name}=`)) continue;
-    return part.slice(name.length + 1);
+    const raw = part.slice(name.length + 1);
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return raw;
+    }
   }
   return null;
 }
