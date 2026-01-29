@@ -65,6 +65,7 @@ function AddPropertyPageContent() {
   const [message, setMessage] = useState<string | null>(null);
   const [failedUploads, setFailedUploads] = useState<Array<{ name: string; reason: string }>>([]);
   const [showValidation, setShowValidation] = useState(false);
+  const [validationAttempt, setValidationAttempt] = useState(0);
   const [acceptedTerms, setAcceptedTerms] = useState(!isClient);
   const [isLocationConfirmed, setIsLocationConfirmed] = useState(false);
   const router = useRouter();
@@ -173,6 +174,7 @@ function AddPropertyPageContent() {
     if (formData.honeypot) return; // spam
     if (validationError) {
       setMessage(validationError);
+      setValidationAttempt((prev) => prev + 1);
       return;
     }
     if (isClient && !acceptedTerms) {
@@ -304,7 +306,7 @@ function AddPropertyPageContent() {
         <p className="text-gray-600 mt-1">Completeaza detaliile si ataseaza continutul foto-video.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form onSubmit={handleSubmit} noValidate className="space-y-8">
         <p className="text-sm text-gray-600">Toate campurile sunt obligatorii, cu exceptia celor marcate (optional).</p>
         <ListingForm
           formData={formData}
@@ -325,6 +327,7 @@ function AddPropertyPageContent() {
           showValidation={showValidation}
           invalidFields={invalidFields}
           imagesInvalid={imagesInvalid}
+          validationAttempt={validationAttempt}
           isDropActive={isDropActive}
           onDropActiveChange={setIsDropActive}
           onFilesSelected={appendFiles}

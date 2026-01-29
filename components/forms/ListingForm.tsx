@@ -49,6 +49,7 @@ type ListingFormProps = {
   showValidation: boolean;
   invalidFields: string[];
   imagesInvalid: boolean;
+  validationAttempt?: number;
   isDropActive: boolean;
   onDropActiveChange: (active: boolean) => void;
   onFilesSelected: (files: File[]) => void;
@@ -94,6 +95,7 @@ export default function ListingForm({
   showValidation = false,
   invalidFields = [],
   imagesInvalid = false,
+  validationAttempt = 0,
   isDropActive,
   onDropActiveChange,
   onFilesSelected,
@@ -178,6 +180,12 @@ export default function ListingForm({
     return locationsData[resolvedCounty] || [];
   }, [locationsData, resolvedCounty]);
 
+  const resolvedLocality = useMemo(() => {
+    if (!resolvedCounty || !formData.localitate) return '';
+    const normalized = normalize(formData.localitate);
+    return localities.find((loc) => normalize(loc.nume) === normalized)?.nume || '';
+  }, [resolvedCounty, formData.localitate, localities]);
+
   const filteredLocalities = useMemo(() => {
     const query = normalize(cityQuery);
     if (!query) return localities;
@@ -188,6 +196,22 @@ export default function ListingForm({
   const showCountyMatchError = showValidation && !countyHasMatch;
   const showCountyRequiredError = isInvalid('judet');
   const showCountyError = showCountyMatchError || showCountyRequiredError;
+
+  const localityHasMatch = !formData.localitate || Boolean(resolvedLocality);
+  const showLocalityMatchError = showValidation && resolvedCounty && !localityHasMatch;
+  const showLocalityRequiredError = isInvalid('localitate');
+  const showLocalityError = showLocalityMatchError || showLocalityRequiredError;
+
+  useEffect(() => {
+    if (!showValidation || validationAttempt < 1) return;
+    if (typeof document === 'undefined') return;
+    const target = document.querySelector<HTMLElement>('[aria-invalid="true"]');
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (typeof target.focus === 'function') {
+      target.focus({ preventScroll: true });
+    }
+  }, [showValidation, validationAttempt]);
 
   const descriptionLength = formData.descriere ? formData.descriere.length : 0;
   const hasDescriptionLimits = typeof descriptionMin === 'number' || typeof descriptionMax === 'number';
@@ -293,7 +317,7 @@ export default function ListingForm({
               <span className="text-xs text-red-500 mt-1">{locationsError}</span>
             )}
           </div>
-          <div className={labelClass(isInvalid('localitate'))}>
+          <div className={labelClass(showLocalityError)}>
             <span className="text-sm font-medium">Localitate</span>
             <Combobox
               value={formData.localitate}
@@ -306,7 +330,7 @@ export default function ListingForm({
             >
               <div className="relative mt-1 w-full">
                 <Combobox.Input
-                  className={`${inputClass(isInvalid('localitate'))} w-full`}
+                  className={`${inputClass(showLocalityError)} w-full`}
                   displayValue={(value: string) => value}
                   onChange={(event) => {
                     const next = event.target.value;
@@ -314,9 +338,14 @@ export default function ListingForm({
                     onChange('localitate', next);
                     onChange('sat', '');
                   }}
+                  onBlur={() => {
+                    if (resolvedLocality && formData.localitate !== resolvedLocality) {
+                      onChange('localitate', resolvedLocality);
+                    }
+                  }}
                   autoComplete="off"
                   placeholder={resolvedCounty ? 'Caută localitate' : 'Selectează județ mai întâi'}
-                  aria-invalid={isInvalid('localitate')}
+                  aria-invalid={showLocalityError}
                   disabled={!resolvedCounty}
                 />
                 {resolvedCounty && (
@@ -345,6 +374,9 @@ export default function ListingForm({
                 )}
               </div>
             </Combobox>
+            {showLocalityMatchError && (
+              <span className="text-xs text-red-600 mt-1">Selecteaza o localitate din lista.</span>
+            )}
           </div>
 
           <label className={labelClass(isInvalid('sat'))}>

@@ -29,6 +29,7 @@ export default function ImageDropzone({
   return (
     <label
       className={`flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-6 text-center cursor-pointer transition ${stateClass}`}
+      aria-invalid={isInvalid}
       onDragOver={(e) => {
         e.preventDefault();
         onActiveChange(true);

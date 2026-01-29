@@ -74,6 +74,7 @@ export default function EditPropertyPage({ params }: any) {
   const [message, setMessage] = useState<string | null>(null);
   const [locationData, setLocationData] = useState<LocationData | null>(null);
   const [showValidation, setShowValidation] = useState(false);
+  const [validationAttempt, setValidationAttempt] = useState(0);
   const [acceptedTerms, setAcceptedTerms] = useState(!isClient);
   const [newsletterOptIn, setNewsletterOptIn] = useState(false);
   const { uploading, upload } = useImageUploads({
@@ -210,6 +211,7 @@ export default function EditPropertyPage({ params }: any) {
     setShowValidation(true);
     if (validationError) {
       setMessage(validationError);
+      setValidationAttempt((prev) => prev + 1);
       return;
     }
     if (isClient && !acceptedTerms) {
@@ -293,7 +295,7 @@ export default function EditPropertyPage({ params }: any) {
         <p className="text-gray-600 mt-1">Actualizează detaliile și gestionează ordinea galeriilor înainte de publicare.</p>
       </div>
 
-      <form onSubmit={handleUpdate} className="space-y-8">
+      <form onSubmit={handleUpdate} noValidate className="space-y-8">
         <p className="text-sm text-gray-600">Toate câmpurile sunt obligatorii, cu excepția celor marcate (opțional).</p>
         <ListingForm
           formData={formData}
@@ -312,6 +314,7 @@ export default function EditPropertyPage({ params }: any) {
           showValidation={showValidation}
           invalidFields={invalidFields}
           imagesInvalid={imagesInvalid}
+          validationAttempt={validationAttempt}
           isDropActive={isDropActive}
           onDropActiveChange={setIsDropActive}
           onFilesSelected={appendFiles}

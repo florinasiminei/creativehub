@@ -30,11 +30,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true });
     }
 
-    for (let index = 0; index < ids.length; index++) {
+    const total = ids.length;
+    for (let index = 0; index < total; index++) {
       const id = ids[index];
+      // Keep display_order increasing overall, but render listings top-to-bottom
+      // by sorting descending (higher display_order first).
+      const displayOrder = total - index;
       const { error } = await supabaseAdmin
         .from("listings")
-        .update({ display_order: index + 1 })
+        .update({ display_order: displayOrder })
         .eq("id", id);
       if (error) {
         if (String(error.message || "").includes("display_order")) {
