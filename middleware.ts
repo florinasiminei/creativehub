@@ -30,7 +30,17 @@ export function middleware(request: NextRequest) {
     if (!role || !encoded) {
       const hasAttempt = !!authHeader || !!authCookie
       const loginUrl = new URL(`/drafts-login${hasAttempt ? '?error=1' : ''}`, request.url)
-      return NextResponse.redirect(loginUrl)
+      const response = NextResponse.redirect(loginUrl)
+      if (authCookie) {
+        response.cookies.set('drafts_auth', '', {
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: process.env.NODE_ENV === 'production',
+          maxAge: 0,
+          path: '/',
+        })
+      }
+      return response
     }
 
     const response = NextResponse.next()

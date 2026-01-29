@@ -96,6 +96,10 @@ export default function DraftsClient({ listings, role, inviteToken = null, siteU
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids }),
       });
+      if (resp.status == 401) {
+        router.push("/drafts-login?error=1");
+        return;
+      }
       const body = await resp.json();
       if (!resp.ok) throw new Error(body?.error || "Nu am putut salva ordinea.");
       setStatusMessage("Ordinea a fost salvată.");
@@ -117,6 +121,10 @@ export default function DraftsClient({ listings, role, inviteToken = null, siteU
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids, reset: true }),
       });
+      if (resp.status == 401) {
+        router.push("/drafts-login?error=1");
+        return;
+      }
       const body = await resp.json();
       if (!resp.ok) throw new Error(body?.error || "Nu am putut reseta ordinea.");
       setStatusMessage("Ordinea a fost resetată.");

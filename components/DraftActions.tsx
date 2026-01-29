@@ -29,6 +29,11 @@ export default function DraftActions({ id, isPublished, slug, canDelete = true, 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, is_published: nextIsPublished }),
       });
+      if (response.status == 401) {
+        if (onStatusChange) onStatusChange(previousStatus);
+        router.push("/drafts-login?error=1");
+        return;
+      }
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
         throw new Error(body?.error || "Nu am putut actualiza statusul.");
@@ -46,11 +51,15 @@ export default function DraftActions({ id, isPublished, slug, canDelete = true, 
     if (!confirm("Sigur vrei sa stergi aceasta cazare?")) return;
     setLoading(true);
     try {
-      await fetch("/api/listing-delete", {
+      const response = await fetch("/api/listing-delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
+      if (response.status == 401) {
+        router.push("/drafts-login?error=1");
+        return;
+      }
       router.refresh();
     } finally {
       setLoading(false);
