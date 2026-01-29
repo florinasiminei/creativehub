@@ -80,13 +80,15 @@ export async function requestListingUploadUrls(
   listingId: string,
   files: Array<{ index: number; name: string; type?: string; size?: number }>,
   startIndex = 0,
-  inviteToken?: string | null
+  inviteToken?: string | null,
+  clientMode = false
 ) {
   const resp = await fetch('/api/listing-upload-sign', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       ...(inviteToken ? { 'x-invite-token': inviteToken } : {}),
+      ...(clientMode ? { 'x-client-edit': '1' } : {}),
     },
     body: JSON.stringify({ listingId, files, startIndex }),
   });
@@ -103,6 +105,7 @@ export async function completeListingUpload(
   path: string,
   displayOrder: number,
   inviteToken?: string | null,
+  clientMode = false,
   alt?: string | null
 ) {
   const resp = await fetch('/api/listing-upload-complete', {
@@ -110,6 +113,7 @@ export async function completeListingUpload(
     headers: {
       'Content-Type': 'application/json',
       ...(inviteToken ? { 'x-invite-token': inviteToken } : {}),
+      ...(clientMode ? { 'x-client-edit': '1' } : {}),
     },
     body: JSON.stringify({ listingId, path, displayOrder, alt }),
   });
@@ -118,10 +122,13 @@ export async function completeListingUpload(
   return body as { id: string; url: string; display_order: number };
 }
 
-export async function deleteListing(id: string) {
+export async function deleteListing(id: string, inviteToken?: string | null) {
   const resp = await fetch('/api/listing-delete', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(inviteToken ? { 'x-invite-token': inviteToken } : {}),
+    },
     body: JSON.stringify({ id }),
   });
   if (!resp.ok) throw new Error('Nu am putut sterge listarea');

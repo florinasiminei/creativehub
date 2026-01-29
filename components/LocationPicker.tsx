@@ -4,11 +4,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { MapPin } from 'lucide-react';
 
 interface LocationPickerProps {
-  onLocationSelect: (location: { latitude: number; longitude: number; county: string; city: string; radius: number }) => void;
+  onLocationSelect: (location: { latitude: number; longitude: number; county: string; city: string }) => void;
   initialCounty?: string;
   initialCity?: string;
   initialLat?: number | null;
   initialLng?: number | null;
+  onConfirmChange?: (confirmed: boolean) => void;
 }
 
 const DARK_MAP_STYLE = [
@@ -27,14 +28,11 @@ const DARK_MAP_STYLE = [
   { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#64748b' }] },
 ];
 
-export default function LocationPicker({ onLocationSelect, initialCounty, initialCity, initialLat, initialLng }: LocationPickerProps) {
+export default function LocationPicker({ onLocationSelect, initialCounty, initialCity, initialLat, initialLng, onConfirmChange }: LocationPickerProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
-  const circleRef = useRef<google.maps.Circle | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [radius, setRadius] = useState(1);
-  const radiusRef = useRef(1);
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationName, setLocationName] = useState('');
   const [searchValue, setSearchValue] = useState('');
@@ -42,7 +40,9 @@ export default function LocationPicker({ onLocationSelect, initialCounty, initia
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  const clampRadius = useCallback((r: number) => Math.max(0.5, Math.min(5, Math.round(r * 2) / 2)), []);
+  useEffect(() => {
+    if (onConfirmChange) onConfirmChange(isConfirmed);
+  }, [isConfirmed, onConfirmChange]);
 
   const geocodeLocation = useCallback((lat: number, lng: number) => {
     const geocoder = new google.maps.Geocoder();
@@ -63,9 +63,8 @@ export default function LocationPicker({ onLocationSelect, initialCounty, initia
   }, []);
 
   const updateMarkerAndCircle = useCallback((map: google.maps.Map, lat: number, lng: number) => {
-    // Remove old marker and circle
+    // Remove old marker
     if (markerRef.current) markerRef.current.setMap(null);
-    if (circleRef.current) circleRef.current.setMap(null);
 
     // Add marker
     markerRef.current = new google.maps.Marker({
@@ -83,21 +82,8 @@ export default function LocationPicker({ onLocationSelect, initialCounty, initia
       setIsConfirmed(false);
     });
 
-    // Add circle
-    const nextRadius = clampRadius(radiusRef.current);
-    circleRef.current = new google.maps.Circle({
-      map,
-      center: { lat, lng },
-      radius: nextRadius * 1000, // Convert km to meters (clamped to 1-5km)
-      fillColor: '#10b981',
-      fillOpacity: 0.15,
-      strokeColor: '#10b981',
-      strokeOpacity: 0.8,
-      strokeWeight: 2,
-    });
-
     map.setCenter({ lat, lng });
-  }, [clampRadius]);
+  }, []);
 
   useEffect(() => {
     const getIsDark = () => document.documentElement.classList.contains('dark');
@@ -251,10 +237,6 @@ export default function LocationPicker({ onLocationSelect, initialCounty, initia
   }, [searchValue, isLoaded]);
 
   useEffect(() => {
-    radiusRef.current = radius;
-  }, [radius]);
-
-  useEffect(() => {
     if (!selectedLocation || !mapRef.current) return;
     updateMarkerAndCircle(mapRef.current, selectedLocation.lat, selectedLocation.lng);
     geocodeLocation(selectedLocation.lat, selectedLocation.lng);
@@ -323,16 +305,6 @@ export default function LocationPicker({ onLocationSelect, initialCounty, initia
     );
   };
 
-  const handleRadiusChange = (newRadius: number) => {
-    const clamped = clampRadius(newRadius);
-    setRadius(clamped);
-    setIsConfirmed(false);
-    if (selectedLocation && mapRef.current) {
-      if (circleRef.current) circleRef.current.setRadius(clamped * 1000);
-    }
-  };
-
-
   const handleConfirmLocation = async () => {
     if (!selectedLocation) {
       alert('Selectează o locație (folosind hartă sau căutare)');
@@ -365,7 +337,6 @@ export default function LocationPicker({ onLocationSelect, initialCounty, initia
       longitude: selectedLocation.lng,
       county: county || '',
       city: city || '',
-      radius,
     });
     setIsConfirmed(true);
   };
@@ -460,48 +431,6 @@ export default function LocationPicker({ onLocationSelect, initialCounty, initia
               </p>
             </div>
           )}
-
-          {/* Radius slider section */}
-          <div className="space-y-3 border-t border-emerald-200 pt-4 dark:border-zinc-800">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-bold text-gray-900 dark:text-gray-100">Rază de confidențialitate</label>
-              <span className="inline-flex items-center gap-1 bg-white px-3 py-1 rounded-full font-bold text-emerald-700 dark:bg-zinc-950 dark:text-emerald-300">
-                {radius} <span className="text-xs">km</span>
-              </span>
-            </div>
-
-            <input
-              type="range"
-              min="0.5"
-              max="5"
-              step="0.5"
-              value={radius}
-              onChange={(e) => handleRadiusChange(Number(e.target.value))}
-              className="w-full h-2 bg-emerald-300 rounded-lg appearance-none cursor-pointer accent-emerald-600 dark:bg-emerald-900/60"
-            />
-
-            {/* Quick presets */}
-            <div className="flex gap-2 flex-wrap">
-              {[0.5, 1, 2, 5].map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => handleRadiusChange(r)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-semibold transition ${
-                    radius === r
-                      ? 'bg-emerald-600 text-white shadow-md'
-                      : 'bg-white text-gray-700 border border-gray-300 hover:border-emerald-400 dark:bg-zinc-950 dark:text-gray-200 dark:border-zinc-700 dark:hover:border-emerald-500'
-                  }`}
-                >
-                  {r} km
-                </button>
-              ))}
-            </div>
-
-            <p className="text-xs text-gray-700 italic dark:text-gray-400">
-              Afișăm o rază aproximativă pentru a ascunde locația exactă (maxim 5 km).
-            </p>
-          </div>
 
           {/* Confirm button */}
           <button

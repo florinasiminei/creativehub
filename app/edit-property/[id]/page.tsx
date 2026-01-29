@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import ListingForm from '@/components/forms/ListingForm';
@@ -29,12 +29,13 @@ type LocationData = {
   longitude: number;
   county: string;
   city: string;
-  radius: number;
 };
 
 export default function EditPropertyPage({ params }: any) {
   const { id } = params;
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isClient = searchParams.get('client') === '1' || searchParams.get('role') === 'client';
   
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<FormData>({
@@ -55,8 +56,11 @@ export default function EditPropertyPage({ params }: any) {
   const [message, setMessage] = useState<string | null>(null);
   const [locationData, setLocationData] = useState<LocationData | null>(null);
   const [showValidation, setShowValidation] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(!isClient);
+  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
   const { uploading, upload } = useImageUploads({
     onError: (msg) => setMessage(msg),
+    clientMode: isClient,
   });
   const {
     files,
@@ -112,7 +116,6 @@ export default function EditPropertyPage({ params }: any) {
             longitude: Number.isFinite(parsedLng) ? parsedLng : 0,
             county: listing.location || '',
             city: listing.address || '',
-            radius: listing.search_radius || 1,
           });
         }
 
@@ -127,6 +130,10 @@ export default function EditPropertyPage({ params }: any) {
     load();
     return () => { mounted = false; };
   }, [id]);
+
+  useEffect(() => {
+    setAcceptedTerms(!isClient);
+  }, [isClient]);
 
   const handleChange = (k: keyof FormData, v: string) => {
     setFormData(prev => ({ ...prev, [k]: v }));
@@ -177,6 +184,10 @@ export default function EditPropertyPage({ params }: any) {
       setMessage(validationError);
       return;
     }
+    if (isClient && !acceptedTerms) {
+      setMessage('Te rugam sa accepti termenii si conditiile.');
+      return;
+    }
     const hasCoords =
       locationData !== null &&
       Number.isFinite(locationData.latitude) &&
@@ -210,7 +221,6 @@ export default function EditPropertyPage({ params }: any) {
         facilities: selectedFacilities,
         lat: hasCoords ? Number(locationData?.latitude ?? null) : null,
         lng: hasCoords ? Number(locationData?.longitude ?? null) : null,
-        search_radius: locationData?.radius || 1,
       };
       await updateListing(updatePayload);
 
@@ -236,9 +246,15 @@ export default function EditPropertyPage({ params }: any) {
         <p className="text-sm uppercase tracking-[0.2em] text-emerald-700 font-semibold">Administrare listare</p>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-3xl font-semibold mt-2">Editează cabana</h1>
-          <Link href="/drafts" className="text-sm font-medium text-emerald-700 hover:text-emerald-800">
-            Înapoi la listări
-          </Link>
+          {!isClient && (
+            <Link
+              href="/drafts"
+              prefetch={false}
+              className="text-sm font-medium text-emerald-700 hover:text-emerald-800"
+            >
+              Înapoi la listări
+            </Link>
+          )}
         </div>
         <p className="text-gray-600 mt-1">Actualizează detaliile și gestionează ordinea galeriilor înainte de publicare.</p>
       </div>
@@ -288,6 +304,33 @@ export default function EditPropertyPage({ params }: any) {
             setImages(prev => prev.filter(it => it.id !== img.id));
           }}
         />
+
+        {isClient && (
+          <div className="space-y-2">
+            <label
+              className={`flex items-start gap-2 text-sm ${
+                showValidation && !acceptedTerms ? 'text-red-700' : 'text-gray-700'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+              />
+              <span>Accept termenii si conditiile.</span>
+            </label>
+            <label className="flex items-start gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={newsletterOptIn}
+                onChange={(e) => setNewsletterOptIn(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+              />
+              <span>Ma alatur newsletterului/comunitatii CABN.</span>
+            </label>
+          </div>
+        )}
 
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
           <div className="text-sm text-gray-600">

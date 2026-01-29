@@ -2,6 +2,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type SetStateAction } from "react";
+import { useSearchParams } from "next/navigation";
 import Fuse from "fuse.js";
 import { TopSearchBar } from "@/components/TopSearchBar";
 import ListingsGrid from "@/components/listing/ListingGrid";
@@ -38,6 +39,7 @@ function getInitialFilters(cazari: Cazare[]): Filters {
 const ITEMS_PER_PAGE = 50;
 
 export default function Home() {
+  const searchParams = useSearchParams();
   const [cazari, setCazari] = useState<Cazare[]>([]);
   const [facilitiesList, setFacilitiesList] = useState<FacilityOption[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -83,6 +85,12 @@ export default function Home() {
   const [sugestieIndex, setSugestieIndex] = useState(-1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showSubmittedNotice, setShowSubmittedNotice] = useState(false);
+
+  useEffect(() => {
+    const submitted = searchParams.get("submitted") === "1";
+    setShowSubmittedNotice(submitted);
+  }, [searchParams]);
 
   useEffect(() => {
     let cancelled = false;
@@ -586,6 +594,19 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-transparent text-black dark:text-white relative">
+      {showSubmittedNotice && (
+        <div className="mx-4 lg:mx-6 mt-6 rounded-xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50 dark:bg-emerald-950/40 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200 flex items-center justify-between">
+          <span>Mulțumim! Cererea ta a fost trimisă. Proprietatea va fi verificată și publicată după aprobare.</span>
+          <button
+            type="button"
+            onClick={() => setShowSubmittedNotice(false)}
+            className="text-emerald-700 dark:text-emerald-300 hover:text-emerald-900"
+            aria-label="Închide"
+          >
+            ×
+          </button>
+        </div>
+      )}
       <TopSearchBar
         filters={filters}
         setFilters={setFilters}

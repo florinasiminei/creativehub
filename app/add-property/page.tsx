@@ -29,12 +29,14 @@ type LocationData = {
   longitude: number;
   county: string;
   city: string;
-  radius: number;
 };
 
 function AddPropertyPageContent() {
   const searchParams = useSearchParams();
-  const inviteToken = searchParams.get('token');
+  const tokenParam = searchParams.get('token');
+  const isClient = searchParams.get('client') === '1' || searchParams.get('role') === 'client';
+  const [inviteToken, setInviteToken] = useState<string | null>(tokenParam);
+  const [tokenReady, setTokenReady] = useState(false);
   const [formData, setFormData] = useState<SimpleForm>({
     titlu: '',
     judet: '',
@@ -54,6 +56,8 @@ function AddPropertyPageContent() {
   const [message, setMessage] = useState<string | null>(null);
   const [failedUploads, setFailedUploads] = useState<Array<{ name: string; reason: string }>>([]);
   const [showValidation, setShowValidation] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(!isClient);
+  const [isLocationConfirmed, setIsLocationConfirmed] = useState(false);
   const router = useRouter();
   const { uploading, uploadedCount, upload } = useImageUploads({
     onError: (msg) => setMessage(msg),
@@ -94,6 +98,38 @@ function AddPropertyPageContent() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (tokenParam) {
+      setInviteToken(tokenParam);
+      try {
+        sessionStorage.setItem('invite_token', tokenParam);
+      } catch {
+        // ignore storage issues
+      }
+      const nextParams = new URLSearchParams(searchParams.toString());
+      nextParams.delete('token');
+      const nextQuery = nextParams.toString();
+      router.replace(nextQuery ? `/add-property?${nextQuery}` : '/add-property');
+      setTokenReady(true);
+      return;
+    }
+
+    if (!inviteToken) {
+      try {
+        const stored = sessionStorage.getItem('invite_token');
+        if (stored) setInviteToken(stored);
+      } catch {
+        // ignore storage issues
+      }
+    }
+    setTokenReady(true);
+  }, [tokenParam, searchParams, router, inviteToken]);
+
+  useEffect(() => {
+    setAcceptedTerms(!isClient);
+  }, [isClient]);
+
   const handleChange = (k: keyof SimpleForm, v: string) => setFormData(prev => ({ ...prev, [k]: v }));
 
   const toggleFacility = (id: string) =>
@@ -111,7 +147,7 @@ function AddPropertyPageContent() {
     phone: formData.telefon,
     phoneKey: 'telefon',
     imagesCount: files.length,
-    minImages: 5,
+    minImages: isClient ? 5 : 0,
     maxImages: 10,
   });
 
@@ -123,6 +159,14 @@ function AddPropertyPageContent() {
     if (formData.honeypot) return; // spam
     if (validationError) {
       setMessage(validationError);
+      return;
+    }
+    if (isClient && !acceptedTerms) {
+      setMessage('Te rugam sa accepti termenii si conditiile.');
+      return;
+    }
+    if (!isLocationConfirmed || !locationData) {
+      setMessage('Te rugam sa confirmi locatia.');
       return;
     }
     const hasCoords =
@@ -154,7 +198,6 @@ function AddPropertyPageContent() {
         // Location data from Google Maps
         lat: hasCoords ? Number(locationData?.latitude ?? null) : null,
         lng: hasCoords ? Number(locationData?.longitude ?? null) : null,
-        search_radius: locationData?.radius ?? 1,
         // images uploaded separately
         is_published: false,
         display_order: null,
@@ -168,7 +211,7 @@ function AddPropertyPageContent() {
           await upload(listingId, files, 0);
         } catch (err: any) {
           try {
-            await deleteListing(listingId);
+            await deleteListing(listingId, inviteToken);
           } catch {
             // ignore rollback errors
           }
@@ -184,9 +227,12 @@ function AddPropertyPageContent() {
         }
       }
 
-      setMessage(`Anunt creat cu id ${listingId}.`);
       try {
-        router.push(`/confirm?action=created&id=${listingId}&status=draft`);
+        if (isClient) {
+          router.push(`/?submitted=1`);
+        } else {
+          router.push(`/drafts?created=1&id=${listingId}`);
+        }
       } catch (err) {
         // ignore if router unavailable
       }
@@ -201,6 +247,14 @@ function AddPropertyPageContent() {
   };
 
   if (!inviteToken) {
+    if (!tokenReady) {
+      return (
+        <div className="max-w-3xl mx-auto px-6 py-16">
+          <h1 className="text-2xl font-semibold mb-2">Se incarca...</h1>
+          <p className="text-gray-600">Verificam accesul.</p>
+        </div>
+      );
+    }
     return (
       <div className="max-w-3xl mx-auto px-6 py-16">
         <h1 className="text-2xl font-semibold mb-2">Acces restrictionat</h1>
@@ -226,6 +280,10 @@ function AddPropertyPageContent() {
           selectedFacilities={selectedFacilities}
           onToggleFacility={toggleFacility}
           onLocationSelect={(location) => setLocationData(location)}
+          onLocationConfirmChange={(confirmed) => {
+            setIsLocationConfirmed(confirmed);
+            if (!confirmed) setLocationData(null);
+          }}
           initialCounty={formData.judet}
           initialCity={formData.localitate}
           dropzoneTitle="Incarca imagini (minim 5, maxim 10)"
@@ -253,6 +311,22 @@ function AddPropertyPageContent() {
         {/* honeypot */}
         <input type="text" value={formData.honeypot} onChange={e => handleChange('honeypot', e.target.value)} className="hidden" aria-hidden />
 
+        {isClient && (
+          <label
+            className={`flex items-start gap-2 text-sm ${
+              showValidation && !acceptedTerms ? 'text-red-700' : 'text-gray-700'
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+            />
+            <span>Accept termenii si conditiile.</span>
+          </label>
+        )}
+
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
           <div className="text-sm text-gray-600">
             {uploading
@@ -260,7 +334,7 @@ function AddPropertyPageContent() {
               : 'Verifica datele si foloseste butonul de creare.'}
           </div>
           <button type="submit" disabled={loading || uploading} className="w-full sm:w-auto bg-emerald-600 text-white px-5 py-2.5 rounded-full shadow hover:bg-emerald-700 disabled:opacity-60">
-            {loading ? 'Se salveaza...' : 'Creeaza cabana'}
+            {loading ? 'Se salveaza...' : 'Adauga proprietate'}
           </button>
         </div>
 

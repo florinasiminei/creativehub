@@ -1,9 +1,18 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
+import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
 
 export async function POST(request: Request) {
   try {
+    const role = getDraftRoleFromRequest(request);
+    const requiredToken = process.env.INVITE_TOKEN;
+    const inviteToken = request.headers.get('x-invite-token');
+    const hasInvite = requiredToken && inviteToken && inviteToken === requiredToken;
+    if (role !== 'admin' && !hasInvite) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const limit = rateLimit(request, { windowMs: 60_000, max: 30, keyPrefix: 'listing-delete' });
     if (!limit.ok) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } });

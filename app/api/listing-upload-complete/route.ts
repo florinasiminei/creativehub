@@ -7,7 +7,8 @@ import { rateLimit } from '@/lib/rateLimit';
 export async function POST(req: Request) {
   try {
     const requiredToken = process.env.INVITE_TOKEN;
-    if (requiredToken) {
+    const isClientEdit = req.headers.get('x-client-edit') === '1';
+    if (requiredToken && !isClientEdit) {
       const token = req.headers.get('x-invite-token');
       if (!token || token !== requiredToken) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

@@ -7,12 +7,15 @@ type Props = {
   id: string;
   isPublished: boolean;
   slug?: string;
+  canDelete?: boolean;
+  clientLink?: string | null;
   onStatusChange?: (newStatus: "publicat" | "draft") => void;
 };
 
-export default function DraftActions({ id, isPublished, slug, onStatusChange }: Props) {
+export default function DraftActions({ id, isPublished, slug, canDelete = true, clientLink, onStatusChange }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const togglePublish = async () => {
     const nextIsPublished = !isPublished;
@@ -54,6 +57,29 @@ export default function DraftActions({ id, isPublished, slug, onStatusChange }: 
     }
   };
 
+  const copyClientLink = async () => {
+    if (!clientLink) return;
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(clientLink);
+      } else {
+        const input = document.createElement("textarea");
+        input.value = clientLink;
+        input.style.position = "fixed";
+        input.style.opacity = "0";
+        document.body.appendChild(input);
+        input.focus();
+        input.select();
+        document.execCommand("copy");
+        document.body.removeChild(input);
+      }
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // ignore
+    }
+  };
+
   const viewHref = slug ? (isPublished ? `/cazare/${slug}` : `/cazare/${slug}?preview=1&id=${id}`) : "";
 
   return (
@@ -71,13 +97,24 @@ export default function DraftActions({ id, isPublished, slug, onStatusChange }: 
       >
         {isPublished ? "Retrage (draft)" : "Publică"}
       </button>
-      <button
-        onClick={remove}
-        className="px-3 py-2 text-xs font-medium bg-red-100 text-red-700 rounded-lg disabled:opacity-60"
-        disabled={loading}
-      >
-        Șterge
-      </button>
+      {canDelete && (
+        <button
+          onClick={remove}
+          className="px-3 py-2 text-xs font-medium bg-red-100 text-red-700 rounded-lg disabled:opacity-60"
+          disabled={loading}
+        >
+          Șterge
+        </button>
+      )}
+      {clientLink && (
+        <button
+          onClick={copyClientLink}
+          className="px-3 py-2 text-xs font-medium bg-emerald-600 text-white rounded-lg disabled:opacity-60"
+          disabled={loading}
+        >
+          {copied ? "Copiat" : "Copiaza link client"}
+        </button>
+      )}
       {slug && (
         <a
           href={viewHref}

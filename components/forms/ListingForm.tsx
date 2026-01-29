@@ -22,7 +22,6 @@ type LocationData = {
   longitude: number;
   county: string;
   city: string;
-  radius: number;
 };
 
 type ListingFormProps = {
@@ -32,6 +31,7 @@ type ListingFormProps = {
   selectedFacilities: string[];
   onToggleFacility: (id: string) => void;
   onLocationSelect: (location: LocationData) => void;
+  onLocationConfirmChange?: (confirmed: boolean) => void;
   initialCounty: string;
   initialCity: string;
   initialLat?: number | null;
@@ -74,6 +74,7 @@ export default function ListingForm({
   selectedFacilities,
   onToggleFacility,
   onLocationSelect,
+  onLocationConfirmChange,
   initialCounty,
   initialCity,
   initialLat = null,
@@ -234,10 +235,11 @@ export default function ListingForm({
 
       <ListingFormSection step="pas 2" label="Localizare" title="Locație pe hartă">
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Selectează poziția aproximativă. Poți da click pe hartă sau trage pinul, apoi ajustează raza de confidențialitate.
+          Selectează poziția aproximativă. Poți da click pe hartă sau trage pinul, apoi confirmă locația.
         </p>
         <LocationPicker
           onLocationSelect={onLocationSelect}
+          onConfirmChange={onLocationConfirmChange}
           initialCounty={initialCounty}
           initialCity={initialCity}
           initialLat={initialLat}

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { getDraftAuthFromHeader, getRoleFromEncodedAuth } from '@/lib/draftsAuth'
 
 export function middleware(request: NextRequest) {
   const maintenanceEnabled = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true'
@@ -13,35 +14,34 @@ export function middleware(request: NextRequest) {
   }
 
   const isDrafts = pathname === '/drafts' || pathname.startsWith('/drafts/')
+  const isDraftsLogin = pathname === '/drafts-login'
+  const isDraftsLoginApi = pathname === '/api/drafts-login'
+  if (isDraftsLogin || isDraftsLoginApi) {
+    return NextResponse.next()
+  }
   if (isDrafts) {
-    const adminUser = process.env.DRAFTS_BASIC_USER || 'admin'
-    const adminPass = process.env.DRAFTS_BASIC_PASS || 'Parola123*'
-    const credentials = `${adminUser}:${adminPass}`
-    const encoded =
-      typeof btoa !== 'undefined'
-        ? btoa(credentials)
-        : Buffer.from(credentials).toString('base64')
-
     const authHeader = request.headers.get('authorization')
-    const authCookie = request.cookies.get('drafts_auth')?.value
-    const hasValidAuth = authHeader === `Basic ${encoded}` || authCookie === encoded
+    const authCookie = request.cookies.get('drafts_auth')?.value || null
+    const headerAuth = getDraftAuthFromHeader(authHeader)
+    const cookieRole = getRoleFromEncodedAuth(authCookie)
+    const role = headerAuth?.role || cookieRole
+    const encoded = headerAuth?.encoded || authCookie
 
-    if (!hasValidAuth) {
-      return new NextResponse('Authentication required.', {
-        status: 401,
-        headers: { 'WWW-Authenticate': 'Basic realm="Drafts Admin"' },
-      })
+    if (!role || !encoded) {
+      const hasAttempt = !!authHeader || !!authCookie
+      const loginUrl = new URL(`/drafts-login${hasAttempt ? '?error=1' : ''}`, request.url)
+      return NextResponse.redirect(loginUrl)
     }
 
     const response = NextResponse.next()
-    if (authHeader === `Basic ${encoded}` && authCookie !== encoded) {
+    if (headerAuth && authCookie !== encoded) {
       // Remember device so the browser doesn't prompt every time.
       response.cookies.set('drafts_auth', encoded, {
         httpOnly: true,
         sameSite: 'lax',
         secure: process.env.NODE_ENV === 'production',
         maxAge: 60 * 60 * 24 * 30,
-        path: '/drafts',
+        path: '/',
       })
     }
     return response

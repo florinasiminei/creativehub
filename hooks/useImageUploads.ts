@@ -5,9 +5,10 @@ import { completeListingUpload, requestListingUploadUrls } from '@/lib/api/listi
 type UseImageUploadsOptions = {
   onError?: (message: string) => void;
   inviteToken?: string | null;
+  clientMode?: boolean;
 };
 
-export default function useImageUploads({ onError, inviteToken }: UseImageUploadsOptions = {}) {
+export default function useImageUploads({ onError, inviteToken, clientMode = false }: UseImageUploadsOptions = {}) {
   const [uploading, setUploading] = useState(false);
   const [uploadedCount, setUploadedCount] = useState(0);
 
@@ -61,6 +62,7 @@ export default function useImageUploads({ onError, inviteToken }: UseImageUpload
     try {
       const HARD_MAX_BYTES = 50 * 1024 * 1024;
       const TARGET_FILE_BYTES = 8 * 1024 * 1024;
+      const hardMaxMb = Math.round(HARD_MAX_BYTES / 1024 / 1024);
 
       const failed: Array<{ name: string; reason: string }> = [];
       const prepared: Array<{ index: number; file: File; originalName: string }> = [];
@@ -80,7 +82,7 @@ export default function useImageUploads({ onError, inviteToken }: UseImageUpload
       }
 
       if (failed.length > 0) {
-        const err = new Error('Unele imagini sunt prea mari pentru upload (maxim 50MB).');
+        const err = new Error(`Unele imagini sunt prea mari pentru upload (maxim ${hardMaxMb}MB).`);
         (err as any).failed = failed;
         throw err;
       }
@@ -94,7 +96,8 @@ export default function useImageUploads({ onError, inviteToken }: UseImageUpload
           size: p.file.size,
         })),
         startIndex,
-        inviteToken
+        inviteToken,
+        clientMode
       );
 
       const signFailed = Array.isArray(signBody.failed) ? signBody.failed : [];
@@ -104,7 +107,12 @@ export default function useImageUploads({ onError, inviteToken }: UseImageUpload
           name: nameByIndex.get(f.index) || f.name || 'unknown',
           reason: f.reason || 'signed_url_failed',
         }));
-        const err = new Error('Nu s-au incarcat toate imaginile.');
+        const onlyTooLarge = mapped.every((f) => f.reason === 'file_too_large');
+        const err = new Error(
+          onlyTooLarge
+            ? `Unele imagini sunt prea mari pentru upload (maxim ${hardMaxMb}MB).`
+            : 'Nu s-au incarcat toate imaginile.'
+        );
         (err as any).failed = mapped;
         throw err;
       }
@@ -136,7 +144,8 @@ export default function useImageUploads({ onError, inviteToken }: UseImageUpload
             listingId,
             uploadItem.path,
             uploadItem.display_order,
-            inviteToken
+            inviteToken,
+            clientMode
           );
           uploadedAll.push(completed);
           setUploadedCount((prev) => prev + 1);
@@ -146,7 +155,12 @@ export default function useImageUploads({ onError, inviteToken }: UseImageUpload
       }
 
       if (failed.length > 0) {
-        const err = new Error('Nu s-au incarcat toate imaginile.');
+        const onlyTooLarge = failed.every((f) => f.reason === 'file_too_large');
+        const err = new Error(
+          onlyTooLarge
+            ? `Unele imagini sunt prea mari pentru upload (maxim ${hardMaxMb}MB).`
+            : 'Nu s-au incarcat toate imaginile.'
+        );
         (err as any).failed = failed;
         throw err;
       }

@@ -1,12 +1,18 @@
 export const revalidate = 0;
 
+import { cookies } from "next/headers";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { getRoleFromEncodedAuth } from "@/lib/draftsAuth";
 import { mapListingSummary } from "@/lib/transformers";
 import type { ListingRaw } from "@/lib/types";
 import DraftsClient from "./drafts-client";
 
 export default async function DraftsPage() {
   const supabaseAdmin = getSupabaseAdmin();
+  const authCookie = cookies().get("drafts_auth")?.value || null;
+  const role = getRoleFromEncodedAuth(authCookie) || "admin";
+  const inviteToken = process.env.INVITE_TOKEN || null;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || null;
 
   const baseSelect =
     "id, title, slug, type, location, capacity, price, phone, is_published, display_order, listing_images(image_url, display_order)";
@@ -33,5 +39,5 @@ export default async function DraftsPage() {
     return { ...summary, status, isPublished };
   });
 
-  return <DraftsClient listings={mapped} />;
+  return <DraftsClient listings={mapped} role={role} inviteToken={inviteToken} siteUrl={siteUrl} />;
 }

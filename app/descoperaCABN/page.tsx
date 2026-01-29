@@ -8,14 +8,14 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cabn.ro";
 export const metadata: Metadata = {
   title: "Descopera CABN",
   description:
-    "Servicii premium de promovare pentru cazari: foto-video, drone, website ?i social media. Cre?tem vizibilitatea ?i rezervarile.",
+    "Servicii premium de promovare pentru cazări: foto-video, drone, website și social media. Creștem vizibilitatea și rezervările.",
   alternates: {
     canonical: "/descoperaCABN",
   },
   openGraph: {
     title: "Descopera CABN",
     description:
-      "Servicii premium de promovare pentru cazari: foto-video, drone, website ?i social media.",
+      "Servicii premium de promovare pentru cazări: foto-video, drone, website și social media.",
     url: `${siteUrl}/descoperaCABN`,
     siteName: "cabn.ro",
     locale: "ro_RO",
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Descopera CABN",
     description:
-      "Servicii premium de promovare pentru cazari: foto-video, drone, website ?i social media.",
+      "Servicii premium de promovare pentru cazări: foto-video, drone, website și social media.",
     images: ["/images/logo.svg"],
   },
 };
@@ -42,19 +42,19 @@ const SERVICES = [
   {
     title: "Foto & Video",
     description:
-      "Surprindem emo?ia loca?iei tale prin con?inut vizual care spune o poveste autentica ?i atrage clien?i.",
+      "Surprindem emoția locației tale prin conținut vizual care spune o poveste autentică și atrage clienți.",
     Icon: Camera,
   },
   {
     title: "Drone Shots",
     description:
-      "Realizam imagini din aer care atrag priviri în social media ?i ajuta oaspe?ii sa în?eleaga mai bine zona.",
+      "Realizăm imagini din aer care atrag priviri în social media și ajută oaspeții să înțeleagă mai bine zona.",
     Icon: Video,
   },
   {
     title: "Website & SEO",
     description:
-      "Construim site-uri simple de între?inut ?i u?or de gasit pe Google, ca oaspe?ii sa te descopere de oriunde.",
+      "Construim site-uri simple de întreținut și ușor de găsit pe Google, ca oaspeții să te descopere de oriunde.",
     Icon: Globe,
   },
   {
@@ -87,11 +87,11 @@ export default function DescoperaCabn() {
 
         <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center text-white gap-4 md:gap-6">
           <h1 className="text-3xl md:text-5xl font-bold max-w-3xl">
-            Cre?tem vizibilitatea ?i gradul de ocupare al loca?iei tale
+            Creștem vizibilitatea și gradul de ocupare al locației tale
           </h1>
 
           <p className="text-white/85 max-w-2xl">
-            De la creare de con?inut la promovare, ne ocupam de tot ce ai nevoie pentru mai mul?i turi?ti în cazarea ta.
+            De la creare de conținut la promovare, ne ocupăm de tot ce ai nevoie pentru mai mulți turiști în cazarea ta.
           </p>
 
           <Link
@@ -121,7 +121,7 @@ export default function DescoperaCabn() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
           <div className="text-gray-700 dark:text-gray-300 space-y-4">
             <p>
-              Suntem o echipa de profesioni?ti în marketing ?i IT care ajuta proprietarii de cazari sa-?i faca locul vizibil ?i dorit online. Combinam creativitatea cu know-how-ul tehnic pentru a transforma fiecare loca?ie într-un brand de încredere. Ne ocupam de tot, de la con?inut la promovare, ca loca?ia ta sa atraga mai multe rezervari.
+              Suntem o echipă de profesioniști în marketing și IT care ajută proprietarii de cazări să-și facă locul vizibil și dorit online. Combinăm creativitatea cu know-how-ul tehnic pentru a transforma fiecare locație într-un brand de încredere. Ne ocupăm de tot, de la conținut la promovare, ca locația ta să atragă mai multe rezervări.
             </p>
             <span className="inline-block bg-amber-500 text-white text-xs px-3 py-1 rounded-full">
               Scrie-ne pe Whatsapp
@@ -137,7 +137,7 @@ export default function DescoperaCabn() {
         </div>
       </section>
       <section id="contact" className="max-w-3xl mx-auto px-6 py-16">
-        <h2 className="text-2xl font-bold mb-6">Solicita o oferta</h2>
+        <h2 className="text-2xl font-bold mb-6">Solicită o ofertă</h2>
         <form className="grid grid-cols-1 gap-4">
           <input name="name" className="rounded-lg border border-zinc-200/70 dark:border-white/10 px-4 py-3 bg-white dark:bg-transparent" placeholder="Nume" />
           <input
@@ -149,7 +149,7 @@ export default function DescoperaCabn() {
             name="message"
             className="rounded-lg border border-zinc-200/70 dark:border-white/10 px-4 py-3 bg-white dark:bg-transparent"
             rows={5}
-            placeholder="Spune-ne mai multe despre loca?ia ta ?i ce ai nevoie"
+            placeholder="Spune-ne mai multe despre locația ta și ce ai nevoie"
           />
           <button
             type="submit"
@@ -167,7 +167,7 @@ export default function DescoperaCabn() {
           </div>
         ) : (
           <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-            Adauga numarul de WhatsApp în fi?ierul `.env` pentru a afi?a aici linkul rapid.
+            Adaugă numărul de WhatsApp în fișierul `.env` pentru a afișa aici linkul rapid.
           </div>
         )}
       </section>
