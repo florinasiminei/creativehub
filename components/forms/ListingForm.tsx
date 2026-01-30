@@ -412,10 +412,10 @@ export default function ListingForm({
             <input
               value={formData.capacitate}
               onChange={(e) => onChange('capacitate', e.target.value)}
-              type="number"
-              inputMode="numeric"
-              min={1}
+              type="text"
+              inputMode="text"
               required
+              placeholder="Ex: 2-4, 2/4, 4+"
               className={inputClass(isInvalid('capacitate'))}
               aria-invalid={isInvalid('capacitate')}
             />
@@ -483,11 +483,11 @@ export default function ListingForm({
             className={inputClass(isInvalid('tip'))}
             aria-invalid={isInvalid('tip')}
           >
-            <option value="cabana">Cabana</option>
+            <option value="cabana">Cabană</option>
             <option value="a-frame">A-Frame</option>
-            <option value="vila">Vila</option>
+            <option value="vila">Vilă</option>
             <option value="pensiune">Pensiune</option>
-            <option value="casa">Casa</option>
+            <option value="casa">Casă</option>
             <option value="tiny house">Tiny house</option>
             <option value="apartament">Apartament</option>
             <option value="hotel">Hotel</option>

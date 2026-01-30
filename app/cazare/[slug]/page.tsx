@@ -13,7 +13,7 @@ type Listing = {
   title: string;
   location: string;
   type: string;
-  capacity: number;
+  capacity: string;
   price: number;
   phone?: string;
   images: string[];
@@ -97,9 +97,11 @@ export default function Page({ params }: PageProps) {
             : parseInt(String(priceRaw ?? "0").replace(/\D/g, "")) || 0;
 
         const capacity =
-          typeof capacityRaw === "number"
-            ? capacityRaw
-            : parseInt(String(capacityRaw ?? "").match(/\d+/)?.[0] ?? "1", 10);
+          typeof capacityRaw === "string" && capacityRaw.trim().length > 0
+            ? capacityRaw.trim()
+            : typeof capacityRaw === "number"
+              ? String(capacityRaw)
+              : String(parseInt(String(capacityRaw ?? "").match(/\d+/)?.[0] ?? "1", 10));
 
         const facilities = facilitiesRows
           .map((f: any) => {

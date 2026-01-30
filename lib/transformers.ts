@@ -4,9 +4,23 @@ import type { ListingRaw } from "./types";
 function safeNumber(value: unknown, fallback: number) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string") {
-    const parsed = Number(value);
+    const normalizedInput = value.trim();
+    const rangeMatch = normalizedInput.match(/^(\d+)\s*[-/]\s*(\d+)\s*$/);
+    if (rangeMatch) {
+      const minVal = Number(rangeMatch[1]);
+      const maxVal = Number(rangeMatch[2]);
+      if (Number.isFinite(minVal) && Number.isFinite(maxVal)) {
+        return Math.max(minVal, maxVal);
+      }
+    }
+    const plusMatch = normalizedInput.match(/^(\d+)\s*\+\s*$/);
+    if (plusMatch) {
+      const base = Number(plusMatch[1]);
+      if (Number.isFinite(base)) return base;
+    }
+    const parsed = Number(normalizedInput);
     if (Number.isFinite(parsed)) return parsed;
-    const digits = value.match(/[\d.,]+/g)?.join("") || "";
+    const digits = normalizedInput.match(/[\d.,]+/g)?.join("") || "";
     const normalized = digits.replace(/[.,](?=\d{3}\b)/g, "");
     const numeric = Number(normalized.replace(",", "."));
     if (Number.isFinite(numeric)) return numeric;

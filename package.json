@@ -19,6 +19,7 @@
     "lucide-react": "^0.511.0",
     "next": "^14.2.3",
     "next-themes": "^0.4.6",
+    "nodemailer": "^7.0.13",
     "rc-slider": "^9.7.5",
     "react": "18.2.0",
     "react-dom": "18.2.0",
@@ -28,6 +29,7 @@
     "slick-carousel": "^1.8.1"
   },
   "devDependencies": {
+    "@types/nodemailer": "^7.0.9",
     "@types/rc-slider": "^9.3.0",
     "@types/react": "^18",
     "@types/react-image-gallery": "^1.2.4",

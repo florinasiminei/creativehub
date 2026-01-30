@@ -2,6 +2,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Camera, Globe, Share2, Video } from "lucide-react";
+import ContactForm from "@/components/forms/ContactForm";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cabn.ro";
 
@@ -137,27 +138,11 @@ export default function DescoperaCabn() {
         </div>
       </section>
       <section id="contact" className="max-w-3xl mx-auto px-6 py-16">
-        <h2 className="text-2xl font-bold mb-6">Solicită o ofertă</h2>
-        <form className="grid grid-cols-1 gap-4">
-          <input name="name" className="rounded-lg border border-zinc-200/70 dark:border-white/10 px-4 py-3 bg-white dark:bg-transparent" placeholder="Nume" />
-          <input
-            name="contact"
-            className="rounded-lg border border-zinc-200/70 dark:border-white/10 px-4 py-3 bg-white dark:bg-transparent"
-            placeholder="Email / Telefon"
-          />
-          <textarea
-            name="message"
-            className="rounded-lg border border-zinc-200/70 dark:border-white/10 px-4 py-3 bg-white dark:bg-transparent"
-            rows={5}
-            placeholder="Spune-ne mai multe despre locația ta și ce ai nevoie"
-          />
-          <button
-            type="submit"
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-3 rounded-full font-semibold"
-          >
-            Trimite
-          </button>
-        </form>
+        <h2 className="text-2xl font-bold mb-2">Solicită o ofertă</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          Spune-ne cateva detalii si revenim cu o propunere personalizata.
+        </p>
+        <ContactForm />
         {WHATSAPP_LINK ? (
           <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
             sau contacteaza-ne pe WhatsApp:
@@ -174,4 +159,3 @@ export default function DescoperaCabn() {
     </div>
   );
 }
-

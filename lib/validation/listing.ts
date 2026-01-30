@@ -22,3 +22,12 @@ export function validateDescriptionLength(description: string, min: number, max:
   if (trimmed.length > max) return `Descrierea trebuie sa aiba maxim ${max} caractere.`;
   return null;
 }
+
+export function validateCapacity(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (/^\d+$/.test(trimmed)) return null;
+  if (/^\d+\s*[-/]\s*\d+$/.test(trimmed)) return null;
+  if (/^\d+\s*\+$/.test(trimmed)) return null;
+  return 'Capacitate invalida. Exemplu: 2-4, 2/4 sau 4+.';
+}

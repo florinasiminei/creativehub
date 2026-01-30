@@ -176,6 +176,7 @@ export default function EditPropertyPage({ params }: any) {
       { key: 'capacitate', value: formData.capacitate, label: 'Capacitate' },
       { key: 'telefon', value: formData.telefon, label: 'Telefon' },
     ],
+    capacity: formData.capacitate,
     phone: formData.telefon,
     phoneKey: 'telefon',
     imagesCount: images.length + files.length,
@@ -247,7 +248,7 @@ export default function EditPropertyPage({ params }: any) {
             ? `${locationData?.city || formData.localitate}${formData.sat ? ` (${formData.sat})` : ''}`
             : null,
         price: Number(formData.pret) || 0,
-        capacity: Number(formData.capacitate) || 1,
+        capacity: formData.capacitate || '1',
         camere: Number(formData.camere) || 0,
         paturi: Number(formData.paturi) || 0,
         bai: Number(formData.bai) || 0,

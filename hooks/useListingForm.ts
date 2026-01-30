@@ -1,9 +1,17 @@
-import { validateRequired, validatePhone, validateImagesCount, validateDescriptionLength } from '@/lib/validation/listing';
+import {
+  validateRequired,
+  validatePhone,
+  validateImagesCount,
+  validateDescriptionLength,
+  validateCapacity,
+} from '@/lib/validation/listing';
 
 type RequiredField = { key: string; value: string | null | undefined; label: string };
 
 type UseListingFormOptions = {
   requiredFields: RequiredField[];
+  capacity?: string;
+  capacityKey?: string;
   phone: string;
   phoneKey?: string;
   imagesCount: number;
@@ -18,6 +26,8 @@ type UseListingFormOptions = {
 
 export default function useListingForm({
   requiredFields,
+  capacity,
+  capacityKey = 'capacitate',
   phone,
   phoneKey = 'telefon',
   imagesCount,
@@ -35,13 +45,15 @@ export default function useListingForm({
   const requiredError = validateRequired(requiredFields);
   const phoneError = validatePhone(phone);
   const imagesError = validateImagesCount(imagesCount, minImages, maxImages);
+  const capacityError = capacity ? validateCapacity(capacity) : null;
   const descriptionError = enforceDescription
     ? validateDescriptionLength(description, descriptionMin, descriptionMax)
     : null;
 
-  const firstError = requiredError || phoneError || descriptionError || imagesError;
+  const firstError = requiredError || capacityError || phoneError || descriptionError || imagesError;
   const invalidFields = [
     ...missingKeys,
+    ...(capacityError ? [capacityKey] : []),
     ...(phoneError ? [phoneKey] : []),
     ...(descriptionError ? [descriptionKey] : []),
   ];
