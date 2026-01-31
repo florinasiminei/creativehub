@@ -111,19 +111,22 @@ export default function DescoperaCabn() {
         <div className="absolute inset-0 bg-black/25" />
 
         <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center text-white gap-4 md:gap-6">
+          <div className="inline-block rounded-full bg-white/20 backdrop-blur px-4 py-2 text-sm font-semibold mb-2">
+            Nu agenție. Partener de creștere.
+          </div>
           <h1 className="text-3xl md:text-5xl font-bold max-w-3xl leading-tight">
-            Transformă proprietatea ta în brand memorabil
+            Transformă proprietatea ta în brand cu +50% mai multe rezervări
           </h1>
 
           <p className="text-white/90 max-w-2xl text-lg">
-            Servicii complete de promovare digitală: foto-video cinematic, website profesional, social media management și strategie digitală personalizată.
+            Sistem complet: video short-form, website SEO, strategie social media cu rezultate măsurabile.
           </p>
 
           <Link
-            href="#servicii"
+            href="#aplicare"
             className="rounded-full bg-amber-500 px-8 py-3 text-sm font-semibold text-black shadow-lg hover:bg-amber-400 transition inline-flex items-center gap-2"
           >
-            Explorează serviciile
+            Verifică dacă ești eligibil →
           </Link>
         </div>
       </section>
