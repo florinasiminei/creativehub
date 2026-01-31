@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
 import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
@@ -111,6 +112,21 @@ export async function POST(request: Request) {
         const rels = facilities.map((fid: string) => ({ listing_id: id, facility_id: fid }));
         await supabaseAdmin.from('listing_facilities').insert(rels);
       }
+    }
+
+    try {
+      const { data: listingRow } = await supabaseAdmin
+        .from('listings')
+        .select('slug, type, is_published')
+        .eq('id', id)
+        .maybeSingle();
+
+      revalidatePath('/');
+      if (listingRow?.type) revalidatePath(`/cazari/${listingRow.type}`);
+      if (listingRow?.slug) revalidatePath(`/cazare/${listingRow.slug}`);
+      revalidatePath('/sitemap.xml');
+    } catch (revalidateErr) {
+      console.error('[listing-update] revalidate failed', revalidateErr);
     }
 
     return NextResponse.json({ ok: true });
