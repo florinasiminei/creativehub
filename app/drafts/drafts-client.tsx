@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import DraftActions from "@/components/DraftActions";
+import { useRefreshOnNavigation, markPageModified } from "@/hooks/useRefreshOnNavigation";
 import type { Cazare } from "@/lib/utils";
 
 type DraftItem = Cazare & {
@@ -47,6 +48,9 @@ export default function DraftsClient({ listings, role, inviteToken = null, siteU
     if (typeof window !== "undefined") return window.location.origin;
     return "";
   }, [siteUrl]);
+
+  // Refresh page when returning from editing a draft
+  useRefreshOnNavigation('drafts');
 
   useEffect(() => {
     const updated = searchParams.get("updated") == "1";
@@ -105,6 +109,7 @@ export default function DraftsClient({ listings, role, inviteToken = null, siteU
       const body = await resp.json();
       if (!resp.ok) throw new Error(body?.error || "Nu am putut salva ordinea.");
       setStatusMessage("Ordinea a fost salvată.");
+      markPageModified();
       router.refresh();
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : "A apărut o eroare.");
@@ -130,6 +135,7 @@ export default function DraftsClient({ listings, role, inviteToken = null, siteU
       const body = await resp.json();
       if (!resp.ok) throw new Error(body?.error || "Nu am putut reseta ordinea.");
       setStatusMessage("Ordinea a fost resetată.");
+      markPageModified();
       router.refresh();
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : "A apărut o eroare.");

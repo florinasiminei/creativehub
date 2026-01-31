@@ -3,6 +3,33 @@ import Fuse from "fuse.js";
 import { Cazare } from "../lib/utils";
 import { Filters } from "../lib/types";
 
+function parseCapacity(capacity: string | number): { min: number; max: number } {
+  const str = String(capacity).trim();
+  
+  // Range: 5-6 or 5/6
+  const rangeMatch = str.match(/^(\d+)\s*[-/]\s*(\d+)\s*$/);
+  if (rangeMatch) {
+    const min = Number(rangeMatch[1]);
+    const max = Number(rangeMatch[2]);
+    return { min, max: Math.max(min, max) };
+  }
+  
+  // Plus: 5+
+  const plusMatch = str.match(/^(\d+)\s*\+\s*$/);
+  if (plusMatch) {
+    const base = Number(plusMatch[1]);
+    return { min: base, max: base };
+  }
+  
+  // Single number
+  const num = Number(str);
+  if (Number.isFinite(num)) {
+    return { min: num, max: num };
+  }
+  
+  return { min: 1, max: 1 };
+}
+
 export function useFuzzyCazari(cazari: Cazare[], filters: Filters) {
   return useMemo(() => {
     let result = cazari;
@@ -22,9 +49,10 @@ export function useFuzzyCazari(cazari: Cazare[], filters: Filters) {
     );
 
     // Persons filter
-    result = result.filter(
-      (c) => c.numarPersoane >= filters.persoaneMin && c.numarPersoane <= filters.persoaneMax
-    );
+    result = result.filter((c) => {
+      const { min, max } = parseCapacity(c.numarPersoane);
+      return max >= filters.persoaneMin && min <= filters.persoaneMax;
+    });
 
     if (filters.camere > 0) {
       result = result.filter((c) => c.camere >= filters.camere);

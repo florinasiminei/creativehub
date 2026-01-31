@@ -62,7 +62,7 @@ export function mapListingSummary(row: ListingRaw, fallbackImage = "/fallback.sv
     price: safeNumber(row.price, 0),
     tip: row.type,
     locatie: locationLabel,
-    numarPersoane: safeNumber(row.capacity, 1),
+    numarPersoane: String(row.capacity).trim(),
     camere,
     paturi,
     bai,

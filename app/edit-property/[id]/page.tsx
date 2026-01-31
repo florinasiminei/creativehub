@@ -8,6 +8,7 @@ import ListingForm from '@/components/forms/ListingForm';
 import useImageSelection from '@/hooks/useImageSelection';
 import useImageUploads from '@/hooks/useImageUploads';
 import useListingForm from '@/hooks/useListingForm';
+import { markPageModified } from '@/hooks/useRefreshOnNavigation';
 import { deleteListingImage, reorderListingImages, updateListing } from '@/lib/api/listings';
 import { sortFacilitiesByPriority } from '@/lib/facilitiesCatalog';
 
@@ -296,6 +297,7 @@ export default function EditPropertyPage({ params }: any) {
       }
 
       setMessage('Modificările au fost salvate.');
+      markPageModified();
       router.push('/drafts?updated=1');
     } catch (err) {
       console.error(err);

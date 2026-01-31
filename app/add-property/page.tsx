@@ -7,6 +7,7 @@ import ListingForm from '@/components/forms/ListingForm';
 import useImageSelection from '@/hooks/useImageSelection';
 import useImageUploads from '@/hooks/useImageUploads';
 import useListingForm from '@/hooks/useListingForm';
+import { markPageModified } from '@/hooks/useRefreshOnNavigation';
 import { createListing, deleteListing } from '@/lib/api/listings';
 import { sortFacilitiesByPriority } from '@/lib/facilitiesCatalog';
 
@@ -251,6 +252,7 @@ function AddPropertyPageContent() {
       }
 
       try {
+        markPageModified();
         if (isClient) {
           router.push(`/?submitted=1`);
         } else {

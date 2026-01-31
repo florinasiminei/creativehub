@@ -26,7 +26,7 @@ export type Cazare = {
   price: number;
   tip: string;
   locatie: string;
-  numarPersoane: number;
+  numarPersoane: string | number;
   camere: number;
   paturi: number;
   bai: number;

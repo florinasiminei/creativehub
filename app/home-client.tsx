@@ -3,6 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type SetStateAction } from "react";
 import Link from "next/link";
+import { useRefreshOnNavigation } from "@/hooks/useRefreshOnNavigation";
 import { useSearchParams } from "next/navigation";
 import Fuse from "fuse.js";
 import { TopSearchBar } from "@/components/TopSearchBar";
@@ -17,9 +18,39 @@ import { Cazare } from "@/lib/utils";
 import type { FacilityOption, Filters, ListingRaw, SearchSuggestion } from "@/lib/types";
 import { supabase } from "@/lib/supabaseClient";
 
+function parseCapacity(capacity: string | number): { min: number; max: number } {
+  const str = String(capacity).trim();
+  
+  // Range: 5-6 or 5/6
+  const rangeMatch = str.match(/^(\d+)\s*[-/]\s*(\d+)\s*$/);
+  if (rangeMatch) {
+    const min = Number(rangeMatch[1]);
+    const max = Number(rangeMatch[2]);
+    return { min, max: Math.max(min, max) };
+  }
+  
+  // Plus: 5+
+  const plusMatch = str.match(/^(\d+)\s*\+\s*$/);
+  if (plusMatch) {
+    const base = Number(plusMatch[1]);
+    return { min: base, max: base };
+  }
+  
+  // Single number
+  const num = Number(str);
+  if (Number.isFinite(num)) {
+    return { min: num, max: num };
+  }
+  
+  return { min: 1, max: 1 };
+}
+
 function getInitialFilters(cazari: Cazare[]): Filters {
   const prices = cazari.map((c) => c.price);
-  const persoane = cazari.map((c) => c.numarPersoane);
+  const persoane = cazari.flatMap((c) => {
+    const { min, max } = parseCapacity(c.numarPersoane);
+    return [min, max];
+  });
   const minPrice = prices.length ? Math.min(...prices) : 0;
   const maxPrice = prices.length ? Math.max(...prices) : 10_000;
   const minPers = persoane.length ? Math.min(...persoane) : 1;
@@ -99,6 +130,9 @@ export default function Home({ initialCazari = [], initialFacilities = [] }: Hom
   const [error, setError] = useState<string | null>(null);
   const [showSubmittedNotice, setShowSubmittedNotice] = useState(false);
 
+  // Refresh page when returning from drafts/edit-property
+  useRefreshOnNavigation('home');
+
   useEffect(() => {
     const submitted = searchParams.get("submitted") === "1";
     setShowSubmittedNotice(submitted);
@@ -109,9 +143,13 @@ export default function Home({ initialCazari = [], initialFacilities = [] }: Hom
     setCazari(initialCazari);
     const init = getInitialFilters(initialCazari);
     setFilters(init);
+    const persoane = initialCazari.flatMap((c) => {
+      const { min, max } = parseCapacity(c.numarPersoane);
+      return [min, max];
+    });
     setPersoaneRange({
-      min: initialCazari.length ? Math.min(...initialCazari.map((c) => c.numarPersoane)) : init.persoaneMin,
-      max: initialCazari.length ? Math.max(...initialCazari.map((c) => c.numarPersoane)) : init.persoaneMax,
+      min: persoane.length ? Math.min(...persoane) : init.persoaneMin,
+      max: persoane.length ? Math.max(...persoane) : init.persoaneMax,
     });
     setLoading(false);
   }, [initialCazari, setFilters]);
@@ -165,9 +203,13 @@ export default function Home({ initialCazari = [], initialFacilities = [] }: Hom
         setCazari(mapped);
         const init = getInitialFilters(mapped);
         setFilters(init);
+        const persoane = mapped.flatMap((c) => {
+          const { min, max } = parseCapacity(c.numarPersoane);
+          return [min, max];
+        });
         setPersoaneRange({
-          min: mapped.length ? Math.min(...mapped.map((c) => c.numarPersoane)) : init.persoaneMin,
-          max: mapped.length ? Math.max(...mapped.map((c) => c.numarPersoane)) : init.persoaneMax,
+          min: persoane.length ? Math.min(...persoane) : init.persoaneMin,
+          max: persoane.length ? Math.max(...persoane) : init.persoaneMax,
         });
       } catch (err) {
         if (!cancelled) {
@@ -520,9 +562,13 @@ export default function Home({ initialCazari = [], initialFacilities = [] }: Hom
   const resetFiltre = () => {
     const init = getInitialFilters(cazari);
     setFilters(init);
+    const persoane = cazari.flatMap((c) => {
+      const { min, max } = parseCapacity(c.numarPersoane);
+      return [min, max];
+    });
     setPersoaneRange({
-      min: cazari.length ? Math.min(...cazari.map((c) => c.numarPersoane)) : init.persoaneMin,
-      max: cazari.length ? Math.max(...cazari.map((c) => c.numarPersoane)) : init.persoaneMax,
+      min: persoane.length ? Math.min(...persoane) : init.persoaneMin,
+      max: persoane.length ? Math.max(...persoane) : init.persoaneMax,
     });
   };
 
