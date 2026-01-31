@@ -132,15 +132,83 @@ export default function DescoperaCabn() {
       </section>
 
       {/* Intro Section */}
+      {/* Positioning Section */}
       <section className="max-w-5xl mx-auto px-6 py-16">
-        <div className="space-y-6 text-center">
-          <h2 className="text-3xl font-bold">De ce ai nevoie de promovare digitală</h2>
+        <div className="space-y-8 text-center">
+          <div>
+            <h2 className="text-3xl font-bold mb-4">CABN.ro nu este o agentie generala</h2>
+            <p className="text-xl text-zinc-700 dark:text-zinc-300 font-semibold text-amber-600 dark:text-amber-400">
+              Suntem partener de crestere pentru proprietati din turism alternativ.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="text-left">
+              <h3 className="font-bold text-lg mb-4 text-emerald-700 dark:text-emerald-400">Te ajutam daca:</h3>
+              <ul className="space-y-3">
+                <li className="flex items-start gap-3">
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold mt-1">✓</span>
+                  <span>Vrei sa cresti rate de ocupare (30-50%+ in 6 luni)</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold mt-1">✓</span>
+                  <span>Esti serios cu investitia in brand si marketing</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold mt-1">✓</span>
+                  <span>Cauti strategie pe termen lung, nu doar promovare punctuala</span>
+                </li>
+              </ul>
+            </div>
+            
+            <div className="text-left">
+              <h3 className="font-bold text-lg mb-4 text-rose-700 dark:text-rose-400">Cand NU suntem potriviti:</h3>
+              <ul className="space-y-3">
+                <li className="flex items-start gap-3">
+                  <span className="text-rose-600 dark:text-rose-400 font-bold mt-1">✗</span>
+                  <span>Cauti fotografii rapide fara strategie</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-rose-600 dark:text-rose-400 font-bold mt-1">✗</span>
+                  <span>Nu esti dispus sa investesti in content si marketing</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="text-rose-600 dark:text-rose-400 font-bold mt-1">✗</span>
+                  <span>Vrei rezultate in 2-3 saptamani</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Results Section */}
+      <section className="max-w-5xl mx-auto px-6 py-16 bg-gradient-to-b from-amber-50 dark:from-amber-950/20 to-transparent rounded-2xl">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold mb-4">De ce experienta noastra produce rezultate reale</h2>
           <p className="text-lg text-zinc-700 dark:text-zinc-300">
-            Piața turismului alternativ este dinamică și competitive. Proprietățile care nu sunt vizibile online se pierd într-o mulțime de mii de oferte. Tu merești mai bine.
+            Peste 150+ proprietati transformate. Iata cifrele reale.
           </p>
-          <p className="text-lg text-zinc-700 dark:text-zinc-300">
-            La CABN.ro, nu doar facem fotografii frumoase - creăm o identitate digitală completă care transforma oaspeții în clienți loiali și multiplică rata de ocupare.
-          </p>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white dark:bg-zinc-900/60 rounded-xl p-8 border border-amber-200 dark:border-amber-900/30 text-center">
+            <TrendingUp className="h-10 w-10 text-amber-600 dark:text-amber-400 mx-auto mb-4" />
+            <div className="text-4xl font-bold text-amber-700 dark:text-amber-300 mb-2">+47%</div>
+            <p className="text-zinc-700 dark:text-zinc-300">Crestere medie occupancy in 6 luni</p>
+          </div>
+          
+          <div className="bg-white dark:bg-zinc-900/60 rounded-xl p-8 border border-amber-200 dark:border-amber-900/30 text-center">
+            <TrendingUp className="h-10 w-10 text-amber-600 dark:text-amber-400 mx-auto mb-4" />
+            <div className="text-4xl font-bold text-amber-700 dark:text-amber-300 mb-2">+180%</div>
+            <p className="text-zinc-700 dark:text-zinc-300">Crestere visibility si reach social media</p>
+          </div>
+          
+          <div className="bg-white dark:bg-zinc-900/60 rounded-xl p-8 border border-amber-200 dark:border-amber-900/30 text-center">
+            <MessageSquare className="h-10 w-10 text-amber-600 dark:text-amber-400 mx-auto mb-4" />
+            <div className="text-4xl font-bold text-amber-700 dark:text-amber-300 mb-2">3x</div>
+            <p className="text-zinc-700 dark:text-zinc-300">Mai multe cereri de rezervare direct</p>
+          </div>
         </div>
       </section>
 
