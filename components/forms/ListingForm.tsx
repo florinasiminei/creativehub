@@ -39,6 +39,7 @@ type ListingFormProps = {
   onToggleFacility: (id: string) => void;
   onLocationSelect: (location: LocationData) => void;
   onLocationConfirmChange?: (confirmed: boolean) => void;
+  autoLocate?: boolean;
   initialCounty: string;
   initialCity: string;
   initialLat?: number | null;
@@ -85,6 +86,7 @@ export default function ListingForm({
   onToggleFacility,
   onLocationSelect,
   onLocationConfirmChange,
+  autoLocate = true,
   initialCounty,
   initialCity,
   initialLat = null,
@@ -483,14 +485,12 @@ export default function ListingForm({
             className={inputClass(isInvalid('tip'))}
             aria-invalid={isInvalid('tip')}
           >
-            <option value="cabana">Cabană</option>
+            <option value="cabana">Cabană autentică</option>
             <option value="a-frame">A-Frame</option>
-            <option value="vila">Vilă</option>
             <option value="pensiune">Pensiune</option>
-            <option value="casa">Casă</option>
-            <option value="tiny house">Tiny house</option>
             <option value="apartament">Apartament</option>
-            <option value="hotel">Hotel</option>
+            <option value="tiny house">Tiny house</option>
+            <option value="casa de vacanta">Casă de vacanță</option>
           </select>
         </label>
 
@@ -527,6 +527,7 @@ export default function ListingForm({
           initialCity={initialCity}
           initialLat={initialLat}
           initialLng={initialLng}
+          autoLocate={autoLocate}
         />
       </ListingFormSection>
 

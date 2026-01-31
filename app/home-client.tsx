@@ -2,6 +2,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type SetStateAction } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import Fuse from "fuse.js";
 import { TopSearchBar } from "@/components/TopSearchBar";
@@ -11,6 +12,7 @@ import Pagination from "@/components/Pagination";
 import { useFuzzyCazari } from "@/hooks/useFuzzyCazari";
 import { mapListingSummary } from "@/lib/transformers";
 import { sortFacilitiesByPriority } from "@/lib/facilitiesCatalog";
+import { getTypeLabel } from "@/lib/listingTypes";
 import { Cazare } from "@/lib/utils";
 import type { FacilityOption, Filters, ListingRaw, SearchSuggestion } from "@/lib/types";
 import { supabase } from "@/lib/supabaseClient";
@@ -28,6 +30,7 @@ function getInitialFilters(cazari: Cazare[]): Filters {
     keyword: "",
     pretMin: minPrice,
     pretMax: maxPrice,
+    tipuri: [],
     facilities: [],
     persoaneMin: minPers,
     persoaneMax: maxPers,
@@ -39,16 +42,22 @@ function getInitialFilters(cazari: Cazare[]): Filters {
 
 const ITEMS_PER_PAGE = 50;
 
-export default function Home() {
+type HomeClientProps = {
+  initialCazari?: Cazare[];
+  initialFacilities?: FacilityOption[];
+};
+
+export default function Home({ initialCazari = [], initialFacilities = [] }: HomeClientProps) {
   const searchParams = useSearchParams();
-  const [cazari, setCazari] = useState<Cazare[]>([]);
-  const [facilitiesList, setFacilitiesList] = useState<FacilityOption[]>([]);
+  const [cazari, setCazari] = useState<Cazare[]>(initialCazari);
+  const [facilitiesList, setFacilitiesList] = useState<FacilityOption[]>(initialFacilities);
   const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFiltersState] = useState<Filters>({
     locatie: "",
     keyword: "",
     pretMin: 0,
     pretMax: 10000,
+    tipuri: [],
     facilities: [],
     persoaneMin: 1,
     persoaneMax: 15,
@@ -71,6 +80,8 @@ export default function Home() {
         next.camere === prev.camere &&
         next.paturi === prev.paturi &&
         next.bai === prev.bai &&
+        next.tipuri.length === prev.tipuri.length &&
+        next.tipuri.every((value, index) => value === prev.tipuri[index]) &&
         next.facilities.length === prev.facilities.length &&
         next.facilities.every((value, index) => value === prev.facilities[index])
       ) {
@@ -84,7 +95,7 @@ export default function Home() {
   const [persoaneRange, setPersoaneRange] = useState({ min: 1, max: 10 });
   const [locatiiSugestii, setLocatiiSugestii] = useState<SearchSuggestion[]>([]);
   const [sugestieIndex, setSugestieIndex] = useState(-1);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(initialCazari.length === 0);
   const [error, setError] = useState<string | null>(null);
   const [showSubmittedNotice, setShowSubmittedNotice] = useState(false);
 
@@ -94,6 +105,19 @@ export default function Home() {
   }, [searchParams]);
 
   useEffect(() => {
+    if (initialCazari.length === 0) return;
+    setCazari(initialCazari);
+    const init = getInitialFilters(initialCazari);
+    setFilters(init);
+    setPersoaneRange({
+      min: initialCazari.length ? Math.min(...initialCazari.map((c) => c.numarPersoane)) : init.persoaneMin,
+      max: initialCazari.length ? Math.max(...initialCazari.map((c) => c.numarPersoane)) : init.persoaneMax,
+    });
+    setLoading(false);
+  }, [initialCazari, setFilters]);
+
+  useEffect(() => {
+    if (initialCazari.length > 0) return;
     let cancelled = false;
 
     async function fetchCazari() {
@@ -102,7 +126,8 @@ export default function Home() {
         setError(null);
 
         const baseSelect = `
-            id, title, slug, type, location, capacity, price, phone, is_published, display_order,
+            id, title, slug, type, location, address, capacity, price, phone, is_published, display_order,
+            camere, paturi, bai,
             listing_images(image_url, display_order),
             listing_facilities(
               facilities(id, name)
@@ -157,9 +182,10 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [setFilters]);
+  }, [setFilters, initialCazari.length]);
 
   useEffect(() => {
+    if (initialFacilities.length > 0) return;
     let mounted = true;
     supabase
       .from("facilities")
@@ -170,7 +196,7 @@ export default function Home() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [initialFacilities.length]);
 
   const minPriceAll = useMemo(
     () => (cazari.length ? Math.min(...cazari.map((c) => c.price)) : 0),
@@ -535,6 +561,20 @@ export default function Home() {
     });
   }
 
+  if (filters.tipuri.length > 0) {
+    filters.tipuri.forEach((tip) => {
+      activeFilterChips.push({
+        key: `type-${tip}`,
+        label: `Tip: ${getTypeLabel(tip)}`,
+        onClear: () =>
+          setFilters((prev) => ({
+            ...prev,
+            tipuri: prev.tipuri.filter((t) => t !== tip),
+          })),
+      });
+    });
+  }
+
   if (filters.camere > 0) {
     activeFilterChips.push({
       key: "rooms",
@@ -627,7 +667,7 @@ export default function Home() {
 
       <main className="w-full px-4 lg:px-6">
         <section id="cazari" className="py-8">
-          <h2 className="text-xl font-medium mb-6">Cazări turistice</h2>
+          <h2 className="text-xl font-medium mb-6">Cabane autentice & cazări selectate</h2>
 
           {loading && (
             <div className="flex items-center justify-center py-12 min-h-[60vh]">
@@ -647,32 +687,58 @@ export default function Home() {
             </div>
           )}
 
-            {!loading && !error && (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-2 gap-y-8">
-                  <ListingsGrid 
-                    cazari={filteredCazari.slice(
-                      (currentPage - 1) * ITEMS_PER_PAGE,
-                      currentPage * ITEMS_PER_PAGE
-                    )} 
-                  />
-                </div>
-                <div className="text-center">
-                  {filteredCazari.length > ITEMS_PER_PAGE && (
-                    <Pagination
-                      currentPage={currentPage}
-                      totalPages={Math.ceil(filteredCazari.length / ITEMS_PER_PAGE)}
-                      onPageChange={(page) => {
-                        setCurrentPage(page);
-                        window.scrollTo({ top: 0, behavior: "smooth" });
-                      }}
-                    />
-                  )}
-                </div>
-              </>
-            )}
+          {!loading && !error && cazari.length === 0 && (
+            <div className="rounded-3xl border border-emerald-100 bg-emerald-50/60 px-6 py-10 text-center">
+              <div className="text-5xl mb-3">🏔️</div>
+              <h3 className="text-2xl font-semibold text-emerald-900 mb-2">
+                Catalogul CABN.ro este în pregătire
+              </h3>
+              <p className="text-emerald-800/80 max-w-2xl mx-auto">
+                Începem să publicăm, una câte una, cabane autentice, A‑frame‑uri, tiny houses, pensiuni și apartamente atent verificate.
+              </p>
+              <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <Link
+                  href="/descoperaCABN#contact"
+                  className="px-6 py-2.5 rounded-full bg-emerald-700 text-white hover:bg-emerald-800 transition"
+                >
+                  Înscrie proprietatea ta
+                </Link>
+                <Link
+                  href="/contact"
+                  className="px-6 py-2.5 rounded-full border border-emerald-300 text-emerald-900 hover:bg-emerald-100 transition"
+                >
+                  Contactează-ne
+                </Link>
+              </div>
+            </div>
+          )}
 
-            {!loading && !error && filteredCazari.length === 0 && (
+          {!loading && !error && cazari.length > 0 && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-2 gap-y-8">
+                <ListingsGrid
+                  cazari={filteredCazari.slice(
+                    (currentPage - 1) * ITEMS_PER_PAGE,
+                    currentPage * ITEMS_PER_PAGE
+                  )}
+                />
+              </div>
+              <div className="text-center">
+                {filteredCazari.length > ITEMS_PER_PAGE && (
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={Math.ceil(filteredCazari.length / ITEMS_PER_PAGE)}
+                    onPageChange={(page) => {
+                      setCurrentPage(page);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                  />
+                )}
+              </div>
+            </>
+          )}
+
+          {!loading && !error && cazari.length > 0 && filteredCazari.length === 0 && (
               <div className="text-center py-12">
                 <div className="text-6xl mb-4">😔</div>
                 <h3 className="text-xl font-semibold text-gray-700 dark:text-gray-300 mb-2">

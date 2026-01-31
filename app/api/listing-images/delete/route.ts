@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
+import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
+import { isListingTokenValid } from '@/lib/listingTokens';
 
 export async function POST(request: Request) {
   try {
@@ -17,6 +19,16 @@ export async function POST(request: Request) {
 
     const { data: rows } = await supabaseAdmin.from('listing_images').select('*').eq('id', id).limit(1).single();
     if (!rows) return NextResponse.json({ error: 'Image not found' }, { status: 404 });
+
+    const role = getDraftRoleFromRequest(request);
+    const hasRole = role === 'admin' || role === 'staff';
+    if (!hasRole) {
+      const listingToken = request.headers.get('x-listing-token');
+      const ok = await isListingTokenValid(String(rows.listing_id), listingToken, supabaseAdmin);
+      if (!ok) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+    }
 
     const imageUrl = rows.image_url as string;
     // parse storage path from public url when using public bucket

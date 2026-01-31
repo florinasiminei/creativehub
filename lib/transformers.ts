@@ -47,32 +47,13 @@ export function mapListingSummary(row: ListingRaw, fallbackImage = "/fallback.sv
       ? String(row.listing_images[0]?.image_url ?? "").trim()
       : "";
   const image = coverCandidate || fallbackImage;
+  const address = typeof row.address === "string" ? row.address.trim() : "";
+  const locationLabel = address ? `${address}, ${row.location}` : row.location;
 
   const { ids, names } = extractFacilities(row.listing_facilities);
-  const camere = safeNumber(
-    (row as any).rooms ??
-      (row as any).camere ??
-      (row as any).num_camere ??
-      (row as any).num_rooms ??
-      (row as any).bedrooms,
-    0
-  );
-  const paturi = safeNumber(
-    (row as any).beds ??
-      (row as any).paturi ??
-      (row as any).num_paturi ??
-      (row as any).num_beds ??
-      (row as any).pat,
-    0
-  );
-  const bai = safeNumber(
-    (row as any).bathrooms ??
-      (row as any).bai ??
-      (row as any).num_bai ??
-      (row as any).num_bathrooms ??
-      (row as any).bath,
-    0
-  );
+  const camere = safeNumber((row as any).camere, 0);
+  const paturi = safeNumber((row as any).paturi, 0);
+  const bai = safeNumber((row as any).bai, 0);
 
   return {
     id: row.id,
@@ -80,7 +61,7 @@ export function mapListingSummary(row: ListingRaw, fallbackImage = "/fallback.sv
     slug: row.slug || `${slugify(row.title)}-${row.id}`,
     price: safeNumber(row.price, 0),
     tip: row.type,
-    locatie: row.location,
+    locatie: locationLabel,
     numarPersoane: safeNumber(row.capacity, 1),
     camere,
     paturi,

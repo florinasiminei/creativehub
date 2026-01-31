@@ -3,18 +3,11 @@ export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
+import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
+import { isListingTokenValid } from '@/lib/listingTokens';
 
 export async function POST(req: Request) {
   try {
-    const requiredToken = process.env.INVITE_TOKEN;
-    const isClientEdit = req.headers.get('x-client-edit') === '1';
-    if (requiredToken && !isClientEdit) {
-      const token = req.headers.get('x-invite-token');
-      if (!token || token !== requiredToken) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
-    }
-
     const limit = rateLimit(req, { windowMs: 60_000, max: 120, keyPrefix: 'listing-upload-complete' });
     if (!limit.ok) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } });
@@ -30,6 +23,16 @@ export async function POST(req: Request) {
     if (!listingId || !path) return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
     if (!path.startsWith(`listings/${listingId}/`)) {
       return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
+    }
+
+    const role = getDraftRoleFromRequest(req);
+    const hasRole = role === 'admin' || role === 'staff';
+    if (!hasRole) {
+      const listingToken = req.headers.get('x-listing-token');
+      const ok = await isListingTokenValid(String(listingId), listingToken, supabaseAdmin);
+      if (!ok) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
     }
 
     const { data: publicData } = supabaseAdmin.storage.from('listing-images').getPublicUrl(path);

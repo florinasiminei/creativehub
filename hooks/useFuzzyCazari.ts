@@ -38,6 +38,11 @@ export function useFuzzyCazari(cazari: Cazare[], filters: Filters) {
       result = result.filter((c) => c.bai >= filters.bai);
     }
 
+    if (filters.tipuri.length > 0) {
+      const allowed = new Set(filters.tipuri.map((t) => t.toLowerCase()));
+      result = result.filter((c) => allowed.has(String(c.tip || "").toLowerCase()));
+    }
+
     // Facilities filter (AND logic)
     if (filters.facilities.length > 0) {
       result = result.filter((c) =>

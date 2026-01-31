@@ -27,7 +27,7 @@ export function validateCapacity(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return null;
   if (/^\d+$/.test(trimmed)) return null;
-  if (/^\d+\s*[-/]\s*\d+$/.test(trimmed)) return null;
+  if (/^\d+\s*[-/–—]\s*\d+$/.test(trimmed)) return null;
   if (/^\d+\s*\+$/.test(trimmed)) return null;
   return 'Capacitate invalida. Exemplu: 2-4, 2/4 sau 4+.';
 }

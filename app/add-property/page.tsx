@@ -71,7 +71,6 @@ function AddPropertyPageContent() {
   const router = useRouter();
   const { uploading, uploadedCount, upload } = useImageUploads({
     onError: (msg) => setMessage(msg),
-    inviteToken,
   });
   const [locationData, setLocationData] = useState<LocationData | null>(null);
   const {
@@ -225,12 +224,14 @@ function AddPropertyPageContent() {
         is_published: false,
       };
       // create listing via server endpoint to avoid RLS errors
-      const { id: listingId } = await createListing(payload, selectedFacilities, inviteToken);
+      const created = await createListing(payload, selectedFacilities, inviteToken);
+      const listingId = created.id;
+      const listingToken = created.editToken || null;
 
       // upload selected files to server endpoint which will use server-side supabase Admin
       if (files.length > 0) {
         try {
-          await upload(listingId, files, 0);
+          await upload(listingId, files, 0, listingToken);
         } catch (err: any) {
           try {
             await deleteListing(listingId, inviteToken);

@@ -3,12 +3,22 @@ import { NextResponse } from 'next/server';
 import { slugify } from '@/lib/utils';
 import { createClient } from '@supabase/supabase-js';
 import { rateLimit } from '@/lib/rateLimit';
+import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
 export async function POST(request: Request) {
   try {
+    const role = getDraftRoleFromRequest(request);
+    const requiredToken = process.env.INVITE_TOKEN;
+    const inviteToken = request.headers.get('x-invite-token');
+    const hasInvite = requiredToken && inviteToken === requiredToken;
+    const hasRole = role === 'admin' || role === 'staff';
+    if (!hasRole && !hasInvite) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const limit = rateLimit(request, { windowMs: 60_000, max: 30, keyPrefix: 'add-property' });
     if (!limit.ok) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } });

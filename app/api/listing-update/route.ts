@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
+import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
+import { isListingTokenValid } from '@/lib/listingTokens';
 
 export async function POST(request: Request) {
   try {
@@ -15,12 +17,32 @@ export async function POST(request: Request) {
     const { id, title, location, address, price, capacity, phone, description, type, facilities, is_published, camere, paturi, bai } = body;
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
+    const role = getDraftRoleFromRequest(request);
+    const hasRole = role === 'admin' || role === 'staff';
+    if (!hasRole) {
+      const listingToken = request.headers.get('x-listing-token');
+      const ok = await isListingTokenValid(String(id), listingToken, supabaseAdmin);
+      if (!ok) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+    }
+
     const updateData: any = {};
     if (title !== undefined) updateData.title = title;
     if (location !== undefined) updateData.location = location;
     if (address !== undefined) updateData.address = address;
     if (price !== undefined) updateData.price = price;
-    if (capacity !== undefined) updateData.capacity = capacity;
+    const normalizeCapacity = (value: unknown) => {
+      if (value === null || value === undefined) return null;
+      if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+      if (typeof value !== 'string') return null;
+      return value
+        .replace(/[–—]/g, '-')
+        .replace(/\s+/g, ' ')
+        .replace(/\s*([-/])\s*/g, '$1')
+        .trim();
+    };
+    if (capacity !== undefined) updateData.capacity = normalizeCapacity(capacity);
     if (phone !== undefined) updateData.phone = phone;
     if (description !== undefined) updateData.description = description;
     if (type !== undefined) updateData.type = type;
@@ -68,7 +90,7 @@ export async function POST(request: Request) {
     }
 
     let { error: upErr } = await supabaseAdmin.from('listings').update(updateData).eq('id', id);
-    if (upErr && /lat|lng|latitude|longitude|search_radius|camere|paturi|bai|rooms|beds|bathrooms/i.test(upErr.message || '')) {
+    if (upErr && /lat|lng|latitude|longitude|search_radius|camere|paturi|bai/i.test(upErr.message || '')) {
       const fallbackUpdate = { ...updateData };
       const message = String(upErr.message || '');
       if (/search_radius/i.test(message) && !/lat|lng|latitude|longitude/i.test(message)) {
@@ -77,11 +99,6 @@ export async function POST(request: Request) {
         delete fallbackUpdate.lat;
         delete fallbackUpdate.lng;
         delete fallbackUpdate.search_radius;
-      }
-      if (/camere|paturi|bai|rooms|beds|bathrooms/i.test(message)) {
-        delete fallbackUpdate.camere;
-        delete fallbackUpdate.paturi;
-        delete fallbackUpdate.bai;
       }
       ({ error: upErr } = await supabaseAdmin.from('listings').update(fallbackUpdate).eq('id', id));
     }

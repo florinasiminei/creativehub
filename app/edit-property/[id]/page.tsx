@@ -50,6 +50,8 @@ export default function EditPropertyPage({ params }: any) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isClient = searchParams.get('client') === '1' || searchParams.get('role') === 'client';
+  const tokenParam = searchParams.get('token');
+  const [listingToken, setListingToken] = useState<string | null>(tokenParam);
   
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<FormData>({
@@ -79,7 +81,7 @@ export default function EditPropertyPage({ params }: any) {
   const [newsletterOptIn, setNewsletterOptIn] = useState(false);
   const { uploading, upload } = useImageUploads({
     onError: (msg) => setMessage(msg),
-    clientMode: isClient,
+    listingToken,
   });
   const {
     files,
@@ -122,9 +124,9 @@ export default function EditPropertyPage({ params }: any) {
             sat,
             pret: listing.price?.toString() || '',
             capacitate: (listing.capacity || 1).toString(),
-            camere: (listing.camere ?? listing.rooms ?? listing.num_camere ?? listing.num_rooms ?? listing.bedrooms ?? 0).toString(),
-            paturi: (listing.paturi ?? listing.beds ?? listing.num_paturi ?? listing.num_beds ?? listing.pat ?? 0).toString(),
-            bai: (listing.bai ?? listing.bathrooms ?? listing.num_bai ?? listing.num_bathrooms ?? listing.bath ?? 0).toString(),
+            camere: (listing.camere ?? 0).toString(),
+            paturi: (listing.paturi ?? 0).toString(),
+            bai: (listing.bai ?? 0).toString(),
             descriere: listing.description || '',
             telefon: listing.phone || '',
             tip: listing.type || 'cabana',
@@ -159,6 +161,32 @@ export default function EditPropertyPage({ params }: any) {
     setAcceptedTerms(!isClient);
   }, [isClient]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (tokenParam) {
+      setListingToken(tokenParam);
+      try {
+        sessionStorage.setItem('listing_token', tokenParam);
+      } catch {
+        // ignore storage issues
+      }
+      const nextParams = new URLSearchParams(searchParams.toString());
+      nextParams.delete('token');
+      const nextQuery = nextParams.toString();
+      router.replace(nextQuery ? `/edit-property/${id}?${nextQuery}` : `/edit-property/${id}`);
+      return;
+    }
+
+    if (!listingToken) {
+      try {
+        const stored = sessionStorage.getItem('listing_token');
+        if (stored) setListingToken(stored);
+      } catch {
+        // ignore storage issues
+      }
+    }
+  }, [tokenParam, searchParams, router, listingToken, id]);
+
   const handleChange = (k: keyof FormData, v: string) => {
     setFormData(prev => ({ ...prev, [k]: v }));
   };
@@ -180,7 +208,7 @@ export default function EditPropertyPage({ params }: any) {
     phone: formData.telefon,
     phoneKey: 'telefon',
     imagesCount: images.length + files.length,
-    minImages: 5,
+    minImages: isClient ? 5 : 0,
     maxImages: 10,
     description: formData.descriere,
     descriptionKey: 'descriere',
@@ -230,7 +258,7 @@ export default function EditPropertyPage({ params }: any) {
       // Upload new images if present
       let updatedImages = images;
       if (files.length > 0) {
-        const { uploaded } = await upload(id, files, images.length);
+        const { uploaded } = await upload(id, files, images.length, listingToken);
         if (uploaded.length > 0) {
           updatedImages = [...images, ...uploaded.map(u => ({ id: u.id, image_url: u.url, alt: null }))];
           setImages(updatedImages);
@@ -259,12 +287,12 @@ export default function EditPropertyPage({ params }: any) {
         lat: hasCoords ? Number(locationData?.latitude ?? null) : null,
         lng: hasCoords ? Number(locationData?.longitude ?? null) : null,
       };
-      await updateListing(updatePayload);
+      await updateListing(updatePayload, listingToken);
 
       // Persist image order
       if (updatedImages.length > 0) {
         const idsInOrder = updatedImages.map(img => img.id);
-        await reorderListingImages(id, idsInOrder);
+        await reorderListingImages(id, idsInOrder, listingToken);
       }
 
       setMessage('Modificările au fost salvate.');
@@ -305,12 +333,21 @@ export default function EditPropertyPage({ params }: any) {
           selectedFacilities={selectedFacilities}
           onToggleFacility={toggleFacility}
           onLocationSelect={(location) => setLocationData(location)}
+          autoLocate={false}
           initialCounty={formData.judet}
           initialCity={formData.localitate}
           initialLat={locationData?.latitude ?? null}
           initialLng={locationData?.longitude ?? null}
-          dropzoneTitle="Încarcă imagini noi (minim 5, maxim 10 total)"
-          dropzoneSubtitle="Selectează fișiere și ordonează-le înainte de publicare"
+          dropzoneTitle={
+            isClient
+              ? "Încarcă imagini noi (minim 5, maxim 10 total)"
+              : "Încarcă imagini noi (maxim 10 total)"
+          }
+          dropzoneSubtitle={
+            isClient
+              ? "Selectează fișiere și ordonează-le înainte de publicare"
+              : "Selectează fișiere și ordonează-le"
+          }
           dropzoneHelper="Click pentru a selecta"
           showValidation={showValidation}
           invalidFields={invalidFields}
@@ -327,18 +364,22 @@ export default function EditPropertyPage({ params }: any) {
           onDragEnd={handleNewDragEnd}
           onMove={moveFile}
           onRemove={removeFile}
-          selectedImagesTitle="Imagini noi (nepublicate inca)"
-          selectedImagesSubtitle="Ordinea de mai jos va fi folosita la incarcare (5-10 imagini total)"
+          selectedImagesTitle="Imagini noi (nepublicate încă)"
+          selectedImagesSubtitle={
+            isClient
+              ? "Ordinea de mai jos va fi folosită la încărcare (5-10 imagini total)"
+              : "Ordinea de mai jos va fi folosită la încărcare (maxim 10 imagini total)"
+          }
           existingImages={images}
-          existingTitle="Galerie existenta"
-          existingSubtitle="Reordoneaza sau sterge imaginile curente"
+          existingTitle="Galerie existentă"
+          existingSubtitle="Reordonează sau șterge imaginile curente"
           existingDraggingIdx={draggingExistingIdx}
           onExistingDragStart={handleExistingDragStart}
           onExistingDragOver={handleExistingDragOver}
           onExistingDragEnd={handleExistingDragEnd}
           onExistingMove={moveImage}
           onExistingDelete={async (img) => {
-            await deleteListingImage(img.id);
+            await deleteListingImage(img.id, listingToken);
             setImages(prev => prev.filter(it => it.id !== img.id));
           }}
           descriptionMin={200}
@@ -398,4 +439,3 @@ export default function EditPropertyPage({ params }: any) {
     </div>
   )
 }
-

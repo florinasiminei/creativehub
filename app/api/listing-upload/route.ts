@@ -4,6 +4,8 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
 import sharp from 'sharp';
+import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
+import { isListingTokenValid } from '@/lib/listingTokens';
 
 const MAX_IMAGE_WIDTH = 2400;
 const WEBP_QUALITY = 82;
@@ -12,14 +14,6 @@ const MAX_OUTPUT_BYTES = 6 * 1024 * 1024;
 
 export async function POST(request: Request) {
   try {
-    const requiredToken = process.env.INVITE_TOKEN;
-    if (requiredToken) {
-      const token = request.headers.get('x-invite-token');
-      if (!token || token !== requiredToken) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
-    }
-
     const limit = rateLimit(request, { windowMs: 60_000, max: 20, keyPrefix: 'listing-upload' });
     if (!limit.ok) {
       return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } });
@@ -30,6 +24,16 @@ export async function POST(request: Request) {
     const form = await request.formData();
     const listingId = form.get('listingId') as string | null;
     if (!listingId) return NextResponse.json({ error: 'Missing listingId' }, { status: 400 });
+
+    const role = getDraftRoleFromRequest(request);
+    const hasRole = role === 'admin' || role === 'staff';
+    if (!hasRole) {
+      const listingToken = request.headers.get('x-listing-token');
+      const ok = await isListingTokenValid(String(listingId), listingToken, supabaseAdmin);
+      if (!ok) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+    }
 
     const files = form.getAll('files') as File[];
     const alts = form.getAll('alts') as string[];

@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
 import { verifyDraftCredentials } from '@/lib/draftsAuth';
+import { rateLimit } from '@/lib/rateLimit';
 
 export async function POST(req: Request) {
   try {
+    const limit = rateLimit(req, { windowMs: 60_000, max: 10, keyPrefix: 'drafts-login' });
+    if (!limit.ok) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } });
+    }
+
     const body = await req.json().catch(() => ({}));
     const username = String(body?.username || '').trim();
     const password = String(body?.password || '');

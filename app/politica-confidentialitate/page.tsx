@@ -1,74 +1,131 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 
 const sections = [
   {
-    title: "Introducere",
+    title: "Cine suntem (operatorul datelor)",
     content:
-      "Aceasta politica descrie modul in care cabn.ro colecteaza, foloseste si protejeaza datele personale ale vizitatorilor, partenerilor si clientilor nostri.",
+      "Operatorul datelor este CABN S.R.L., identificat prin CUI 52174972, Nr. Reg. Com. J2025053051007, EUID ROONRC.J2025053051007. Pentru solicitări privind datele personale ne poți scrie la privacy@cabn.ro.",
   },
   {
-    title: "Ce date colectam",
+    title: "Domeniul de aplicare",
+    content:
+      "Această politică se aplică prelucrărilor de date personale realizate în legătură cu website-ul cabn.ro, formularele de contact, colaborările și serviciile oferite.",
+  },
+  {
+    title: "Categorii de date prelucrate",
     items: [
       {
-        subtitle: "Informatii furnizate direct",
-        text: "Nume, prenume, date de contact, preferinte de cazare sau alte detalii trimise prin formulare de contact, campanii sau conturi create pe platforma.",
+        subtitle: "Date furnizate direct",
+        text: "Nume, prenume, email/telefon, mesajele transmise, detalii despre locație/servicii solicitate și orice alte informații transmise voluntar.",
       },
       {
-        subtitle: "Informatii generate automat",
-        text: "Date tehnice precum adresa IP, tipul de dispozitiv, sistemul de operare, statistici de navigare si actiuni efectuate pe site.",
+        subtitle: "Date tehnice",
+        text: "Adresă IP, tip dispozitiv, sistem de operare, browser, pagini vizitate, acțiuni în site, identificatori prin cookie-uri, loguri de securitate.",
       },
       {
-        subtitle: "Date din surse terte",
-        text: "Informatii obtinute de la parteneri sau platforme externe atunci cand folosim servicii de analiza, publicitate ori autentificare.",
+        subtitle: "Date contractuale",
+        text: "Date necesare facturării și gestionării relației contractuale (acolo unde este cazul).",
+      },
+      {
+        subtitle: "Date din surse terțe",
+        text: "În măsura existenței unor parteneriate, putem primi date strict necesare desfășurării colaborării.",
       },
     ],
   },
   {
-    title: "Cum folosim datele",
-    content:
-      "Folosim datele pentru a furniza si imbunatati serviciile cabn.ro, pentru a raspunde solicitarilor, pentru comunicari comerciale cu acordul tau si pentru a asigura securitatea platformei.",
-  },
-  {
-    title: "Temei legal",
-    content:
-      "Prelucram datele personale in baza consimtamantului, a executarii unui contract, a obligatiilor legale sau a interesului legitim, dupa caz.",
-  },
-  {
-    title: "Durata stocarii",
-    content:
-      "Pastram datele numai cat timp este necesar pentru indeplinirea scopurilor descrise sau conform cerintelor legale in vigoare. Ulterior, datele sunt sterse sau anonimizate.",
-  },
-  {
-    title: "Drepturile tale",
+    title: "Scopuri și temeiuri legale",
     items: [
       {
-        subtitle: "Acces si rectificare",
-        text: "Ai dreptul sa soliciti detalii despre datele pe care le detinem si sa ceri corectarea informatiilor inexacte.",
+        subtitle: "Răspuns la solicitări și ofertare",
+        text: "Interes legitim sau demersuri precontractuale la cererea ta.",
       },
       {
-        subtitle: "Restrictionare si opozitie",
-        text: "Poți cere limitarea prelucrării sau te poți opune anumitor activități de prelucrare, inclusiv celor de marketing direct.",
+        subtitle: "Prestarea serviciilor",
+        text: "Executarea contractului și comunicări operaționale.",
       },
       {
-        subtitle: "Portabilitate si stergere",
-        text: "Poți solicita transferul datelor către un alt furnizor sau ștergerea lor, în limitele prevăzute de lege.",
+        subtitle: "Marketing",
+        text: "Consimțământ (când este solicitat), cu posibilitatea de retragere oricând.",
+      },
+      {
+        subtitle: "Securitate și prevenirea fraudelor",
+        text: "Interes legitim pentru protecția platformei și a utilizatorilor.",
+      },
+      {
+        subtitle: "Obligații legale",
+        text: "Respectarea obligațiilor legale aplicabile.",
       },
     ],
+  },
+  {
+    title: "Destinatari ai datelor",
+    content:
+      "Datele pot fi transmise furnizorilor de servicii IT (hosting, mentenanță, email), servicii de analiză, servicii de hărți și altor furnizori implicați în operarea platformei, pe baza unor contracte și garanții adecvate. Datele pot fi divulgate autorităților publice atunci când există o obligație legală.",
+  },
+  {
+    title: "Transferuri internaționale",
+    content:
+      "Dacă anumite servicii implică transferul datelor în afara Spațiului Economic European, ne asigurăm existența unor garanții adecvate (ex. clauze contractuale standard).",
+  },
+  {
+    title: "Durata stocării",
+    content:
+      "Păstrăm datele doar cât este necesar pentru scopurile declarate, pe durata relației contractuale și ulterior conform cerințelor legale. Datele sunt șterse sau anonimizate când nu mai sunt necesare.",
+  },
+  {
+    title: "Drepturile persoanei vizate",
+    items: [
+      {
+        subtitle: "Acces și rectificare",
+        text: "Poți solicita confirmarea prelucrării și corectarea datelor inexacte.",
+      },
+      {
+        subtitle: "Ștergere și restricționare",
+        text: "Poți solicita ștergerea datelor sau limitarea prelucrării, în condițiile legii.",
+      },
+      {
+        subtitle: "Portabilitate",
+        text: "Poți solicita transmiterea datelor către un alt operator, în format structurat.",
+      },
+      {
+        subtitle: "Opoziție",
+        text: "Te poți opune prelucrărilor bazate pe interes legitim, inclusiv marketing direct.",
+      },
+      {
+        subtitle: "Retragerea consimțământului",
+        text: "Îți poți retrage oricând consimțământul fără a afecta legalitatea prelucrărilor anterioare.",
+      },
+    ],
+  },
+  {
+    title: "Plângeri",
+    content:
+      "Dacă consideri că drepturile tale au fost încălcate, poți depune o plângere la Autoritatea Națională de Supraveghere a Prelucrării Datelor cu Caracter Personal (ANSPDCP).",
   },
   {
     title: "Securitatea datelor",
     content:
-      "Implementam masuri tehnice si organizatorice pentru a proteja datele personale impotriva accesului neautorizat, pierderii sau alterarii.",
+      "Aplicăm măsuri tehnice și organizatorice pentru a proteja datele împotriva accesului neautorizat, pierderii sau divulgării.",
   },
   {
-    title: "Actualizari",
+    title: "Minorii",
     content:
-      "Aceasta politica poate fi actualizata periodic pentru a reflecta modificarile legislative sau operationale. Versiunea curenta se aplica din momentul publicarii pe site.",
+      "Serviciile cabn.ro nu sunt destinate persoanelor sub 18 ani. Nu colectăm cu bună știință datele minorilor.",
+  },
+  {
+    title: "Automatizare și profilare",
+    content:
+      "Nu utilizăm decizii bazate exclusiv pe prelucrare automată care să producă efecte juridice asupra ta.",
+  },
+  {
+    title: "Actualizări",
+    content:
+      "Putem actualiza periodic această politică. Ultima actualizare: 30 ianuarie 2026.",
   },
   {
     title: "Contact",
     content:
-      "Pentru solicitări legate de protecția datelor personale ne poți scrie la privacy@cabn.ro sau ne poți contacta prin formularul de pe site.",
+      "Pentru întrebări legate de protecția datelor personale ne poți scrie la privacy@cabn.ro.",
   },
 ];
 
@@ -77,19 +134,18 @@ export default function PoliticaConfidentialitatePage() {
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
       <nav className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">
         <Link href="/" className="hover:text-emerald-600 dark:hover:text-emerald-300">
-          Acasa
+          Acasă
         </Link>{" "}
         /{" "}
-        <span className="text-zinc-700 dark:text-zinc-200">Politica de confidentialitate</span>
+        <span className="text-zinc-700 dark:text-zinc-200">Politica de confidențialitate</span>
       </nav>
 
       <header className="mb-10 space-y-4">
         <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-white">
-          Politica de confidentialitate
+          Politica de confidențialitate
         </h1>
         <p className="text-base text-zinc-600 dark:text-zinc-300">
-          Transparenta in prelucrarea datelor personale este importanta pentru noi. Mai jos gasesti
-          informatii detaliate despre modul in care gestionam aceste date pe cabn.ro.
+          Documentul descrie practicile de prelucrare a datelor personale pe cabn.ro și drepturile tale conform legislației aplicabile.
         </p>
       </header>
 

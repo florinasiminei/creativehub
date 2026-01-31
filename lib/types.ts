@@ -3,6 +3,7 @@ export type Filters = {
   keyword: string;
   pretMin: number;
   pretMax: number;
+  tipuri: string[];
   facilities: string[];
   persoaneMin: number;
   persoaneMax: number;
@@ -46,11 +47,9 @@ export type ListingRaw = {
   phone?: string;
   type: string;
   location: string;
+  address?: string | null;
   capacity: string;
   price: string;
-  rooms?: number | string | null;
-  beds?: number | string | null;
-  bathrooms?: number | string | null;
   camere?: number | string | null;
   paturi?: number | string | null;
   bai?: number | string | null;
@@ -66,6 +65,7 @@ export type ListingRaw = {
     image_url: string | null;
     display_order: number | null;
   }[];
+  edit_token?: string | null;
   listing_facilities?: {
     facilities: {
       id: string;

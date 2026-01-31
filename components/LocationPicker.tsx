@@ -10,6 +10,7 @@ interface LocationPickerProps {
   initialLat?: number | null;
   initialLng?: number | null;
   onConfirmChange?: (confirmed: boolean) => void;
+  autoLocate?: boolean;
 }
 
 const DARK_MAP_STYLE = [
@@ -28,7 +29,15 @@ const DARK_MAP_STYLE = [
   { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#64748b' }] },
 ];
 
-export default function LocationPicker({ onLocationSelect, initialCounty, initialCity, initialLat, initialLng, onConfirmChange }: LocationPickerProps) {
+export default function LocationPicker({
+  onLocationSelect,
+  initialCounty,
+  initialCity,
+  initialLat,
+  initialLng,
+  onConfirmChange,
+  autoLocate = true,
+}: LocationPickerProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
@@ -152,7 +161,7 @@ export default function LocationPicker({ onLocationSelect, initialCounty, initia
       Number.isFinite(initialLat) &&
       Number.isFinite(initialLng) &&
       (initialLat !== 0 || initialLng !== 0);
-    if (hasInitialCoords) return;
+    if (hasInitialCoords || !autoLocate) return;
     let didSet = false;
 
     const setLocation = (lat: number, lng: number) => {
@@ -187,7 +196,7 @@ export default function LocationPicker({ onLocationSelect, initialCounty, initia
       () => getIPLocation(),
       { enableHighAccuracy: false, timeout: 4000, maximumAge: 5 * 60 * 1000 },
     );
-  }, [initialLat, initialLng, reverseGeocodeAndSet]);
+  }, [initialLat, initialLng, reverseGeocodeAndSet, autoLocate]);
 
   // Initialize map (always visible)
   useEffect(() => {

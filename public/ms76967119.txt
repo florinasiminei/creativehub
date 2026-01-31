@@ -1,5 +1,0 @@
-﻿{
-  "Description": "Domain ownership verification file for Microsoft 365 - place in the website root",
-  "Domain": "cabn.ro",
-  "Id": "74c69d24-208b-4e06-b471-19283aff1c09"
-}

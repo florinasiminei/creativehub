@@ -1,51 +1,66 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 
 const sections = [
   {
     title: "Ce sunt cookie-urile?",
     content:
-      "Cookie-urile sunt fișiere text de dimensiuni reduse pe care un site le salvează în browserul tău pentru a reține informații despre vizită. Ele fac posibilă recunoașterea dispozitivului, memorarea preferințelor și furnizarea unei experiențe mai bune pe cabn.ro.",
+      "Cookie-urile sunt fișiere mici de tip text salvate în browserul tău atunci când vizitezi un site. Ele ajută la funcționarea corectă a site-ului, la memorarea preferințelor și la îmbunătățirea experienței de navigare.",
   },
   {
-    title: "Tipuri de cookie-uri pe care le folosim",
+    title: "Cine plasează cookie-urile",
+    content:
+      "Cookie-urile pot fi plasate de cabn.ro (first-party) sau de terți ale căror servicii sunt integrate în site (third-party).",
+  },
+  {
+    title: "Tipuri de cookie-uri utilizate",
     items: [
       {
-        subtitle: "Cookie-uri strict necesare",
-        text: "Asigură funcționarea de bază a site-ului – autentificare, navigare între pagini, acces la zone securizate. Fără acestea, serviciile noastre nu pot funcționa corect.",
+        subtitle: "Strict necesare",
+        text: "Permit funcționarea site-ului (navigare, securitate, formulare). Nu pot fi dezactivate fără a afecta funcționalitatea.",
       },
       {
-        subtitle: "Cookie-uri de performanță și analiză",
-        text: "Colectează informații anonime despre modul în care este utilizat site-ul pentru a ne ajuta să îmbunătățim conținutul și structura cabn.ro.",
+        subtitle: "Funcționale",
+        text: "Rețin preferințe precum limba, filtrele selectate și setările utilizatorului.",
       },
       {
-        subtitle: "Cookie-uri de funcționalitate",
-        text: "Rețin preferințele tale (ex. limbă, locație, filtre setate) pentru a-ți oferi o experiență personalizată la vizitele următoare.",
+        subtitle: "Analitice",
+        text: "Ne ajută să înțelegem utilizarea site-ului pentru a îmbunătăți conținutul și performanța. Sunt utilizate doar cu consimțământ, dacă mecanismul de consimțământ este activ.",
       },
       {
-        subtitle: "Cookie-uri de publicitate",
-        text: "Pot fi plasate de partenerii noștri pentru a afișa reclame relevante și pentru a măsura eficiența campaniilor.",
+        subtitle: "Marketing",
+        text: "Pot fi folosite pentru măsurarea eficienței campaniilor sau afișarea de conținut relevant. Sunt utilizate doar cu consimțământ.",
       },
     ],
   },
   {
-    title: "Cum poți controla cookie-urile",
+    title: "Temei legal",
     content:
-      "Poți ajusta din browserul tău setările pentru a refuza sau a șterge cookie-urile oricând. Reține că blocarea cookie-urilor strict necesare poate afecta funcționarea site-ului. Instrucțiuni detaliate găsești în secțiunea de ajutor a browserului tău (Chrome, Firefox, Safari, Edge etc.).",
+      "Cookie-urile strict necesare sunt utilizate în baza interesului legitim. Celelalte tipuri de cookie-uri sunt utilizate doar în baza consimțământului, atunci când este solicitat.",
   },
   {
-    title: "Cookie-urile terților",
+    title: "Durata de viață a cookie-urilor",
     content:
-      "Unele cookie-uri sunt plasate de servicii externe integrate pe cabn.ro (de exemplu, instrumente de analiză sau platforme de social media). Acestea sunt guvernate de politicile proprii ale furnizorilor respectivi.",
+      "Unele cookie-uri sunt de sesiune și se șterg la închiderea browserului. Altele sunt persistente și rămân active pentru o perioadă definită.",
+  },
+  {
+    title: "Cum poți controla cookie-urile",
+    content:
+      "Poți modifica setările browserului pentru a bloca sau șterge cookie-urile. Dacă dezactivezi cookie-urile strict necesare, anumite funcții ale site-ului pot să nu mai funcționeze corect.",
+  },
+  {
+    title: "Cookie-uri de la terți",
+    content:
+      "Anumite funcții (ex. hărți, rețele sociale, analytics) pot seta cookie-uri proprii. Acestea sunt reglementate de politicile furnizorilor respectivi.",
   },
   {
     title: "Actualizări",
     content:
-      "Politica noastră de utilizare a cookie-urilor poate fi actualizată periodic pentru a reflecta schimbări legislative sau funcționale. Te încurajăm să revii regulat pentru a fi la curent cu eventualele modificări.",
+      "Putem actualiza periodic această politică. Ultima actualizare: 30 ianuarie 2026.",
   },
   {
     title: "Contact",
     content:
-      "Pentru întrebări sau solicitări privind cookie-urile, ne poți scrie la adresa de email support@cabn.ro.",
+      "Pentru întrebări legate de cookie-uri ne poți scrie la support@cabn.ro.",
   },
 ];
 
@@ -64,14 +79,16 @@ export default function PoliticaCookiePage() {
           Politica de utilizare cookie-uri
         </h1>
         <p className="text-base text-zinc-600 dark:text-zinc-300">
-          Această pagină explică modul în care cabn.ro folosește cookie-uri pentru a livra o
-          experiență rapidă, sigură și personalizată pentru vizitatori și parteneri.
+          Acest document explică modul în care cabn.ro folosește cookie-uri și opțiunile tale de control.
         </p>
       </header>
 
       <div className="space-y-8">
         {sections.map((section) => (
-          <section key={section.title} className="rounded-2xl border border-zinc-200/70 bg-white/70 p-6 backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60">
+          <section
+            key={section.title}
+            className="rounded-2xl border border-zinc-200/70 bg-white/70 p-6 backdrop-blur-md dark:border-white/10 dark:bg-zinc-900/60"
+          >
             <h2 className="text-xl font-semibold text-zinc-900 dark:text-white">{section.title}</h2>
             {"content" in section ? (
               <p className="mt-3 text-sm leading-6 text-zinc-600 dark:text-zinc-300">

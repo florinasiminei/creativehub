@@ -1,15 +1,18 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
+import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
+import { generateListingToken } from '@/lib/listingTokens';
 
 export async function POST(req: Request) {
   try {
+    const role = getDraftRoleFromRequest(req);
     const requiredToken = process.env.INVITE_TOKEN;
-    if (requiredToken) {
-      const token = req.headers.get('x-invite-token');
-      if (!token || token !== requiredToken) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
+    const inviteToken = req.headers.get('x-invite-token');
+    const hasInvite = requiredToken && inviteToken === requiredToken;
+    const hasRole = role === 'admin' || role === 'staff';
+    if (!hasRole && !hasInvite) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const limit = rateLimit(req, { windowMs: 60_000, max: 40, keyPrefix: 'listing-create' });
@@ -62,13 +65,26 @@ export async function POST(req: Request) {
     const parsedPaturi = toNumber(paturi);
     const parsedBai = toNumber(bai);
 
+    const normalizeCapacity = (value: unknown) => {
+      if (value === null || value === undefined) return '';
+      if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+      if (typeof value !== 'string') return '';
+      return value
+        .replace(/[–—]/g, '-')
+        .replace(/\s+/g, ' ')
+        .replace(/\s*([-/])\s*/g, '$1')
+        .trim();
+    };
+
+    const normalizedCapacity = normalizeCapacity(capacity);
+
     const payload: any = {
       title,
       slug: slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
       location,
       address: address || null,
       price: price || 0,
-      capacity: capacity || 1,
+      capacity: normalizedCapacity || '1',
       camere: parsedCamere,
       paturi: parsedPaturi,
       bai: parsedBai,
@@ -79,6 +95,7 @@ export async function POST(req: Request) {
       lng: parsedLng,
       search_radius: search_radius || 5,
       is_published: false,
+      edit_token: generateListingToken(),
     };
 
     if (Object.prototype.hasOwnProperty.call(body, 'display_order')) {
@@ -101,8 +118,8 @@ export async function POST(req: Request) {
       }
     }
 
-    let { data, error } = await supabaseAdmin.from('listings').insert(payload).select('id').single();
-    if (error && /lat|lng|latitude|longitude|search_radius|camere|paturi|bai|rooms|beds|bathrooms/i.test(error.message || '')) {
+    let { data, error } = await supabaseAdmin.from('listings').insert(payload).select('id, edit_token').single();
+    if (error && /lat|lng|latitude|longitude|search_radius|camere|paturi|bai/i.test(error.message || '')) {
       const fallbackPayload = { ...payload };
       const message = String(error.message || '');
       if (/search_radius/i.test(message) && !/lat|lng|latitude|longitude/i.test(message)) {
@@ -112,12 +129,7 @@ export async function POST(req: Request) {
         delete fallbackPayload.lng;
         delete fallbackPayload.search_radius;
       }
-      if (/camere|paturi|bai|rooms|beds|bathrooms/i.test(message)) {
-        delete fallbackPayload.camere;
-        delete fallbackPayload.paturi;
-        delete fallbackPayload.bai;
-      }
-      ({ data, error } = await supabaseAdmin.from('listings').insert(fallbackPayload).select('id').single());
+      ({ data, error } = await supabaseAdmin.from('listings').insert(fallbackPayload).select('id, edit_token').single());
     }
     if (error) {
       console.error('Error inserting listing', error);
@@ -125,6 +137,7 @@ export async function POST(req: Request) {
     }
 
     const listingId = (data as any).id;
+    const editToken = (data as any)?.edit_token || payload.edit_token;
 
     // Insert listing_facilities if provided (best-effort)
     if (Array.isArray(facilities) && facilities.length > 0) {
@@ -133,7 +146,7 @@ export async function POST(req: Request) {
       if (relErr) console.warn('Could not insert listing_facilities', relErr.message);
     }
 
-    return NextResponse.json({ ok: true, id: listingId });
+    return NextResponse.json({ ok: true, id: listingId, editToken });
   } catch (err: any) {
     console.error(err);
     return NextResponse.json({ error: err?.message || 'Unknown error' }, { status: 500 });

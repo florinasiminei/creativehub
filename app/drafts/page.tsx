@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getRoleFromEncodedAuth } from "@/lib/draftsAuth";
 import { mapListingSummary } from "@/lib/transformers";
+import { ensureListingToken } from "@/lib/listingTokens";
 import type { ListingRaw } from "@/lib/types";
 import DraftsClient from "./drafts-client";
 
@@ -15,7 +16,7 @@ export default async function DraftsPage() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || null;
 
   const baseSelect =
-    "id, title, slug, type, location, capacity, price, phone, is_published, display_order, listing_images(image_url, display_order)";
+    "id, title, slug, type, location, capacity, price, phone, is_published, display_order, edit_token, listing_images(image_url, display_order)";
 
   const { data, error } = await supabaseAdmin
     .from("listings")
@@ -26,18 +27,21 @@ export default async function DraftsPage() {
   if (error) console.error(error);
 
   const listings = (data || []) as ListingRaw[];
-  const mapped = listings.map((row) => {
-    const summary = mapListingSummary(row);
-    const statusField = (row as any).status?.toString().toLowerCase();
-    const isPublished = !!(row as any).is_published;
-    const status: "publicat" | "inactiv" | "draft" =
-      statusField === "inactiv" || statusField === "inactive"
-        ? "inactiv"
-        : statusField === "publicat" || statusField === "published" || isPublished
-        ? "publicat"
-        : "draft";
-    return { ...summary, status, isPublished };
-  });
+  const mapped = await Promise.all(
+    listings.map(async (row) => {
+      const summary = mapListingSummary(row);
+      const statusField = (row as any).status?.toString().toLowerCase();
+      const isPublished = !!(row as any).is_published;
+      const status: "publicat" | "inactiv" | "draft" =
+        statusField === "inactiv" || statusField === "inactive"
+          ? "inactiv"
+          : statusField === "publicat" || statusField === "published" || isPublished
+          ? "publicat"
+          : "draft";
+      const editToken = await ensureListingToken(summary.id, (row as any).edit_token);
+      return { ...summary, status, isPublished, editToken };
+    })
+  );
 
   return <DraftsClient listings={mapped} role={role} inviteToken={inviteToken} siteUrl={siteUrl} />;
 }

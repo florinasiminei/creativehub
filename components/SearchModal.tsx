@@ -9,6 +9,8 @@ import Slider from "rc-slider";
 import "rc-slider/assets/index.css";
 import { ChevronDown } from "lucide-react";
 import { resolveFacilityIcon, normalizeFacilityName } from "@/lib/facilityIcons";
+import { LISTING_TYPES } from "@/lib/listingTypes";
+import { resolveListingTypeIcon } from "@/lib/listingTypeIcons";
 
 type SearchModalProps = {
   isOpen: boolean;
@@ -30,23 +32,51 @@ type CounterKey = "camere" | "paturi" | "bai";
 const FACILITY_CATEGORIES: Array<{ label: string; keys: string[] }> = [
   {
     label: "Relaxare",
-    keys: ["ciubar", "sauna", "piscina", "semineu", "firepit", "hamac"],
+    keys: ["ciubar jacuzzi", "ciubar", "jacuzzi", "sauna", "piscina", "firepit", "hamac"],
   },
   {
     label: "Exterior",
-    keys: ["bbq", "gratar", "terasa", "foisor"],
+    keys: [
+      "gratar bbq",
+      "bbq",
+      "gratar",
+      "terasa balcon",
+      "terasa",
+      "balcon",
+      "foisor",
+      "parcare",
+    ],
   },
   {
     label: "Interior",
-    keys: ["bucatarie", "aer conditionat", "tv", "uscator de par", "masina de spalat"],
+    keys: [
+      "bucatarie chicineta",
+      "bucatarie",
+      "chicineta",
+      "aer conditionat",
+      "incalzire",
+      "tv smart tv",
+      "tv",
+      "smart tv",
+      "uscator de rufe",
+      "masina de spalat rufe",
+      "masina de spalat",
+      "semineu soba",
+      "semineu",
+      "soba",
+    ],
   },
   {
     label: "Digital",
-    keys: ["wifi", "spatiu de lucru dedicat", "birou", "wi-fi"],
+    keys: ["wifi", "wi fi", "wi-fi", "spatiu de lucru dedicat", "birou"],
   },
   {
     label: "Animale",
     keys: ["accepta animale", "pet friendly", "animale permise"],
+  },
+  {
+    label: "Servicii",
+    keys: ["mic dejun", "mic dejun inclus", "breakfast"],
   },
   {
     label: "Peisaj",
@@ -130,11 +160,12 @@ const SearchModal: React.FC<SearchModalProps> = ({
   const categorizedFacilities = useMemo(() => {
     if (!facilitiesList.length) return [];
 
-    const lookup = new Map<string, FacilityOption[]>();
-    facilitiesList.forEach((facility) => {
-      const key = normalizeFacilityName(facility.name);
-      if (!lookup.has(key)) lookup.set(key, []);
-      lookup.get(key)!.push(facility);
+    const normalizedFacilities = facilitiesList.map((facility) => {
+      const normalized = normalizeFacilityName(facility.name);
+      return {
+        facility,
+        normalized,
+      };
     });
 
     const used = new Set<string>();
@@ -144,8 +175,10 @@ const SearchModal: React.FC<SearchModalProps> = ({
       const entries: FacilityOption[] = [];
       keys.forEach((raw) => {
         const key = normalizeFacilityName(raw);
-        lookup.get(key)?.forEach((facility) => {
-          if (!used.has(facility.id)) {
+        normalizedFacilities.forEach(({ facility, normalized }) => {
+          if (used.has(facility.id)) return;
+          if (!key) return;
+          if (normalized.includes(key)) {
             entries.push(facility);
             used.add(facility.id);
           }
@@ -156,7 +189,9 @@ const SearchModal: React.FC<SearchModalProps> = ({
       }
     });
 
-    const leftovers = facilitiesList.filter((facility) => !used.has(facility.id));
+    const leftovers = normalizedFacilities
+      .map(({ facility }) => facility)
+      .filter((facility) => !used.has(facility.id));
     if (leftovers.length > 0) {
       groups.push({ label: "Alte facilitati", facilities: leftovers });
     }
@@ -170,6 +205,16 @@ const SearchModal: React.FC<SearchModalProps> = ({
       return {
         ...prev,
         facilities: selected ? prev.facilities.filter((fid) => fid !== id) : [...prev.facilities, id],
+      };
+    });
+  };
+
+  const toggleType = (value: string) => {
+    setFilters((prev) => {
+      const selected = prev.tipuri.includes(value);
+      return {
+        ...prev,
+        tipuri: selected ? prev.tipuri.filter((t) => t !== value) : [...prev.tipuri, value],
       };
     });
   };
@@ -294,7 +339,7 @@ const SearchModal: React.FC<SearchModalProps> = ({
                     </div>
                   </div>
 
-                  <div className="space-y-4">
+                    <div className="space-y-4">
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Camere si paturi</h3>
                       <div className="space-y-1.5 border-b border-gray-200 pb-3 dark:border-zinc-800">
                         {counterConfig.map(({ key, label }) => {
@@ -330,6 +375,33 @@ const SearchModal: React.FC<SearchModalProps> = ({
                                 </button>
                               </div>
                             </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Tip cazare</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {LISTING_TYPES.map((type) => {
+                          const selected = filters.tipuri.includes(type.value);
+                          return (
+                            <button
+                              key={type.value}
+                              type="button"
+                              onClick={() => toggleType(type.value)}
+                              className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition ${
+                                selected
+                                  ? "border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm dark:border-emerald-400 dark:bg-emerald-500/10 dark:text-emerald-200"
+                                  : "border-gray-200 text-gray-700 hover:border-emerald-300 hover:text-emerald-600 dark:border-zinc-700 dark:text-gray-200 dark:hover:border-emerald-400 dark:hover:text-emerald-300"
+                              }`}
+                              aria-pressed={selected}
+                            >
+                              <span className="text-emerald-600 dark:text-emerald-400">
+                                {resolveListingTypeIcon(type.value)}
+                              </span>
+                              <span>{type.label}</span>
+                            </button>
                           );
                         })}
                       </div>

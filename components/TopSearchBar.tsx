@@ -184,6 +184,7 @@ const TopSearchBar = ({
     filters.pretMax < maxPrice ||
     filters.persoaneMin > persoaneRange.min ||
     filters.persoaneMax < persoaneRange.max ||
+    filters.tipuri.length > 0 ||
     filters.facilities.length > 0 ||
     filters.camere > 0 ||
     filters.paturi > 0 ||
@@ -342,6 +343,7 @@ const TopSearchBar = ({
               {hasActiveFilters && (
                 <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-xs font-medium text-emerald-600">
                   {filters.facilities.length +
+                    filters.tipuri.length +
                     (filters.pretMin > minPrice || filters.pretMax < maxPrice ? 1 : 0) +
                     (filters.persoaneMin > persoaneRange.min ||
                     filters.persoaneMax < persoaneRange.max

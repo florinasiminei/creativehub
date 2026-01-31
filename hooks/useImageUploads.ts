@@ -4,11 +4,10 @@ import { completeListingUpload, requestListingUploadUrls } from '@/lib/api/listi
 
 type UseImageUploadsOptions = {
   onError?: (message: string) => void;
-  inviteToken?: string | null;
-  clientMode?: boolean;
+  listingToken?: string | null;
 };
 
-export default function useImageUploads({ onError, inviteToken, clientMode = false }: UseImageUploadsOptions = {}) {
+export default function useImageUploads({ onError, listingToken }: UseImageUploadsOptions = {}) {
   const [uploading, setUploading] = useState(false);
   const [uploadedCount, setUploadedCount] = useState(0);
 
@@ -55,11 +54,12 @@ export default function useImageUploads({ onError, inviteToken, clientMode = fal
     return file;
   };
 
-  const upload = async (listingId: string, files: File[], startIndex = 0) => {
+  const upload = async (listingId: string, files: File[], startIndex = 0, tokenOverride?: string | null) => {
     if (files.length === 0) return { uploaded: [] as any[] };
     setUploading(true);
     setUploadedCount(0);
     try {
+      const activeToken = tokenOverride ?? listingToken ?? null;
       const HARD_MAX_BYTES = 50 * 1024 * 1024;
       const TARGET_FILE_BYTES = 8 * 1024 * 1024;
       const hardMaxMb = Math.round(HARD_MAX_BYTES / 1024 / 1024);
@@ -96,8 +96,7 @@ export default function useImageUploads({ onError, inviteToken, clientMode = fal
           size: p.file.size,
         })),
         startIndex,
-        inviteToken,
-        clientMode
+        activeToken
       );
 
       const signFailed = Array.isArray(signBody.failed) ? signBody.failed : [];
@@ -144,8 +143,7 @@ export default function useImageUploads({ onError, inviteToken, clientMode = fal
             listingId,
             uploadItem.path,
             uploadItem.display_order,
-            inviteToken,
-            clientMode
+            activeToken
           );
           uploadedAll.push(completed);
           setUploadedCount((prev) => prev + 1);

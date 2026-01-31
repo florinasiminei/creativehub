@@ -1,9 +1,16 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { rateLimit } from "@/lib/rateLimit";
+import { getDraftRoleFromRequest } from "@/lib/draftsAuth";
 
 export async function POST(request: Request) {
   try {
+    const role = getDraftRoleFromRequest(request);
+    const hasRole = role === "admin" || role === "staff";
+    if (!hasRole) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const limit = rateLimit(request, { windowMs: 60_000, max: 60, keyPrefix: "listing-reorder" });
     if (!limit.ok) {
       return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: { "Retry-After": String(limit.retryAfter) } });

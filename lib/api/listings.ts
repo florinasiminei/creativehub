@@ -9,13 +9,15 @@
   });
   const body = await resp.json();
   if (!resp.ok) throw new Error(body?.error || 'Eroare la creare anunt');
-  return body as { id: string };
+  return body as { id: string; editToken?: string | null };
 }
 
-export async function updateListing(payload: any) {
+export async function updateListing(payload: any, listingToken?: string | null) {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (listingToken) headers['x-listing-token'] = listingToken;
   const resp = await fetch('/api/listing-update', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(payload),
   });
   const body = await resp.json();
@@ -27,7 +29,7 @@ export async function uploadListingImages(
   listingId: string,
   files: File[],
   startIndex = 0,
-  inviteToken?: string | null
+  listingToken?: string | null
 ) {
   const fd = new FormData();
   fd.append('listingId', listingId);
@@ -36,7 +38,7 @@ export async function uploadListingImages(
 
   const resp = await fetch('/api/listing-upload', {
     method: 'POST',
-    headers: inviteToken ? { 'x-invite-token': inviteToken } : undefined,
+    headers: listingToken ? { 'x-listing-token': listingToken } : undefined,
     body: fd,
   });
   const contentType = resp.headers.get('content-type') || '';
@@ -80,15 +82,13 @@ export async function requestListingUploadUrls(
   listingId: string,
   files: Array<{ index: number; name: string; type?: string; size?: number }>,
   startIndex = 0,
-  inviteToken?: string | null,
-  clientMode = false
+  listingToken?: string | null
 ) {
   const resp = await fetch('/api/listing-upload-sign', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(inviteToken ? { 'x-invite-token': inviteToken } : {}),
-      ...(clientMode ? { 'x-client-edit': '1' } : {}),
+      ...(listingToken ? { 'x-listing-token': listingToken } : {}),
     },
     body: JSON.stringify({ listingId, files, startIndex }),
   });
@@ -104,16 +104,14 @@ export async function completeListingUpload(
   listingId: string,
   path: string,
   displayOrder: number,
-  inviteToken?: string | null,
-  clientMode = false,
+  listingToken?: string | null,
   alt?: string | null
 ) {
   const resp = await fetch('/api/listing-upload-complete', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(inviteToken ? { 'x-invite-token': inviteToken } : {}),
-      ...(clientMode ? { 'x-client-edit': '1' } : {}),
+      ...(listingToken ? { 'x-listing-token': listingToken } : {}),
     },
     body: JSON.stringify({ listingId, path, displayOrder, alt }),
   });
@@ -134,19 +132,25 @@ export async function deleteListing(id: string, inviteToken?: string | null) {
   if (!resp.ok) throw new Error('Nu am putut sterge listarea');
 }
 
-export async function deleteListingImage(id: string) {
+export async function deleteListingImage(id: string, listingToken?: string | null) {
   const resp = await fetch('/api/listing-images/delete', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(listingToken ? { 'x-listing-token': listingToken } : {}),
+    },
     body: JSON.stringify({ id }),
   });
   if (!resp.ok) throw new Error('Nu am putut sterge imaginea');
 }
 
-export async function reorderListingImages(listingId: string, ids: string[]) {
+export async function reorderListingImages(listingId: string, ids: string[], listingToken?: string | null) {
   const resp = await fetch('/api/listing-images/reorder', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(listingToken ? { 'x-listing-token': listingToken } : {}),
+    },
     body: JSON.stringify({ listingId, ids }),
   });
   if (!resp.ok) throw new Error('Nu am putut salva ordinea imaginilor');

@@ -9,6 +9,7 @@ import type { Cazare } from "@/lib/utils";
 type DraftItem = Cazare & {
   status: "publicat" | "inactiv" | "draft";
   isPublished: boolean;
+  editToken?: string | null;
 };
 
 type Props = {
@@ -37,6 +38,7 @@ export default function DraftsClient({ listings, role, inviteToken = null, siteU
   const [showUpdatedNotice, setShowUpdatedNotice] = useState(false);
   const [showCreatedNotice, setShowCreatedNotice] = useState(false);
   const [createdId, setCreatedId] = useState<string | null>(null);
+  const [copiedAddLink, setCopiedAddLink] = useState(false);
   const canDelete = role == "admin";
   const canStaffActions = role == "staff" || role == "admin";
 
@@ -146,6 +148,30 @@ export default function DraftsClient({ listings, role, inviteToken = null, siteU
     router.push("/add-property");
   };
 
+  const copyAddPropertyLink = async () => {
+    if (!inviteToken) return;
+    const link = `${baseUrl || ""}/add-property?token=${inviteToken}`;
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(link);
+      } else {
+        const input = document.createElement("textarea");
+        input.value = link;
+        input.style.position = "fixed";
+        input.style.opacity = "0";
+        document.body.appendChild(input);
+        input.focus();
+        input.select();
+        document.execCommand("copy");
+        document.body.removeChild(input);
+      }
+      setCopiedAddLink(true);
+      window.setTimeout(() => setCopiedAddLink(false), 2000);
+    } catch {
+      // ignore
+    }
+  };
+
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-8 max-w-[120rem] mx-auto dark:text-gray-100">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
@@ -162,6 +188,15 @@ export default function DraftsClient({ listings, role, inviteToken = null, siteU
               className="px-3 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
             >
               Adaugă proprietate
+            </button>
+          )}
+          {canStaffActions && inviteToken && (
+            <button
+              type="button"
+              onClick={copyAddPropertyLink}
+              className="px-3 py-2 text-sm rounded-lg bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+            >
+              {copiedAddLink ? "Link copiat" : "Copiază link adăugare"}
             </button>
           )}
           <div className="text-sm text-gray-700 dark:text-gray-200 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40">
@@ -191,7 +226,37 @@ export default function DraftsClient({ listings, role, inviteToken = null, siteU
         </div>
       </div>
 
-      {ordered.length == 0 && <div className="text-sm text-gray-700 dark:text-gray-300">Nu există listări.</div>}
+      {ordered.length == 0 && (
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 px-5 py-6 text-sm text-emerald-900">
+          <h2 className="text-lg font-semibold mb-2">Nu există încă listări</h2>
+          <p className="text-emerald-900/80 mb-4">
+            Catalogul este gol. Poți începe să adaugi proprietăți reale, una câte una, în ordinea dorită.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            {canStaffActions && inviteToken && (
+              <button
+                type="button"
+                onClick={handleStaffAdd}
+                className="px-3 py-2 text-sm rounded-lg bg-emerald-700 text-white hover:bg-emerald-800"
+              >
+                Adaugă prima proprietate
+              </button>
+            )}
+            {canStaffActions && inviteToken && (
+              <button
+                type="button"
+                onClick={copyAddPropertyLink}
+                className="px-3 py-2 text-sm rounded-lg border border-emerald-200 text-emerald-800 hover:bg-emerald-100"
+              >
+                {copiedAddLink ? "Link copiat" : "Copiază link adăugare"}
+              </button>
+            )}
+            {!inviteToken && (
+              <span className="text-emerald-800/80">Ai nevoie de un link de invitație pentru a adăuga.</span>
+            )}
+          </div>
+        </div>
+      )}
       {showUpdatedNotice && (
         <div className="mb-4 rounded-xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50 dark:bg-emerald-950/40 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200 flex items-center justify-between">
           <span>Modificările au fost salvate cu succes.</span>
@@ -302,8 +367,8 @@ export default function DraftsClient({ listings, role, inviteToken = null, siteU
                     slug={d.slug}
                     canDelete={canDelete}
                     clientLink={
-                      canStaffActions
-                        ? `${baseUrl || ""}/edit-property/${d.id}?client=1`
+                      canStaffActions && d.editToken
+                        ? `${baseUrl || ""}/edit-property/${d.id}?client=1&token=${d.editToken}`
                         : null
                     }
                     onStatusChange={(newStatus) => handleStatusChange(d.id, newStatus)}
