@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
 import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
 import { generateListingToken } from '@/lib/listingTokens';
+import { syncListingGeoZones } from '@/lib/geoZones';
 
 export async function POST(req: Request) {
   try {
@@ -26,8 +27,8 @@ export async function POST(req: Request) {
     const {
       title,
       slug,
-      location,
-      address,
+      city,
+      sat,
       price,
       capacity,
       phone,
@@ -45,8 +46,12 @@ export async function POST(req: Request) {
       bai,
     } = body;
 
-    if (!title || !location) {
+    const judetVal = body.judet ?? null;
+    if (!title) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+    if (!judetVal) {
+      return NextResponse.json({ error: 'Județ obligatoriu' }, { status: 400 });
     }
 
     const toNumber = (value: unknown) => {
@@ -81,8 +86,9 @@ export async function POST(req: Request) {
     const payload: any = {
       title,
       slug: slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
-      location,
-      address: address || null,
+      judet: judetVal,
+      city: city || null,
+      sat: sat || null,
       price: price || 0,
       capacity: normalizedCapacity || '1',
       camere: parsedCamere,
@@ -145,6 +151,11 @@ export async function POST(req: Request) {
       const { error: relErr } = await supabaseAdmin.from('listing_facilities').insert(rels);
       if (relErr) console.warn('Could not insert listing_facilities', relErr.message);
     }
+
+    await syncListingGeoZones(supabaseAdmin, {
+      listingId,
+      judet: payload.judet,
+    });
 
     return NextResponse.json({ ok: true, id: listingId, editToken });
   } catch (err: any) {

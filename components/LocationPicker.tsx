@@ -7,6 +7,8 @@ interface LocationPickerProps {
   onLocationSelect: (location: { latitude: number; longitude: number; county: string; city: string }) => void;
   initialCounty?: string;
   initialCity?: string;
+  geocodeCounty?: string;
+  geocodeCity?: string;
   initialLat?: number | null;
   initialLng?: number | null;
   onConfirmChange?: (confirmed: boolean) => void;
@@ -33,6 +35,8 @@ export default function LocationPicker({
   onLocationSelect,
   initialCounty,
   initialCity,
+  geocodeCounty,
+  geocodeCity,
   initialLat,
   initialLng,
   onConfirmChange,
@@ -49,6 +53,7 @@ export default function LocationPicker({
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const lastGeocodeKeyRef = useRef<string>("");
 
   useEffect(() => {
     if (onConfirmChange) onConfirmChange(isConfirmed);
@@ -152,6 +157,31 @@ export default function LocationPicker({
       }
     }
   }, [initialLat, initialLng]);
+
+  // Auto-geocode when city/county change in the form (no autocomplete input)
+  useEffect(() => {
+    if (!isLoaded || !(window as any).google?.maps) return;
+    const city = (geocodeCity || '').trim();
+    const county = (geocodeCounty || '').trim();
+    if (!city && !county) return;
+    const key = `${city}|${county}`.toLowerCase();
+    if (lastGeocodeKeyRef.current === key) return;
+    if (city.length < 2 && county.length < 2) return;
+
+    lastGeocodeKeyRef.current = key;
+    const geocoder = new google.maps.Geocoder();
+    const query = [city, county, 'România'].filter(Boolean).join(', ');
+    geocoder.geocode({ address: query, region: 'RO', componentRestrictions: { country: 'RO' } }, (results, status) => {
+      if (status === google.maps.GeocoderStatus.OK && results?.[0]?.geometry?.location) {
+        const loc = results[0].geometry.location;
+        const lat = loc.lat();
+        const lng = loc.lng();
+        setSelectedLocation({ lat, lng });
+        setIsConfirmed(false);
+        setLocationName(results[0].formatted_address || query);
+      }
+    });
+  }, [geocodeCity, geocodeCounty, isLoaded]);
 
   // Auto-center map on user's location (device) with IP fallback (add mode only)
   useEffect(() => {

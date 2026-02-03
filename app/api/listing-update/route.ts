@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
 import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
 import { isListingTokenValid } from '@/lib/listingTokens';
+import { syncListingGeoZones } from '@/lib/geoZones';
 
 export async function POST(request: Request) {
   try {
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
     const supabaseAdmin = getSupabaseAdmin();
 
     const body = await request.json();
-    const { id, title, location, address, price, capacity, phone, description, type, facilities, is_published, camere, paturi, bai } = body;
+    const { id, title, judet, city, sat, price, capacity, phone, description, type, facilities, is_published, camere, paturi, bai } = body;
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
     const role = getDraftRoleFromRequest(request);
@@ -30,8 +31,9 @@ export async function POST(request: Request) {
 
     const updateData: any = {};
     if (title !== undefined) updateData.title = title;
-    if (location !== undefined) updateData.location = location;
-    if (address !== undefined) updateData.address = address;
+    if (judet !== undefined) updateData.judet = judet;
+    if (city !== undefined) updateData.city = city;
+    if (sat !== undefined) updateData.sat = sat;
     if (price !== undefined) updateData.price = price;
     const normalizeCapacity = (value: unknown) => {
       if (value === null || value === undefined) return null;
@@ -127,6 +129,23 @@ export async function POST(request: Request) {
       revalidatePath('/sitemap.xml');
     } catch (revalidateErr) {
       console.error('[listing-update] revalidate failed', revalidateErr);
+    }
+
+    if (judet !== undefined) {
+      let nextJudet = judet;
+      if (nextJudet === undefined) {
+        const { data: currentRow } = await supabaseAdmin
+          .from('listings')
+          .select('judet')
+          .eq('id', id)
+          .maybeSingle();
+        nextJudet = currentRow?.judet ?? null;
+      }
+      await syncListingGeoZones(supabaseAdmin, {
+        listingId: id,
+        judet: typeof nextJudet === 'string' ? nextJudet : null,
+        replace: true,
+      });
     }
 
     return NextResponse.json({ ok: true });

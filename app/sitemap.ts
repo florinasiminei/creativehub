@@ -1,11 +1,13 @@
 import type { MetadataRoute } from "next";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { LISTING_TYPES } from "@/lib/listingTypes";
+import { allRegions, touristRegions } from "@/lib/regions";
 
 export const revalidate = 60 * 60 * 12;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cabn.ro";
+  const rawUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cabn.ro";
+  const siteUrl = rawUrl.replace(/^https?:\/\/www\./, "https://");
   const lastModified = new Date();
 
   const supabaseAdmin = getSupabaseAdmin();
@@ -34,6 +36,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
+  const regionEntries: MetadataRoute.Sitemap = allRegions.map((region) => ({
+    url: `${siteUrl}/regiune/${region.slug}`,
+    lastModified,
+    changeFrequency: "weekly",
+    priority: 0.6,
+  }));
+
+  const typeRegionEntries: MetadataRoute.Sitemap = LISTING_TYPES.flatMap((type) =>
+    touristRegions.map((region) => ({
+      url: `${siteUrl}/cazari/${type.slug}/${region.slug}`,
+      lastModified,
+      changeFrequency: "weekly",
+      priority: 0.6,
+    }))
+  );
+
   return [
     {
       url: `${siteUrl}/`,
@@ -60,6 +78,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "yearly",
       priority: 0.2,
     },
+    ...regionEntries,
+    ...typeRegionEntries,
     ...listingEntries,
   ];
 }

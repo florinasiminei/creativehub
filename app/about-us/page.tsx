@@ -1,21 +1,20 @@
 import Link from "next/link";
-import Image from "next/image";
 import type { Metadata } from "next";
 import { Check, Zap, Target, Users, Camera, Globe } from "lucide-react";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cabn.ro";
 
 export const metadata: Metadata = {
-  title: "Despre CABN.ro | Promovare Digitală Premium pentru Cabane și Pensiuni",
+  title: "Despre CABN | Marketing pentru cabane si pensiuni",
   description:
-    "Descoperă povestea CABN.ro. Transformăm proprietăți unice din România în branduri memorabile prin strategie digitală, foto-video și social media profesionale.",
+    "Afla cum CABN ajuta cabanele si pensiunile din Romania sa creasca prin strategie digitala, foto-video si SEO.",
   alternates: {
     canonical: "/about-us",
   },
   openGraph: {
-    title: "Despre CABN.ro",
+    title: "Despre CABN",
     description:
-      "O echipă tânără cu experiență solidă în marketing digital, web development și producție foto-video. Transformăm proprietăți în branduri memorabile.",
+      "Echipa CABN ofera strategie digitala, productie foto-video si branding pentru cabane si pensiuni.",
     url: `${siteUrl}/about-us`,
     siteName: "cabn.ro",
     locale: "ro_RO",
@@ -31,9 +30,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Despre CABN.ro",
-    description:
-      "Descoperă echipa CABN.ro și cum transformăm proprietăți în branduri memorabile.",
+    title: "Despre CABN",
+    description: "Afla cum CABN sprijina brandurile de cabane si pensiuni din Romania.",
     images: ["/images/logo.svg"],
   },
 };
@@ -55,20 +53,20 @@ export default function AboutPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600/80 dark:text-emerald-400/90">
             Despre noi
           </p>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight">La CABN.ro</h1>
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight">Despre CABN</h1>
           
           {/* Clarification - Positioning */}
           <div className="rounded-xl border-2 border-emerald-500/40 bg-emerald-50/50 dark:bg-emerald-900/20 p-4 sm:p-6 my-4 sm:my-6">
             <p className="text-base sm:text-lg font-semibold text-emerald-900 dark:text-emerald-100 mb-2">
-              🎯 CABN.ro nu este o agenție de social media.
+              🎯 CABN.ro nu este o agentie de social media.
             </p>
             <p className="text-base sm:text-lg text-emerald-800 dark:text-emerald-200">
-              Suntem partenerul tău de creștere pentru proprietăți din turismul alternativ.
+              Suntem partenerul tau de crestere pentru proprietati din turismul alternativ.
             </p>
           </div>
 
           <p className="max-w-3xl text-base sm:text-lg text-zinc-600 dark:text-zinc-300">
-            Suntem creatori, strategi și tehnicieni — o echipă tânără cu experiență solidă în marketing digital, web development și producție foto-video profesională. Am pornit ca foști corporatiști pasionați de natură și aventură, iar astăzi ne dedicăm unui singur lucru: să construim sisteme de promovare care generează cereri reale pentru proprietățile unice din România.
+            Suntem creatori, strategi si tehnicieni care ajuta proprietatile de turism alternativ sa atraga cereri directe prin marketing digital, website si continut foto-video.
           </p>
         </header>
 

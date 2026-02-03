@@ -37,15 +37,6 @@ type LocationData = {
   city: string;
 };
 
-const splitAddress = (address: string) => {
-  const trimmed = address.trim();
-  const match = trimmed.match(/^(.*)\s*\((.*)\)\s*$/);
-  if (match) {
-    return { localitate: match[1].trim(), sat: match[2].trim() };
-  }
-  return { localitate: trimmed, sat: '' };
-};
-
 export default function EditPropertyPage({ params }: any) {
   const { id } = params;
   const router = useRouter();
@@ -117,10 +108,12 @@ export default function EditPropertyPage({ params }: any) {
         if (!mounted) return;
 
         if (listing) {
-          const { localitate, sat } = splitAddress(listing.address || '');
+          const localitate = listing.city || '';
+          const sat = listing.sat || '';
+          const judetValue = listing.judet || '';
           setFormData({
             titlu: listing.title || '',
-            judet: listing.location || '',
+            judet: judetValue,
             localitate,
             sat,
             pret: listing.price?.toString() || '',
@@ -141,7 +134,7 @@ export default function EditPropertyPage({ params }: any) {
           setLocationData({
             latitude: Number.isFinite(parsedLat) ? parsedLat : 0,
             longitude: Number.isFinite(parsedLng) ? parsedLng : 0,
-            county: listing.location || '',
+            county: judetValue,
             city: localitate,
           });
         }
@@ -190,6 +183,9 @@ export default function EditPropertyPage({ params }: any) {
 
   const handleChange = (k: keyof FormData, v: string) => {
     setFormData(prev => ({ ...prev, [k]: v }));
+  };
+  const handleLocationSelect = (location: LocationData) => {
+    setLocationData(location);
   };
 
   const toggleFacility = (idf: string) => {
@@ -271,11 +267,9 @@ export default function EditPropertyPage({ params }: any) {
       const updatePayload = {
         id,
         title: formData.titlu,
-        location: locationData?.county || formData.judet,
-        address:
-          (locationData?.city || formData.localitate)
-            ? `${locationData?.city || formData.localitate}${formData.sat ? ` (${formData.sat})` : ''}`
-            : null,
+        judet: formData.judet || locationData?.county || null,
+        city: formData.localitate || locationData?.city || null,
+        sat: formData.sat || null,
         price: Number(formData.pret) || 0,
         capacity: formData.capacitate || '1',
         camere: Number(formData.camere) || 0,
@@ -334,7 +328,7 @@ export default function EditPropertyPage({ params }: any) {
           facilities={facilitiesList}
           selectedFacilities={selectedFacilities}
           onToggleFacility={toggleFacility}
-          onLocationSelect={(location) => setLocationData(location)}
+          onLocationSelect={handleLocationSelect}
           autoLocate={false}
           initialCounty={formData.judet}
           initialCity={formData.localitate}
@@ -386,6 +380,7 @@ export default function EditPropertyPage({ params }: any) {
           }}
           descriptionMin={200}
           descriptionMax={320}
+          descriptionRequired={isClient}
         />
 
         {isClient && (

@@ -7,16 +7,16 @@ import ContactForm from "@/components/forms/ContactForm";
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cabn.ro";
 
 export const metadata: Metadata = {
-  title: "Servicii Premium de Promovare Digitală | CABN.ro",
+  title: "Promovare digitala pentru cabane si pensiuni",
   description:
-    "Servicii complete de promovare pentru cabane și pensiuni: foto-video cinematic, website profesional, social media management și strategie digitală. Creștem vizibilitatea și rezervările.",
+    "Servicii complete de promovare pentru cazari turistice, cabane si pensiuni in Romania: foto-video cinematic, website profesional, social media management. Crestem ocuparea si vizibilitatea.",
   alternates: {
     canonical: "/descoperaCABN",
   },
   openGraph: {
-    title: "Servicii Premium de Promovare Digitală | CABN.ro",
+    title: "Promovare digitala pentru cabane si pensiuni",
     description:
-      "De la conținut cinematografic la strategie digitală completă. Transformăm proprietăți în branduri memorabile.",
+      "Promovare digitala pentru cazari turistice si cabane: strategie completa, foto-video cinematic, marketing social. Transformam proprietati in branduri memorabile.",
     url: `${siteUrl}/descoperaCABN`,
     siteName: "cabn.ro",
     locale: "ro_RO",
@@ -32,9 +32,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Servicii Premium de Promovare Digitală | CABN.ro",
+    title: "Promovare digitala pentru cabane si pensiuni",
     description:
-      "Servicii complete de promovare pentru cabane și pensiuni: foto-video cinematic, website și social media.",
+      "Promovare digitala pentru cazari turistice, cabane si pensiuni: foto-video, website SEO, social media management.",
     images: ["/images/logo.svg"],
   },
 };
@@ -198,7 +198,7 @@ export default function DescoperaCabn() {
               <div className="flex items-start gap-2 sm:gap-3 md:gap-4">
                 <TrendingUp className="h-4 sm:h-5 md:h-6 w-4 sm:w-5 md:w-6 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5 sm:mt-0.5 md:mt-1" />
                 <div>
-                  <p className="font-semibold text-sm sm:text-base md:text-lg text-zinc-900 dark:text-white">Creșteri de 30–60% în cereri directe</p>
+                  <p className="font-semibold text-sm sm:text-base md:text-lg text-zinc-900 dark:text-white">Creșteri de 30-60% în cereri directe</p>
                   <p className="text-zinc-600 dark:text-zinc-400 text-xs sm:text-xs md:text-sm mt-0.5 sm:mt-1">Oaspeții interesați găsesc ușor proprietatea și au fiducia să se gândească serios.</p>
                 </div>
               </div>
@@ -492,6 +492,14 @@ export default function DescoperaCabn() {
           Citește povestea noastră →
         </Link>
       </section>
+
+      {/* SEO Keywords Section - Hidden from view */}
+      <div className="hidden">
+        <h2>Cazari romanesti si turism alternativ</h2>
+        <p>Gaseste produse si servicii similare. Cabana romania munte. Cabana cu ciubar. Cabana. Cabana 2 persoane romania. Cabana munte revelion. Cabana 2 persoane.</p>
+        <p>Cazari turistice de calitate premium. Promovare digitala pentru cazari. Website SEO pentru cabane. Social media management cabane Romania.</p>
+        <p>Servicii de marketing digital pentru proprietati de turism alternativ, cazari rurale, cabane si pensiuni in Romania.</p>
+      </div>
     </div>
   );
 }

@@ -10,7 +10,9 @@ type Facility = { id: string; name: string };
 export type Listing = {
   id: string;
   title: string;
-  location: string;
+  city?: string;
+  sat?: string;
+  judet?: string;
   type: string;
   capacity: string;
   price: number;
@@ -34,6 +36,8 @@ type Props = {
 export default function ListingClient({ data }: Props) {
   const [showAllFacilities, setShowAllFacilities] = useState(false);
   const [facilityLimit, setFacilityLimit] = useState(8);
+  const cityLabel = data.sat ? `${data.city} (${data.sat})` : data.city;
+  const locationLabel = [cityLabel, data.judet].filter(Boolean).join(", ") || "România";
   const fallbackWhatsappNumber = String(process.env.NEXT_PUBLIC_WHATSAPP_PHONE || "");
   const sanitizedPhone = data?.phone ? data.phone.replace(/[^\d+]/g, "") : "";
   const telHref = sanitizedPhone || data?.phone?.trim() || "";
@@ -72,7 +76,7 @@ export default function ListingClient({ data }: Props) {
 
               <div className="text-gray-600 dark:text-gray-400 mb-6 flex flex-wrap items-center gap-x-4 gap-y-1 text-base">
                 <span className="flex items-center gap-1.5">
-                  <MapPin size={16} /> {data.location}
+                  <MapPin size={16} /> {locationLabel}
                 </span>
                 <span>|</span>
                 <span>{data.type}</span>
@@ -95,7 +99,7 @@ export default function ListingClient({ data }: Props) {
               <div className="order-last space-y-10 lg:order-none">
                 <div>
                   <h2 className="text-2xl font-bold mb-4 border-b pb-2">Despre această proprietate</h2>
-                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">
+                  <p className="text-gray-700 dark:text-gray-300 whitespace-pre-line break-words leading-relaxed">
                     {data.description}
                   </p>
                   <div className="mt-3 text-xs text-gray-500 dark:text-gray-400 flex flex-wrap items-center gap-2">
@@ -162,7 +166,7 @@ export default function ListingClient({ data }: Props) {
                     const lat = Number(data.latitude);
                     const lng = Number(data.longitude);
                     const hasCoords = Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0);
-                    const locationQuery = encodeURIComponent(data.location || "");
+                    const locationQuery = encodeURIComponent(locationLabel || "");
                     const mapSrc = hasCoords
                       ? `https://www.google.com/maps?q=${lat},${lng}&z=14&output=embed`
                       : `https://www.google.com/maps?q=${locationQuery}&z=12&output=embed`;
@@ -188,7 +192,7 @@ export default function ListingClient({ data }: Props) {
                         <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-600 dark:text-gray-400">
                           <span className="inline-flex items-center gap-2">
                             <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                            {data.location}
+                            {locationLabel}
                           </span>
                           <a
                             href={directionsHref}

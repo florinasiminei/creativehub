@@ -10,7 +10,7 @@ export const revalidate = 60 * 60 * 12;
 async function getHomeData() {
   const supabaseAdmin = getSupabaseAdmin();
   const baseSelect = `
-    id, title, slug, type, location, address, capacity, price, phone, is_published, display_order,
+    id, title, slug, type, judet, city, sat, capacity, price, phone, is_published, display_order,
     camere, paturi, bai,
     listing_images(image_url, display_order),
     listing_facilities(

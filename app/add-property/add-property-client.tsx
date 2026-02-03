@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, FormEvent, Suspense } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import ListingForm from '@/components/forms/ListingForm';
@@ -37,7 +37,7 @@ type LocationData = {
   city: string;
 };
 
-function AddPropertyPageContent() {
+export default function AddPropertyPageContent() {
   const searchParams = useSearchParams();
   const tokenParam = searchParams.get('token');
   const isClient = searchParams.get('client') === '1' || searchParams.get('role') === 'client';
@@ -350,6 +350,7 @@ function AddPropertyPageContent() {
           selectedFailedNames={failedUploads.map((f) => f.name)}
           descriptionMin={200}
           descriptionMax={320}
+          descriptionRequired={isClient}
         />
 
         {/* honeypot */}
@@ -402,20 +403,5 @@ function AddPropertyPageContent() {
         )}
       </form>
     </div>
-  );
-}
-
-export default function AddPropertyPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="max-w-3xl mx-auto px-6 py-16">
-          <h1 className="text-2xl font-semibold mb-2">Se incarca...</h1>
-          <p className="text-gray-600">Pregatim formularul de publicare.</p>
-        </div>
-      }
-    >
-      <AddPropertyPageContent />
-    </Suspense>
   );
 }

@@ -17,6 +17,7 @@ import { getTypeLabel } from "@/lib/listingTypes";
 import { Cazare } from "@/lib/utils";
 import type { FacilityOption, Filters, ListingRaw, SearchSuggestion } from "@/lib/types";
 import { supabase } from "@/lib/supabaseClient";
+import { parseLocationLabel, resolveRegionForLocation } from "@/lib/regions";
 
 function parseCapacity(capacity: string | number): { min: number; max: number } {
   const str = String(capacity).trim();
@@ -164,7 +165,7 @@ export default function Home({ initialCazari = [], initialFacilities = [] }: Hom
         setError(null);
 
         const baseSelect = `
-            id, title, slug, type, location, address, capacity, price, phone, is_published, display_order,
+            id, title, slug, type, judet, city, sat, capacity, price, phone, is_published, display_order,
             camere, paturi, bai,
             listing_images(image_url, display_order),
             listing_facilities(
@@ -379,18 +380,15 @@ export default function Home({ initialCazari = [], initialFacilities = [] }: Hom
         entry.ids.add(cazare.id);
       }
 
-      if (locationParts[2]) {
-        const aliasCandidates = [
-          propertyLocation,
-          locationParts[0],
-          locationParts[1],
-          ...locationParts.slice(3),
-        ];
+      const { city, county } = parseLocationLabel(propertyLocation);
+      const region = resolveRegionForLocation(city, county);
+      if (region) {
+        const aliasCandidates = [propertyLocation, county].filter(Boolean);
         const entry = ensureLocationEntry(
           regiuni,
-          locationParts[2].toLowerCase(),
-          locationParts[2],
-          locationParts.slice(0, 2).join(", ") || propertyLocation || undefined,
+          region.slug,
+          region.name,
+          county || propertyLocation || undefined,
           aliasCandidates
         );
         entry.ids.add(cazare.id);
@@ -713,7 +711,7 @@ export default function Home({ initialCazari = [], initialFacilities = [] }: Hom
 
       <main className="w-full px-4 lg:px-6">
         <section id="cazari" className="py-8">
-          <h2 className="text-xl font-medium mb-6">Cabane autentice & cazări selectate</h2>
+          <h2 className="text-xl font-medium mb-6">Cazare in natura in Romania – Cabane, pensiuni si case de vacanta</h2>
 
           {loading && (
             <div className="flex items-center justify-center py-12 min-h-[60vh]">

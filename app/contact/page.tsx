@@ -1,5 +1,29 @@
-﻿import { FaFacebookF, FaInstagram, FaTiktok, FaWhatsapp } from "react-icons/fa";
+﻿import type { Metadata } from "next";
+import { FaFacebookF, FaInstagram, FaTiktok, FaWhatsapp } from "react-icons/fa";
 import ContactForm from "@/components/forms/ContactForm";
+
+export const metadata: Metadata = {
+  title: "Contact CABN | Cereri pentru cabane si pensiuni",
+  description:
+    "Scrie echipei CABN pentru marketing, foto-video si listari de cabane si pensiuni. Raspundem rapid cu o solutie clara.",
+  alternates: {
+    canonical: "/contact",
+  },
+  openGraph: {
+    title: "Contact CABN",
+    description:
+      "Contacteaza echipa CABN pentru marketing, foto-video si listari de cabane si pensiuni.",
+    url: "https://cabn.ro/contact",
+    siteName: "cabn.ro",
+    locale: "ro_RO",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Contact CABN",
+    description: "Contacteaza echipa CABN pentru marketing si listari turistice.",
+  },
+};
 
 const SOCIAL_LINKS = [
   {
@@ -27,9 +51,9 @@ export default function ContactPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600/80">
             cabn.ro
           </p>
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Contact</h1>
+          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Contact CABN</h1>
           <p className="max-w-2xl text-base text-zinc-600 dark:text-zinc-300">
-            Suntem aici pentru colaborari de marketing, intrebari despre listari si propuneri de parteneriat.
+            Suntem aici pentru colaborari de marketing pentru cabane si pensiuni, intrebari despre listari si propuneri de parteneriat.
           </p>
         </header>
 

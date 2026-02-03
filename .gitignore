@@ -38,3 +38,14 @@ yarn-error.log*
 # 📁 IDE/editor configs (optional, uncomment if needed)
 # .vscode/
 # *.swp
+
+# 📄 Docs (local notes)
+docs/
+
+# 🧰 IDE folders
+.idea/
+.vscode/
+
+# 🗂️ Local history/cache
+.history/
+.swc/

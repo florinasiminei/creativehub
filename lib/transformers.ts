@@ -47,8 +47,12 @@ export function mapListingSummary(row: ListingRaw, fallbackImage = "/fallback.sv
       ? String(row.listing_images[0]?.image_url ?? "").trim()
       : "";
   const image = coverCandidate || fallbackImage;
-  const address = typeof row.address === "string" ? row.address.trim() : "";
-  const locationLabel = address ? `${address}, ${row.location}` : row.location;
+  const city = typeof row.city === "string" ? row.city.trim() : "";
+  const village = typeof row.sat === "string" ? row.sat.trim() : "";
+  const county = row.judet ?? "";
+  const cityLabel = village ? `${city} (${village})` : city;
+  const parts = [cityLabel, county].filter(Boolean);
+  const locationLabel = parts.length > 0 ? parts.join(", ") : "";
 
   const { ids, names } = extractFacilities(row.listing_facilities);
   const camere = safeNumber((row as any).camere, 0);

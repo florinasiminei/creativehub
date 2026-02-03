@@ -76,6 +76,7 @@ type ListingFormProps = {
   onExistingDelete?: (img: { id: string; image_url: string; alt?: string | null }) => void;
   descriptionMin?: number;
   descriptionMax?: number;
+  descriptionRequired?: boolean;
 };
 
 export default function ListingForm({
@@ -123,6 +124,7 @@ export default function ListingForm({
   onExistingDelete,
   descriptionMin,
   descriptionMax,
+  descriptionRequired = false,
 }: ListingFormProps) {
   const isInvalid = (key: string) => showValidation && invalidFields.includes(key);
   const inputClass = (invalid: boolean) =>
@@ -319,6 +321,7 @@ export default function ListingForm({
               <span className="text-xs text-red-500 mt-1">{locationsError}</span>
             )}
           </div>
+
           <div className={labelClass(showLocalityError)}>
             <span className="text-sm font-medium">Localitate</span>
             <Combobox
@@ -495,9 +498,7 @@ export default function ListingForm({
         </label>
 
         <label className={labelClass(isInvalid('descriere'))}>
-          <span className="text-sm font-medium">
-            Descriere <span className="text-gray-500 dark:text-gray-400">(opțional)</span>
-          </span>
+          <span className="text-sm font-medium">Descriere</span>
           <textarea
             value={formData.descriere}
             onChange={(e) => onChange('descriere', e.target.value)}
@@ -525,6 +526,8 @@ export default function ListingForm({
           onConfirmChange={onLocationConfirmChange}
           initialCounty={initialCounty}
           initialCity={initialCity}
+          geocodeCounty={resolvedCounty || ''}
+          geocodeCity={resolvedCounty ? resolvedLocality : ''}
           initialLat={initialLat}
           initialLng={initialLng}
           autoLocate={autoLocate}

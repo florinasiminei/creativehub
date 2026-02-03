@@ -46,8 +46,9 @@ export type ListingRaw = {
   slug?: string;
   phone?: string;
   type: string;
-  location: string;
-  address?: string | null;
+  judet?: string | null;
+  city?: string | null;
+  sat?: string | null;
   capacity: string;
   price: string;
   camere?: number | string | null;

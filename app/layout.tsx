@@ -15,10 +15,10 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cabn.ro";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "cabn.ro - Cazare in natura",
-    template: "%s | cabn.ro",
+    default: "Cazare in natura Romania - Cabane si cazari autentice | CABN",
+    template: "%s | CABN",
   },
-  description: "Cazari inedite si autentice pentru escapade naturale.",
+  description: "Descopera cazare in natura in Romania: cabane de inchiriat, pensiuni traditionale si case de vacanta pentru weekend sau vacante in zone naturale.",
   alternates: {
     canonical: "/",
   },
@@ -32,8 +32,8 @@ export const metadata: Metadata = {
     locale: "ro_RO",
     url: siteUrl,
     siteName: "cabn.ro",
-    title: "cabn.ro - Cazare in natura",
-    description: "Cazari inedite si autentice pentru escapade naturale.",
+    title: "Cazare in natura Romania - Cabane si cazari autentice | CABN",
+    description: "Descopera cazare in natura in Romania: cabane de inchiriat, pensiuni traditionale si case de vacanta pentru weekend sau vacante in zone naturale.",
     images: [
       {
         url: "/images/logo.svg",
@@ -45,8 +45,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "cabn.ro - Cazare in natura",
-    description: "Cazari inedite si autentice pentru escapade naturale.",
+    title: "Cazare in natura Romania - Cabane si cazari autentice | CABN",
+    description: "Descopera cazare in natura in Romania: cabane de inchiriat, pensiuni traditionale si case de vacanta pentru weekend sau vacante in zone naturale.",
     images: ["/images/logo.svg"],
   },
   icons: {

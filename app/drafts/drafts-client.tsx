@@ -156,7 +156,7 @@ export default function DraftsClient({ listings, role, inviteToken = null, siteU
 
   const copyAddPropertyLink = async () => {
     if (!inviteToken) return;
-    const link = `${baseUrl || ""}/add-property?token=${inviteToken}`;
+    const link = `${baseUrl || ""}/add-property?client=1&token=${inviteToken}`;
     try {
       if (navigator?.clipboard?.writeText) {
         await navigator.clipboard.writeText(link);

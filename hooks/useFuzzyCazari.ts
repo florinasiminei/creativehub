@@ -2,6 +2,12 @@ import { useMemo } from "react";
 import Fuse from "fuse.js";
 import { Cazare } from "../lib/utils";
 import { Filters } from "../lib/types";
+import {
+  allRegions,
+  parseLocationLabel,
+  resolveRegionForLocation,
+  normalizeRegionText,
+} from "@/lib/regions";
 
 function parseCapacity(capacity: string | number): { min: number; max: number } {
   const str = String(capacity).trim();
@@ -36,11 +42,31 @@ export function useFuzzyCazari(cazari: Cazare[], filters: Filters) {
 
     // Keyword filter (fuzzy search in title, location, and facilities)
     if (filters.keyword.trim()) {
-      const fuse = new Fuse(result, {
-        keys: ["title", "locatie", "facilitiesNames"],
-        threshold: 0.35,
+      const keyword = filters.keyword.trim();
+      const normalizedKeyword = normalizeRegionText(keyword);
+      const matchedRegion = allRegions.find((region) => {
+        const nameNorm = normalizeRegionText(region.name);
+        const slugNorm = normalizeRegionText(region.slug);
+        return (
+          nameNorm === normalizedKeyword ||
+          slugNorm === normalizedKeyword ||
+          nameNorm.includes(normalizedKeyword)
+        );
       });
-      result = fuse.search(filters.keyword).map((r) => r.item);
+
+      if (matchedRegion) {
+        result = result.filter((c) => {
+          const { city, county } = parseLocationLabel(c.locatie);
+          const region = resolveRegionForLocation(city, county);
+          return region?.slug === matchedRegion.slug;
+        });
+      } else {
+        const fuse = new Fuse(result, {
+          keys: ["title", "locatie", "facilitiesNames"],
+          threshold: 0.35,
+        });
+        result = fuse.search(keyword).map((r) => r.item);
+      }
     }
 
     // Price filter
