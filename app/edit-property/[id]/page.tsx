@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import ListingForm from '@/components/forms/ListingForm';
+import LoadingLogo from '@/components/LoadingLogo';
 import useImageSelection from '@/hooks/useImageSelection';
 import useImageUploads from '@/hooks/useImageUploads';
 import useListingForm from '@/hooks/useListingForm';
@@ -292,7 +293,11 @@ export default function EditPropertyPage({ params }: any) {
 
       setMessage('Modificările au fost salvate.');
       markPageModified();
-      router.push('/drafts?updated=1');
+      if (isClient) {
+        router.push('/?updated=1');
+      } else {
+        router.push('/drafts?updated=1');
+      }
     } catch (err) {
       console.error(err);
       setMessage(err instanceof Error ? err.message : 'A apărut o eroare');
@@ -303,6 +308,11 @@ export default function EditPropertyPage({ params }: any) {
 
   return (
     <div className="max-w-6xl 2xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-10">
+      {(loading || uploading) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/80 dark:bg-black/70 backdrop-blur-sm">
+          <LoadingLogo />
+        </div>
+      )}
       <div className="mb-6">
         <p className="text-sm uppercase tracking-[0.2em] text-emerald-700 font-semibold">Administrare listare</p>
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -396,7 +406,9 @@ export default function EditPropertyPage({ params }: any) {
                 onChange={(e) => setAcceptedTerms(e.target.checked)}
                 className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
               />
-              <span>Accept termenii si conditiile.</span>
+              <span>
+                Accept termenii si conditiile<span className="text-red-600"> *</span>
+              </span>
             </label>
             <label className="flex items-start gap-2 text-sm text-gray-700">
               <input

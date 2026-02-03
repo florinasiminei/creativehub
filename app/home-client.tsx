@@ -130,14 +130,31 @@ export default function Home({ initialCazari = [], initialFacilities = [] }: Hom
   const [loading, setLoading] = useState(initialCazari.length === 0);
   const [error, setError] = useState<string | null>(null);
   const [showSubmittedNotice, setShowSubmittedNotice] = useState(false);
+  const [submittedMessage, setSubmittedMessage] = useState("");
 
   // Refresh page when returning from drafts/edit-property
   useRefreshOnNavigation('home');
 
   useEffect(() => {
     const submitted = searchParams.get("submitted") === "1";
-    setShowSubmittedNotice(submitted);
+    const updated = searchParams.get("updated") === "1";
+    if (submitted) {
+      setSubmittedMessage("Proprietatea a fost adaugata cu succes.");
+    } else if (updated) {
+      setSubmittedMessage("Proprietatea a fost modificata cu succes.");
+    } else {
+      setSubmittedMessage("");
+    }
+    setShowSubmittedNotice(submitted || updated);
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!showSubmittedNotice) return;
+    const timer = window.setTimeout(() => {
+      setShowSubmittedNotice(false);
+    }, 10_000);
+    return () => window.clearTimeout(timer);
+  }, [showSubmittedNotice]);
 
   useEffect(() => {
     if (initialCazari.length === 0) return;
@@ -680,13 +697,13 @@ export default function Home({ initialCazari = [], initialFacilities = [] }: Hom
   return (
     <div className="min-h-screen bg-transparent text-black dark:text-white relative">
       {showSubmittedNotice && (
-        <div className="mx-4 lg:mx-6 mt-6 rounded-xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50 dark:bg-emerald-950/40 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200 flex items-center justify-between">
-          <span>Mulțumim! Cererea ta a fost trimisă. Proprietatea va fi verificată și publicată după aprobare.</span>
+        <div className="fixed bottom-4 right-4 z-40 w-[min(360px,calc(100vw-2rem))] rounded-2xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50 dark:bg-emerald-950/40 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200 shadow-lg flex items-start justify-between gap-3">
+          <span>{submittedMessage || "Proprietatea a fost salvata cu succes."}</span>
           <button
             type="button"
             onClick={() => setShowSubmittedNotice(false)}
             className="text-emerald-700 dark:text-emerald-300 hover:text-emerald-900"
-            aria-label="Închide"
+            aria-label="Inchide"
           >
             ×
           </button>
