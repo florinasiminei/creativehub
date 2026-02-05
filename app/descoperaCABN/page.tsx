@@ -143,39 +143,40 @@ export default function DescoperaCabn() {
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
-            <div className="text-left">
-              <h3 className="font-bold text-sm sm:text-base mb-3 sm:mb-4 text-emerald-700 dark:text-emerald-400">Te ajutam daca:</h3>
-              <ul className="space-y-1.5 sm:space-y-2 md:space-y-3">
-                <li className="flex items-start gap-2 sm:gap-3">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold mt-0 sm:mt-0.5 flex-shrink-0 text-sm sm:text-base">✓</span>
-                  <span className="text-xs sm:text-sm md:text-base">Vrei sa cresti rate de ocupare (30-50%+ in 6 luni)</span>
+          <div className="mx-auto max-w-3xl">
+            <div className="rounded-2xl border border-emerald-200/60 bg-emerald-50/50 dark:border-emerald-500/20 dark:bg-emerald-900/20 p-5 sm:p-6 md:p-8 text-left">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <h3 className="font-bold text-base sm:text-lg text-emerald-800 dark:text-emerald-200">
+                  Te ajutam daca:
+                </h3>
+                <span className="text-xs sm:text-sm text-emerald-700/80 dark:text-emerald-200/80">
+                  Focus pe crestere sustenabila
+                </span>
+              </div>
+              <ul className="mt-4 space-y-3">
+                <li className="flex items-start gap-3">
+                  <span className="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white text-xs font-semibold">
+                    ✓
+                  </span>
+                  <span className="text-sm sm:text-base text-zinc-700 dark:text-zinc-200">
+                    Vrei sa cresti rate de ocupare (30-50%+ in 6 luni)
+                  </span>
                 </li>
-                <li className="flex items-start gap-2 sm:gap-3">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold mt-0 sm:mt-0.5 flex-shrink-0 text-sm sm:text-base">✓</span>
-                  <span className="text-xs sm:text-sm md:text-base">Esti serios cu investitia in brand si marketing</span>
+                <li className="flex items-start gap-3">
+                  <span className="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white text-xs font-semibold">
+                    ✓
+                  </span>
+                  <span className="text-sm sm:text-base text-zinc-700 dark:text-zinc-200">
+                    Esti serios cu investitia in brand si marketing
+                  </span>
                 </li>
-                <li className="flex items-start gap-2 sm:gap-3">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-bold mt-0 sm:mt-0.5 flex-shrink-0 text-sm sm:text-base">✓</span>
-                  <span className="text-xs sm:text-sm md:text-base">Cauti strategie pe termen lung, nu doar promovare punctuala</span>
-                </li>
-              </ul>
-            </div>
-            
-            <div className="text-left">
-              <h3 className="font-bold text-sm sm:text-base mb-3 sm:mb-4 text-rose-700 dark:text-rose-400">Cand NU suntem potriviti:</h3>
-              <ul className="space-y-1.5 sm:space-y-2 md:space-y-3">
-                <li className="flex items-start gap-2 sm:gap-3">
-                  <span className="text-rose-600 dark:text-rose-400 font-bold mt-0 sm:mt-0.5 flex-shrink-0 text-sm sm:text-base">✗</span>
-                  <span className="text-xs sm:text-sm md:text-base">Cauti fotografii rapide fara strategie</span>
-                </li>
-                <li className="flex items-start gap-2 sm:gap-3">
-                  <span className="text-rose-600 dark:text-rose-400 font-bold mt-0 sm:mt-0.5 flex-shrink-0 text-sm sm:text-base">✗</span>
-                  <span className="text-xs sm:text-sm md:text-base">Nu esti dispus sa investesti in content si marketing</span>
-                </li>
-                <li className="flex items-start gap-2 sm:gap-3">
-                  <span className="text-rose-600 dark:text-rose-400 font-bold mt-0 sm:mt-0.5 flex-shrink-0 text-sm sm:text-base">✗</span>
-                  <span className="text-xs sm:text-sm md:text-base">Vrei rezultate in 2-3 saptamani</span>
+                <li className="flex items-start gap-3">
+                  <span className="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white text-xs font-semibold">
+                    ✓
+                  </span>
+                  <span className="text-sm sm:text-base text-zinc-700 dark:text-zinc-200">
+                    Cauti strategie pe termen lung, nu doar promovare punctuala
+                  </span>
                 </li>
               </ul>
             </div>
