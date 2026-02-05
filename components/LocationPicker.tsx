@@ -54,6 +54,7 @@ export default function LocationPicker({
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const lastGeocodeKeyRef = useRef<string>("");
+  const hasSelection = Boolean(selectedLocation);
 
   useEffect(() => {
     if (onConfirmChange) onConfirmChange(isConfirmed);
@@ -487,53 +488,60 @@ export default function LocationPicker({
         <div ref={mapContainerRef} className="w-full h-96 bg-gray-50 dark:bg-zinc-900" />
       </div>
 
-      {/* Location details panel (when location is selected) */}
-      {selectedLocation && (
-        <div className="space-y-4 bg-gradient-to-br from-emerald-50 to-emerald-100/50 p-5 rounded-xl border border-emerald-200 shadow-md dark:border-zinc-800 dark:from-zinc-900 dark:to-emerald-900/20">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p className="text-xs font-bold text-emerald-700 tracking-wide dark:text-emerald-300">LOCAȚIE SELECTATĂ</p>
-              <p className="text-sm text-gray-700 dark:text-gray-300">Poți da click pe hartă sau trage pinul pentru a ajusta poziția.</p>
-            </div>
-            <span
-              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                isConfirmed ? 'bg-emerald-600 text-white' : 'bg-white text-emerald-700 border border-emerald-200 dark:bg-zinc-950 dark:text-emerald-300 dark:border-zinc-800'
-              }`}
-            >
-              {isConfirmed ? 'Confirmată' : 'Neconfirmată'}
-            </span>
+      {/* Location details panel (reserve space to avoid CLS) */}
+      <div className="space-y-4 bg-gradient-to-br from-emerald-50 to-emerald-100/50 p-5 rounded-xl border border-emerald-200 shadow-md dark:border-zinc-800 dark:from-zinc-900 dark:to-emerald-900/20">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-xs font-bold text-emerald-700 tracking-wide dark:text-emerald-300">
+              {hasSelection ? 'LOCAȚIE SELECTATĂ' : 'ALEGE O LOCAȚIE'}
+            </p>
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              {hasSelection
+                ? 'Poți da click pe hartă sau trage pinul pentru a ajusta poziția.'
+                : 'Selectează o locație pe hartă sau caută o adresă pentru a continua.'}
+            </p>
           </div>
-
-          {/* Address section */}
-          {locationName && (
-            <div>
-              <p className="text-xs font-bold text-emerald-700 tracking-wide dark:text-emerald-300 mb-1">ADRESA</p>
-              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{locationName}</p>
-              <p className="text-xs text-gray-600 mt-2 font-mono opacity-75 dark:text-gray-400">
-                {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
-              </p>
-            </div>
-          )}
-
-          {/* Confirm button */}
-          <button
-            type="button"
-            onClick={handleConfirmLocation}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-lg font-semibold shadow-md hover:shadow-lg transition dark:bg-emerald-500 dark:hover:bg-emerald-600"
+          <span
+            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
+              isConfirmed
+                ? 'bg-emerald-600 text-white'
+                : 'bg-white text-emerald-700 border border-emerald-200 dark:bg-zinc-950 dark:text-emerald-300 dark:border-zinc-800'
+            }`}
           >
-            ✓ Confirmă locația
-          </button>
+            {isConfirmed ? 'Confirmată' : 'Neconfirmată'}
+          </span>
         </div>
-      )}
+
+        {/* Address section */}
+        <div className="min-h-[52px]">
+          <p className="text-xs font-bold text-emerald-700 tracking-wide dark:text-emerald-300 mb-1">ADRESA</p>
+          {locationName ? (
+            <>
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{locationName}</p>
+            </>
+          ) : (
+            <p className="text-sm text-gray-500 dark:text-gray-400">Nu ai selectat încă o locație.</p>
+          )}
+          <p
+            className={`text-xs text-gray-600 mt-2 font-mono opacity-75 dark:text-gray-400 ${
+              selectedLocation ? '' : 'opacity-0'
+            }`}
+          >
+            {selectedLocation ? `${selectedLocation.lat.toFixed(6)}, ${selectedLocation.lng.toFixed(6)}` : '0,0'}
+          </p>
+        </div>
+
+        {/* Confirm button */}
+
+        <button
+          type="button"
+          onClick={handleConfirmLocation}
+          disabled={!hasSelection}
+          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-lg font-semibold shadow-md hover:shadow-lg transition disabled:opacity-60 disabled:cursor-not-allowed dark:bg-emerald-500 dark:hover:bg-emerald-600"
+        >
+          ✓ Confirmă locația
+        </button>
+      </div>
     </div>
   );
 }
-
-
-
-
-
-
-
-
-

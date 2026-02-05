@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { ThemeProvider } from "next-themes";
 import { Analytics } from "@vercel/analytics/next";
+import Script from "next/script";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
@@ -83,6 +84,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {/* Footer full-bleed on purpose */}
           <Footer />
         </ThemeProvider>
+
+        <Script async src="https://www.googletagmanager.com/gtag/js?id=G-LSJTRY32B5" strategy="afterInteractive" />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+
+gtag('config', 'G-LSJTRY32B5');`}
+        </Script>
 
         <Analytics />
       </body>

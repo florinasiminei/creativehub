@@ -97,7 +97,7 @@ export default function DescoperaCabn() {
   return (
     <div className="min-h-screen bg-white text-zinc-900 dark:bg-transparent dark:text-white">
       {/* Hero Section */}
-      <section className="relative min-h-[80dvh] overflow-hidden [margin-left:calc(50%-50vw)] [margin-right:calc(50%-50vw)] -mt-6 md:-mt-6">
+      <section className="relative min-h-[80vh] min-h-[80svh] overflow-hidden [margin-left:calc(50%-50vw)] [margin-right:calc(50%-50vw)] -mt-6 md:-mt-6">
         <Image
           src="https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=2000&q=80"
           alt="Servicii premium de promovare"
