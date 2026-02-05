@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, MouseEvent, useCallback, useEffect, useMemo } from "react";
+import React, { useState, MouseEvent, useCallback, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import ReactImageGallery from "react-image-gallery";
 import { MoveLeft, MoveRight, X } from "lucide-react";
@@ -21,6 +21,86 @@ type GalleryItemCustom = {
   thumbnailHeight: number;
   thumbnailWidth: number;
   description?: string;
+};
+
+type Size = {
+  width: number;
+  height: number;
+};
+
+const GallerySlide: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [containerSize, setContainerSize] = useState<Size>({ width: 0, height: 0 });
+  const [imageSize, setImageSize] = useState<Size>({ width: 0, height: 0 });
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const observer = new ResizeObserver(([entry]) => {
+      setContainerSize({
+        width: entry.contentRect.width,
+        height: entry.contentRect.height,
+      });
+    });
+
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const blurRects = useMemo(() => {
+    if (!containerSize.width || !containerSize.height || !imageSize.width || !imageSize.height) {
+      return null;
+    }
+
+    const scale = Math.min(
+      containerSize.width / imageSize.width,
+      containerSize.height / imageSize.height
+    );
+
+    const displayWidth = imageSize.width * scale;
+    const displayHeight = imageSize.height * scale;
+    const left = Math.max(0, (containerSize.width - displayWidth) / 2);
+    const top = Math.max(0, (containerSize.height - displayHeight) / 2);
+    const right = Math.max(0, containerSize.width - (left + displayWidth));
+    const bottom = Math.max(0, containerSize.height - (top + displayHeight));
+
+    return [
+      { top: 0, left: 0, width: containerSize.width, height: top },
+      { top: top + displayHeight, left: 0, width: containerSize.width, height: bottom },
+      { top, left: 0, width: left, height: displayHeight },
+      { top, left: left + displayWidth, width: right, height: displayHeight },
+    ];
+  }, [containerSize, imageSize]);
+
+  return (
+    <div ref={containerRef} className="relative isolate flex h-full w-full items-center justify-center bg-black">
+      {blurRects?.map((rect, index) => (
+        <div
+          key={index}
+          className="pointer-events-none absolute z-0 overflow-hidden"
+          style={rect}
+          aria-hidden
+        >
+          <div
+            className="h-full w-full scale-110 bg-cover bg-center blur-2xl opacity-30"
+            style={{ backgroundImage: `url(${src})` }}
+          />
+        </div>
+      ))}
+      <div className="relative z-10 h-full w-full">
+        <Image
+          src={src}
+          alt={alt}
+          fill
+          sizes="100vw"
+          className="object-contain"
+          onLoadingComplete={(img) => {
+            setImageSize({ width: img.naturalWidth, height: img.naturalHeight });
+          }}
+        />
+      </div>
+    </div>
+  );
 };
 
 const ImageGallery: React.FC<ImageGalleryProps> = ({
@@ -68,23 +148,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
         thumbnailWidth: 96,
         description: title ? `${title} - Imagine` : "Imagine proprietate",
         renderItem: (item: GalleryItemCustom) => (
-          <div className="relative flex h-full w-full items-center justify-center bg-black">
-            <Image
-              src={item.original}
-              alt=""
-              fill
-              sizes="100vw"
-              className="pointer-events-none object-cover opacity-35 blur-2xl scale-110"
-              aria-hidden
-            />
-            <Image
-              src={item.original}
-              alt={item.description || ""}
-              fill
-              sizes="100vw"
-              className="object-contain"
-            />
-          </div>
+          <GallerySlide src={item.original} alt={item.description || ""} />
         ),
         renderThumbInner: (item: GalleryItemCustom) => (
           <div className="relative h-full w-full">
@@ -139,7 +203,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm">
-      <div className={`relative h-[100dvh] w-full md:h-[85vh] md:max-w-5xl ${className}`}>
+      <div className={`relative h-[100dvh] w-full md:h-[90vh] md:max-w-5xl ${className}`}>
         <ReactImageGallery
           ref={galleryRef}
           items={items}
