@@ -26,6 +26,17 @@ export default function Navbar() {
     setMenuOpen(false);
   }, [pathname, hash]);
 
+  const trackAddPropertyClick = (placement: "navbar_desktop" | "navbar_mobile") => {
+    if (typeof window === "undefined") return;
+    const gtag = (window as any).gtag;
+    if (typeof gtag === "function") {
+      gtag("event", "add_property_click", {
+        placement,
+        destination: "/descoperaCABN",
+      });
+    }
+  };
+
   return (
     <header
       className={classNames(
@@ -87,6 +98,7 @@ export default function Navbar() {
           <div className="ml-auto hidden shrink-0 items-center gap-2 md:flex">
             <Link
               href="/descoperaCABN"
+              onClick={() => trackAddPropertyClick("navbar_desktop")}
               className="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-1.5 text-sm font-semibold text-white shadow transition hover:-translate-y-0.5 hover:bg-emerald-600 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
             >
               <span aria-hidden="true" className="text-lg font-semibold leading-none">
@@ -161,6 +173,7 @@ export default function Navbar() {
               <li className="pt-1">
                 <Link
                   href="/descoperaCABN"
+                  onClick={() => trackAddPropertyClick("navbar_mobile")}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-base font-semibold text-white shadow transition hover:-translate-y-0.5 hover:bg-emerald-600 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
                 >
                   <span aria-hidden="true" className="text-lg font-semibold leading-none">
