@@ -26,7 +26,7 @@
 }
 
 .image-gallery-custom .image-gallery-slide-wrapper {
-  height: calc(100% - 120px);
+  height: 100%;
   background: transparent;
 }
 

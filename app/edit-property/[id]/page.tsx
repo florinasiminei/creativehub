@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import ListingForm from '@/components/forms/ListingForm';
 import LoadingLogo from '@/components/LoadingLogo';
+import FormMessage from '@/components/forms/FormMessage';
 import useImageSelection from '@/hooks/useImageSelection';
 import useImageUploads from '@/hooks/useImageUploads';
 import useListingForm from '@/hooks/useListingForm';
@@ -67,6 +68,7 @@ export default function EditPropertyPage({ params }: any) {
   const [images, setImages] = useState<ListingImage[]>([]);
   const [draggingExistingIdx, setDraggingExistingIdx] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [messageTone, setMessageTone] = useState<'error' | 'success' | 'info'>('info');
   const [locationData, setLocationData] = useState<LocationData | null>(null);
   const [showValidation, setShowValidation] = useState(false);
   const [validationAttempt, setValidationAttempt] = useState(0);
@@ -90,7 +92,7 @@ export default function EditPropertyPage({ params }: any) {
     handleDragEnd: handleNewDragEnd,
     resetFiles,
   } = useImageSelection({
-    maxFiles: Math.max(0, 10 - images.length),
+    maxFiles: Number.POSITIVE_INFINITY,
     onLimit: (msg) => setMessage(msg),
   });
 
@@ -207,7 +209,7 @@ export default function EditPropertyPage({ params }: any) {
     phoneKey: 'telefon',
     imagesCount: images.length + files.length,
     minImages: isClient ? 5 : 0,
-    maxImages: 10,
+    maxImages: 12,
     description: formData.descriere,
     descriptionKey: 'descriere',
     descriptionMin: 200,
@@ -237,11 +239,13 @@ export default function EditPropertyPage({ params }: any) {
     setMessage(null);
     setShowValidation(true);
     if (validationError) {
+      setMessageTone('error');
       setMessage(validationError);
       setValidationAttempt((prev) => prev + 1);
       return;
     }
     if (isClient && !acceptedTerms) {
+      setMessageTone('error');
       setMessage('Te rugam sa accepti termenii si conditiile.');
       return;
     }
@@ -291,6 +295,7 @@ export default function EditPropertyPage({ params }: any) {
         await reorderListingImages(id, idsInOrder, listingToken);
       }
 
+      setMessageTone('success');
       setMessage('Modificările au fost salvate.');
       markPageModified();
       if (isClient) {
@@ -300,6 +305,7 @@ export default function EditPropertyPage({ params }: any) {
       }
     } catch (err) {
       console.error(err);
+      setMessageTone('error');
       setMessage(err instanceof Error ? err.message : 'A apărut o eroare');
     } finally {
       setLoading(false);
@@ -346,8 +352,8 @@ export default function EditPropertyPage({ params }: any) {
           initialLng={locationData?.longitude ?? null}
           dropzoneTitle={
             isClient
-              ? "Încarcă imagini noi (minim 5, maxim 10 total)"
-              : "Încarcă imagini noi (maxim 10 total)"
+              ? "Încarcă imagini noi (minim 5, maxim 12 total)"
+              : "Încarcă imagini noi (maxim 12 total)"
           }
           dropzoneSubtitle={
             isClient
@@ -370,14 +376,14 @@ export default function EditPropertyPage({ params }: any) {
           onDragEnd={handleNewDragEnd}
           onMove={moveFile}
           onRemove={removeFile}
-          selectedImagesTitle="Imagini noi (nepublicate încă)"
+          selectedImagesTitle="Ordinea imaginilor noi"
           selectedImagesSubtitle={
             isClient
-              ? "Ordinea de mai jos va fi folosită la încărcare (5-10 imagini total)"
-              : "Ordinea de mai jos va fi folosită la încărcare (maxim 10 imagini total)"
+              ? "Stabilește ordinea de afișare pentru încărcare (5-12 imagini total)"
+              : "Stabilește ordinea de afișare pentru încărcare (maxim 12 imagini total)"
           }
           existingImages={images}
-          existingTitle="Galerie existentă"
+          existingTitle="Galerie publicată"
           existingSubtitle="Reordonează sau șterge imaginile curente"
           existingDraggingIdx={draggingExistingIdx}
           onExistingDragStart={handleExistingDragStart}
@@ -443,7 +449,11 @@ export default function EditPropertyPage({ params }: any) {
           </div>
         </div>
 
-        {message && <div className="text-sm text-gray-700" role="status" aria-live="polite">{message}</div>}
+        {message && (
+          <FormMessage variant={messageTone === 'success' ? 'success' : 'error'} role="status" aria-live="polite">
+            {message}
+          </FormMessage>
+        )}
       </form>
     </div>
   )

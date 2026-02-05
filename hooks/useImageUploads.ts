@@ -19,6 +19,13 @@ export default function useImageUploads({ onError, listingToken }: UseImageUploa
       file.type === 'image/svg+xml'
     ) return file;
     if (typeof window === 'undefined') return file;
+
+    const isModernFormat =
+      file.type === 'image/webp' ||
+      file.type === 'image/avif' ||
+      ext === 'webp' ||
+      ext === 'avif';
+    if (isModernFormat) return file;
     if (file.size <= targetBytes) return file;
 
     let bitmap: ImageBitmap | null = null;

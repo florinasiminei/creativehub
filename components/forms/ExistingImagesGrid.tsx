@@ -35,7 +35,7 @@ export default function ExistingImagesGrid({
         <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{title}</div>
         <div className="text-xs text-gray-500 dark:text-gray-400">{subtitle}</div>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
         {images.map((img, idx) => (
           <div
             key={img.id}
@@ -48,13 +48,21 @@ export default function ExistingImagesGrid({
             }}
             onDragEnd={onDragEnd}
           >
-            <div className="relative h-48 bg-gray-50">
+            <div className="relative h-56 sm:h-60 md:h-64 bg-gray-50 overflow-hidden">
+              <Image
+                src={img.image_url}
+                alt=""
+                fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                className="pointer-events-none object-cover opacity-40 blur-2xl scale-110"
+                aria-hidden
+              />
               <Image
                 src={img.image_url}
                 alt={img.alt || 'Imagine listare'}
                 fill
-                sizes="(max-width: 768px) 100vw, 50vw"
-                className="object-cover"
+                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                className="relative z-10 object-contain"
               />
               <div className="absolute top-2 left-2 text-xs px-2 py-1 rounded-full bg-white/80 text-gray-700 shadow">#{idx + 1}</div>
             </div>

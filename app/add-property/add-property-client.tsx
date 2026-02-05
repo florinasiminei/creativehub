@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import ListingForm from '@/components/forms/ListingForm';
 import LoadingLogo from '@/components/LoadingLogo';
+import FormMessage from '@/components/forms/FormMessage';
 import useImageSelection from '@/hooks/useImageSelection';
 import useImageUploads from '@/hooks/useImageUploads';
 import useListingForm from '@/hooks/useListingForm';
@@ -89,7 +90,7 @@ export default function AddPropertyPageContent() {
     handleDragEnd,
     resetFiles,
   } = useImageSelection({
-    maxFiles: 10,
+    maxFiles: Number.POSITIVE_INFINITY,
     onLimit: (msg) => setMessage(msg),
   });
 
@@ -163,7 +164,7 @@ export default function AddPropertyPageContent() {
     phoneKey: 'telefon',
     imagesCount: files.length,
     minImages: isClient ? 5 : 0,
-    maxImages: 10,
+    maxImages: 12,
     description: formData.descriere,
     descriptionKey: 'descriere',
     descriptionMin: 200,
@@ -333,7 +334,7 @@ export default function AddPropertyPageContent() {
           }}
           initialCounty={formData.judet}
           initialCity={formData.localitate}
-          dropzoneTitle="Incarca imagini (minim 5, maxim 10)"
+          dropzoneTitle="Incarca imagini (minim 5, maxim 12)"
           dropzoneSubtitle="Accepta .jpg, .png, .webp, .avif, .heic"
           dropzoneHelper="Click sau trage imaginile aici"
           showValidation={showValidation}
@@ -351,8 +352,8 @@ export default function AddPropertyPageContent() {
           onDragEnd={handleDragEnd}
           onMove={moveFile}
           onRemove={removeFile}
-          selectedImagesTitle="Galeria imaginilor adaugate"
-          selectedImagesSubtitle="Foloseste sagetile pentru a reordona (5-10 imagini)"
+          selectedImagesTitle="Ordinea galeriei foto"
+          selectedImagesSubtitle="Trage sau foloseste sagetile pentru ordinea de afisare (5-12 imagini)"
           selectedFailedNames={failedUploads.map((f) => f.name)}
           descriptionMin={200}
           descriptionMax={320}
@@ -392,22 +393,22 @@ export default function AddPropertyPageContent() {
         </div>
 
         {message && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="status" aria-live="polite">
+          <FormMessage variant="error" role="status" aria-live="polite">
             <div className="font-semibold">{message}</div>
             {failedUploads.length > 0 && (
-              <ul className="mt-2 space-y-1 text-red-700">
+              <ul className="mt-2 space-y-1">
                 {failedUploads.map((f, idx) => (
                   <li key={`${f.name}-${idx}`} className="flex items-start gap-2">
                     <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-red-500" />
                     <span>
                       <span className="font-medium">{f.name}</span>
-                      {f.reason ? ` — ${f.reason === 'file_too_large' ? 'fisier prea mare' : f.reason}` : ''}
+                      {f.reason ? ` ??? ${f.reason === 'file_too_large' ? 'fisier prea mare' : f.reason}` : ''}
                     </span>
                   </li>
                 ))}
               </ul>
             )}
-          </div>
+          </FormMessage>
         )}
       </form>
     </div>

@@ -71,10 +71,18 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
           <div className="relative flex h-full w-full items-center justify-center bg-black">
             <Image
               src={item.original}
+              alt=""
+              fill
+              sizes="100vw"
+              className="pointer-events-none object-cover opacity-35 blur-2xl scale-110"
+              aria-hidden
+            />
+            <Image
+              src={item.original}
               alt={item.description || ""}
               fill
               sizes="100vw"
-              className={isMobile ? "object-contain" : "object-cover"}
+              className="object-contain"
             />
           </div>
         ),

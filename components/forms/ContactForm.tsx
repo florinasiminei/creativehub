@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import FormMessage from "./FormMessage";
 
 type FormState = "idle" | "sending" | "success" | "error";
 
@@ -81,14 +82,14 @@ export default function ContactForm() {
           {status === "sending" ? "Se trimite..." : "Trimite mesajul"}
         </button>
         {status === "success" && (
-          <span className="text-sm text-emerald-700 dark:text-emerald-300">
+          <FormMessage variant="success" size="sm" inline>
             Mesaj trimis. Revenim in scurt timp.
-          </span>
+          </FormMessage>
         )}
         {status === "error" && (
-          <span className="text-sm text-red-600 dark:text-red-400">
+          <FormMessage variant="error" size="sm" inline>
             {error || "A aparut o eroare la trimitere."}
-          </span>
+          </FormMessage>
         )}
       </div>
     </form>

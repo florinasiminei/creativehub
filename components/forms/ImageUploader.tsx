@@ -2,6 +2,7 @@ import React from 'react';
 import ImageDropzone from './ImageDropzone';
 import SelectedImagesGrid from './SelectedImagesGrid';
 import ExistingImagesGrid from './ExistingImagesGrid';
+import FormMessage from './FormMessage';
 
 type ExistingImage = { id: string; image_url: string; alt?: string | null };
 
@@ -66,6 +67,10 @@ export default function ImageUploader({
   onExistingMove,
   onExistingDelete,
 }: ImageUploaderProps) {
+  const totalSelected = files.length + (existingImages?.length ?? 0);
+  const maxAllowed = 12;
+  const overLimit = totalSelected > maxAllowed;
+
   return (
     <div className="space-y-4">
       <ImageDropzone
@@ -78,6 +83,12 @@ export default function ImageUploader({
         onActiveChange={onActiveChange}
         onFilesSelected={onFilesSelected}
       />
+
+      {overLimit && (
+        <FormMessage variant="warning" size="sm">
+          Ai in total {totalSelected} imagini. Pentru publicare trebuie sa ramai cu maximum {maxAllowed}. Sterge {totalSelected - maxAllowed}.
+        </FormMessage>
+      )}
 
       {existingImages.length > 0 && existingTitle && existingSubtitle && onExistingDragStart && onExistingDragOver && onExistingDragEnd && onExistingMove && onExistingDelete && (
         <ExistingImagesGrid

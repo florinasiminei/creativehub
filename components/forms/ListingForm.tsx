@@ -5,6 +5,7 @@ import { Combobox } from '@headlessui/react';
 import ListingFormSection from './ListingFormSection';
 import FacilitiesPicker from './FacilitiesPicker';
 import ImageUploader from './ImageUploader';
+import FormMessage from './FormMessage';
 import LocationPicker from '@/components/LocationPicker';
 
 type FacilityOption = { id: string; name: string };
@@ -315,10 +316,14 @@ export default function ListingForm({
               </div>
             </Combobox>
             {showCountyMatchError && (
-              <span className="text-xs text-red-600 mt-1">Selectează un județ din listă.</span>
+              <FormMessage inline variant="error">
+                Selectează un județ din listă.
+              </FormMessage>
             )}
             {locationsError && (
-              <span className="text-xs text-red-500 mt-1">{locationsError}</span>
+              <FormMessage inline variant="error">
+                {locationsError}
+              </FormMessage>
             )}
           </div>
 
@@ -380,7 +385,9 @@ export default function ListingForm({
               </div>
             </Combobox>
             {showLocalityMatchError && (
-              <span className="text-xs text-red-600 mt-1">Selecteaza o localitate din lista.</span>
+              <FormMessage inline variant="error">
+                Selecteaza o localitate din lista.
+              </FormMessage>
             )}
           </div>
 
