@@ -49,7 +49,7 @@ export default function ContactForm() {
           <input
             name="name"
             required
-            className="rounded-lg border border-zinc-200/70 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 shadow-sm focus:border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
+            className="rounded-lg border border-zinc-300/80 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 shadow-sm hover:border-zinc-300 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white"
             placeholder="Numele tau"
           />
         </label>
@@ -58,7 +58,7 @@ export default function ContactForm() {
           <input
             name="contact"
             required
-            className="rounded-lg border border-zinc-200/70 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 shadow-sm focus:border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
+            className="rounded-lg border border-zinc-300/80 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 shadow-sm hover:border-zinc-300 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white"
             placeholder="ex: nume@email.com"
           />
         </label>
@@ -69,14 +69,14 @@ export default function ContactForm() {
           name="message"
           rows={5}
           required
-          className="rounded-lg border border-zinc-200/70 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 shadow-sm focus:border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-200 dark:border-zinc-800 dark:bg-zinc-950 dark:text-white"
+          className="rounded-lg border border-zinc-300/80 bg-white px-4 py-3 text-sm text-zinc-900 placeholder:text-zinc-400 shadow-sm hover:border-zinc-300 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200 dark:border-zinc-700 dark:bg-zinc-950 dark:text-white"
           placeholder="Descrie pe scurt proiectul sau obiectivul tau."
         />
       </label>
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="submit"
-          className="w-full rounded-full bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow hover:bg-emerald-700 sm:w-auto disabled:opacity-70"
+          className="w-full rounded-full bg-emerald-700 px-5 py-3 text-sm font-semibold text-white shadow hover:bg-emerald-800 sm:w-auto disabled:opacity-70"
           disabled={status === "sending"}
         >
           {status === "sending" ? "Se trimite..." : "Trimite mesajul"}

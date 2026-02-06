@@ -3,6 +3,15 @@ import Link from "next/link";
 import { Cazare } from "@/lib/utils";
 
 export default function CazareCard({ cazare }: { cazare: Cazare }) {
+  const locationParts = (cazare.locatie || "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const firstPart = locationParts[0]
+    ? locationParts[0].replace(/\s*\([^)]*\)\s*$/, "")
+    : "";
+  const cleanedLocation = [firstPart, ...locationParts.slice(1)].filter(Boolean).join(", ");
+
   return (
     <Link href={`/cazare/${cazare.slug}`}>
       <article className="group transition bg-transparent dark:bg-transparent">
@@ -22,7 +31,9 @@ export default function CazareCard({ cazare }: { cazare: Cazare }) {
             <div className="text-gray-900 dark:text-white text-sm font-medium whitespace-nowrap">{cazare.price} lei</div>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-[60%]">{cazare.locatie}</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-[60%]">
+              {cleanedLocation}
+            </span>
             <span className="text-sm text-gray-500 dark:text-gray-400 shrink-0">{cazare.numarPersoane} persoane</span>
           </div>
         </div>
