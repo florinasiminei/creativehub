@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { LISTING_TYPES } from "@/lib/listingTypes";
 import { allRegions, touristRegions } from "@/lib/regions";
+import { getCounties } from "@/lib/counties";
 
 export const revalidate = 60 * 60 * 12;
 
@@ -43,6 +44,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
+  const countyEntries: MetadataRoute.Sitemap = getCounties().map((county) => ({
+    url: `${siteUrl}/judet/${county.slug}`,
+    lastModified,
+    changeFrequency: "weekly",
+    priority: 0.6,
+  }));
+
   const typeRegionEntries: MetadataRoute.Sitemap = LISTING_TYPES.flatMap((type) =>
     touristRegions.map((region) => ({
       url: `${siteUrl}/cazari/${type.slug}/${region.slug}`,
@@ -79,6 +87,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.2,
     },
     ...regionEntries,
+    ...countyEntries,
     ...typeRegionEntries,
     ...listingEntries,
   ];

@@ -4,13 +4,8 @@ import HomeClient from "@/app/home-client";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { mapListingSummary } from "@/lib/transformers";
 import { sortFacilitiesByPriority } from "@/lib/facilitiesCatalog";
-import {
-  allRegions,
-  findRegionBySlug,
-  metroCoreCitySet,
-  normalizeRegionText,
-} from "@/lib/regions";
 import { buildListingPageJsonLd } from "@/lib/jsonLd";
+import { findCountyBySlug, getCounties } from "@/lib/counties";
 import type { ListingRaw } from "@/lib/types";
 import type { Cazare } from "@/lib/utils";
 import type { FacilityOption } from "@/lib/types";
@@ -24,21 +19,15 @@ type PageProps = {
 };
 
 export async function generateStaticParams() {
-  return allRegions.map((region) => ({ slug: region.slug }));
+  return getCounties().map((county) => ({ slug: county.slug }));
 }
 
 export async function generateMetadata({ params }: PageProps) {
-  const region = findRegionBySlug(params.slug);
-  if (!region) return {};
-  const title =
-    region.type === "metro"
-      ? `Cazare in ${region.name} | CABN.ro`
-      : `Cazare in ${region.name} | CABN.ro`;
-  const description =
-    region.type === "metro"
-      ? `Descopera cazari in ${region.name}, cu verificare foto/video si rezervare direct la gazda.`
-      : `Descopera cazare atent selectata in ${region.name}, cu verificare foto/video si rezervare direct la gazda.`;
-  const canonical = `/regiune/${region.slug}`;
+  const county = findCountyBySlug(params.slug);
+  if (!county) return {};
+  const title = `Cazare in judetul ${county.name} | CABN.ro`;
+  const description = `Descopera cazari atent selectate in judetul ${county.name}, cu verificare foto/video si rezervare direct la gazda.`;
+  const canonical = `/judet/${county.slug}`;
   return {
     title,
     description,
@@ -53,8 +42,7 @@ export async function generateMetadata({ params }: PageProps) {
   };
 }
 
-
-async function getRegionListings(region: { counties: string[]; type: string; coreCities?: string[] }): Promise<Cazare[]> {
+async function getCountyListings(countyName: string): Promise<Cazare[]> {
   const supabaseAdmin = getSupabaseAdmin();
   const baseSelect = `
     id, title, slug, type, judet, city, sat, capacity, price, phone, is_published, display_order,
@@ -69,7 +57,7 @@ async function getRegionListings(region: { counties: string[]; type: string; cor
     .from("listings")
     .select(baseSelect)
     .eq("is_published", true)
-    .in("judet", region.counties)
+    .eq("judet", countyName)
     .order("display_order", { ascending: false, nullsFirst: false })
     .order("display_order", { foreignTable: "listing_images", ascending: true })
     .limit(1, { foreignTable: "listing_images" });
@@ -82,7 +70,7 @@ async function getRegionListings(region: { counties: string[]; type: string; cor
       .from("listings")
       .select(baseSelect)
       .eq("is_published", true)
-      .in("judet", region.counties)
+      .eq("judet", countyName)
       .order("display_order", { foreignTable: "listing_images", ascending: true })
       .limit(1, { foreignTable: "listing_images" });
     data = fallback.data;
@@ -90,49 +78,34 @@ async function getRegionListings(region: { counties: string[]; type: string; cor
   }
 
   if (error) throw error;
-
-  const rows = (data as unknown as ListingRaw[]) || [];
-  const normalizedMetroCities = region.coreCities
-    ? new Set(region.coreCities.map((c) => normalizeRegionText(c)))
-    : null;
-
-  const filtered = rows.filter((row) => {
-    const cityNorm = normalizeRegionText(String((row as any).city || ""));
-    if (region.type === "metro") {
-      return normalizedMetroCities ? normalizedMetroCities.has(cityNorm) : false;
-    }
-    if (!cityNorm) return true;
-    return !metroCoreCitySet.has(cityNorm);
-  });
-
-  return filtered.map((row) => mapListingSummary(row));
+  return (data as unknown as ListingRaw[]).map((row) => mapListingSummary(row));
 }
 
-export default async function RegionPage({ params }: PageProps) {
-  const region = findRegionBySlug(params.slug);
-  if (!region) return notFound();
+export default async function CountyPage({ params }: PageProps) {
+  const county = findCountyBySlug(params.slug);
+  if (!county) return notFound();
 
-  const listings = await getRegionListings(region);
+  const listings = await getCountyListings(county.name);
   const supabaseAdmin = getSupabaseAdmin();
   const { data: facilities } = await supabaseAdmin.from("facilities").select("id, name");
   const sortedFacilities = sortFacilitiesByPriority((facilities || []) as FacilityOption[]);
-  const pageUrl = `${siteUrl}/regiune/${region.slug}`;
-  const description = `Descopera cele mai frumoase cazari din ${region.name}. Listari curate, verificate, cu contact direct la gazda.`;
+  const pageUrl = `${siteUrl}/judet/${county.slug}`;
+  const description = `Descopera cele mai frumoase cazari din judetul ${county.name}. Listari curate, verificate, cu contact direct la gazda.`;
 
   const jsonLd = buildListingPageJsonLd({
     siteUrl,
     pageUrl,
     typeLabel: "Cazare",
     typeSlug: "cazare",
-    locationLabel: region.name,
-    locationSlug: region.slug,
+    locationLabel: `Judetul ${county.name}`,
+    locationSlug: county.slug,
     description,
     items: listings.map((l) => ({
       name: l.title,
       url: `${siteUrl}/cazare/${l.slug}`,
       image: l.image,
       addressLocality: l.locatie,
-      addressRegion: region.name,
+      addressRegion: county.name,
       priceRange: String(l.price || ""),
     })),
   });
@@ -152,7 +125,7 @@ export default async function RegionPage({ params }: PageProps) {
         <HomeClient
           initialCazari={listings}
           initialFacilities={sortedFacilities}
-          pageTitle={`Cazare in ${region.name}`}
+          pageTitle={`Cazare in judetul ${county.name}`}
         />
       </Suspense>
     </>

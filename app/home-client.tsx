@@ -77,9 +77,14 @@ const ITEMS_PER_PAGE = 50;
 type HomeClientProps = {
   initialCazari?: Cazare[];
   initialFacilities?: FacilityOption[];
+  pageTitle?: string;
 };
 
-export default function Home({ initialCazari = [], initialFacilities = [] }: HomeClientProps) {
+export default function Home({
+  initialCazari = [],
+  initialFacilities = [],
+  pageTitle,
+}: HomeClientProps) {
   const searchParams = useSearchParams();
   const [cazari, setCazari] = useState<Cazare[]>(initialCazari);
   const [facilitiesList, setFacilitiesList] = useState<FacilityOption[]>(initialFacilities);
@@ -726,9 +731,17 @@ export default function Home({ initialCazari = [], initialFacilities = [] }: Hom
         resultsCount={filteredCazari.length}
       />
 
+      {pageTitle && (
+        <div className="w-full px-4 lg:px-6 pt-4">
+          <h1 className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
+            {pageTitle}
+          </h1>
+        </div>
+      )}
+
       <main className="w-full px-4 lg:px-6">
         <section id="cazari" className="py-8">
-          <h2 className="text-xl font-medium mb-6">Cazare in natura in Romania – Cabane, pensiuni si case de vacanta</h2>
+          <h2 className="text-xl font-medium mb-6">Cazări autentice, atent alese</h2>
 
           {loading && (
             <div className="flex items-center justify-center py-12 min-h-[60vh]">
