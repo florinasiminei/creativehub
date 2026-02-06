@@ -55,7 +55,7 @@ const PropertyImageGrid: React.FC<PropertyImageGridProps> = ({ images, title, cl
             alt={title ? `${title} - Imagine principala` : 'Imagine principala'}
             fill
             priority
-            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 50vw"
+            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 60vw, 640px"
             className="object-cover"
           />
           <div className="absolute inset-0 bg-black/0 transition-colors duration-300 group-hover:bg-black/10" />
@@ -72,7 +72,7 @@ const PropertyImageGrid: React.FC<PropertyImageGridProps> = ({ images, title, cl
               src={url}
               alt={`${title || 'Proprietate'} - Imagine ${index + 2}`}
               fill
-              sizes="(max-width: 768px) 50vw, (max-width: 1280px) 25vw, 25vw"
+              sizes="(max-width: 768px) 50vw, (max-width: 1280px) 30vw, 320px"
               className="object-cover"
             />
             <div className="absolute inset-0 bg-black/0 transition-colors duration-300 group-hover:bg-black/10" />

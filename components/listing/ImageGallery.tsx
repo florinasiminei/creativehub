@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, MouseEvent, useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useState, MouseEvent, useCallback, useEffect, useMemo } from "react";
 import Image from "next/image";
 import ReactImageGallery from "react-image-gallery";
 import { MoveLeft, MoveRight, X } from "lucide-react";
@@ -23,80 +23,36 @@ type GalleryItemCustom = {
   description?: string;
 };
 
-type Size = {
-  width: number;
-  height: number;
+const buildBlurUrl = (url: string, width = 48, quality = 20) => {
+  if (!url || url.startsWith("data:") || url.startsWith("blob:")) return url;
+  if (url.startsWith("/_next/image")) return url;
+  return `/_next/image?url=${encodeURIComponent(url)}&w=${width}&q=${quality}`;
 };
 
-const GallerySlide: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [containerSize, setContainerSize] = useState<Size>({ width: 0, height: 0 });
-  const [imageSize, setImageSize] = useState<Size>({ width: 0, height: 0 });
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const observer = new ResizeObserver(([entry]) => {
-      setContainerSize({
-        width: entry.contentRect.width,
-        height: entry.contentRect.height,
-      });
-    });
-
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
-  }, []);
-
-  const blurRects = useMemo(() => {
-    if (!containerSize.width || !containerSize.height || !imageSize.width || !imageSize.height) {
-      return null;
-    }
-
-    const scale = Math.min(
-      containerSize.width / imageSize.width,
-      containerSize.height / imageSize.height
-    );
-
-    const displayWidth = imageSize.width * scale;
-    const displayHeight = imageSize.height * scale;
-    const left = Math.max(0, (containerSize.width - displayWidth) / 2);
-    const top = Math.max(0, (containerSize.height - displayHeight) / 2);
-    const right = Math.max(0, containerSize.width - (left + displayWidth));
-    const bottom = Math.max(0, containerSize.height - (top + displayHeight));
-
-    return [
-      { top: 0, left: 0, width: containerSize.width, height: top },
-      { top: top + displayHeight, left: 0, width: containerSize.width, height: bottom },
-      { top, left: 0, width: left, height: displayHeight },
-      { top, left: left + displayWidth, width: right, height: displayHeight },
-    ];
-  }, [containerSize, imageSize]);
+const GallerySlide: React.FC<{ src: string; alt: string; eager?: boolean }> = ({
+  src,
+  alt,
+  eager = false,
+}) => {
+  const blurSrc = useMemo(() => buildBlurUrl(src), [src]);
 
   return (
-    <div ref={containerRef} className="relative isolate flex h-full w-full items-center justify-center bg-black">
-      {blurRects?.map((rect, index) => (
-        <div
-          key={index}
-          className="pointer-events-none absolute z-0 overflow-hidden"
-          style={rect}
-          aria-hidden
-        >
-          <div
-            className="h-full w-full scale-110 bg-cover bg-center blur-2xl opacity-30"
-            style={{ backgroundImage: `url(${src})` }}
-          />
-        </div>
-      ))}
+    <div className="relative isolate flex h-full w-full items-center justify-center bg-black overflow-hidden">
+      <div
+        className="pointer-events-none absolute inset-0 bg-cover bg-center blur-2xl opacity-35"
+        style={{ backgroundImage: `url(${blurSrc})` }}
+        aria-hidden
+      />
       <div className="relative z-10 h-full w-full">
         <Image
           src={src}
           alt={alt}
           fill
-          sizes="100vw"
+          priority={eager}
+          loading={eager ? "eager" : "lazy"}
+          fetchPriority={eager ? "high" : "auto"}
+          sizes="(max-width: 768px) 100vw, (max-width: 1280px) 85vw, 1200px"
           className="object-contain"
-          onLoadingComplete={(img) => {
-            setImageSize({ width: img.naturalWidth, height: img.naturalHeight });
-          }}
         />
       </div>
     </div>
@@ -141,28 +97,37 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
 
   const items = useMemo(
     () =>
-      safeImages.map((url) => ({
-        original: url,
-        thumbnail: url,
-        thumbnailHeight: 64,
-        thumbnailWidth: 96,
-        description: title ? `${title} - Imagine` : "Imagine proprietate",
-        renderItem: (item: GalleryItemCustom) => (
-          <GallerySlide src={item.original} alt={item.description || ""} />
-        ),
-        renderThumbInner: (item: GalleryItemCustom) => (
-          <div className="relative h-full w-full">
-            <Image
-              src={item.thumbnail}
-              alt="Miniatura"
-              fill
-              sizes="96px"
-              className="object-cover"
-            />
-          </div>
-        ),
-      })),
-    [safeImages, title, isMobile]
+      safeImages.map((url, index) => {
+        const description = title ? `${title} - Imagine` : "Imagine proprietate";
+        const isActive = index === currentIndex;
+        const isNeighbor = Math.abs(index - currentIndex) === 1;
+        const eager = isActive || isNeighbor;
+        return {
+          original: url,
+          thumbnail: url,
+          thumbnailHeight: 64,
+          thumbnailWidth: 96,
+          description,
+          loading: eager ? "eager" : "lazy",
+          thumbnailLoading: "lazy",
+          renderItem: (item: GalleryItemCustom) => (
+            <GallerySlide src={item.original} alt={item.description || ""} eager={eager} />
+          ),
+          renderThumbInner: (item: GalleryItemCustom) => (
+            <div className="relative h-full w-full">
+              <Image
+                src={item.thumbnail}
+                alt="Miniatura"
+                fill
+                sizes="96px"
+                className="object-cover"
+                loading="lazy"
+              />
+            </div>
+          ),
+        };
+      }),
+    [safeImages, title, currentIndex]
   );
 
   const renderLeftNav = useCallback(
@@ -224,7 +189,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
           renderRightNav={renderRightNav}
           additionalClass={`image-gallery-custom ${isMobile ? "image-gallery--mobile" : ""}`}
           disableSwipe={!isMobile}
-          lazyLoad={false}
+          lazyLoad
           stopPropagation={true}
         />
 

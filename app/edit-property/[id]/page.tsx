@@ -167,10 +167,12 @@ export default function EditPropertyPage({ params }: any) {
       } catch {
         // ignore storage issues
       }
-      const nextParams = new URLSearchParams(searchParams.toString());
-      nextParams.delete('token');
-      const nextQuery = nextParams.toString();
-      router.replace(nextQuery ? `/edit-property/${id}?${nextQuery}` : `/edit-property/${id}`);
+      if (!isClient) {
+        const nextParams = new URLSearchParams(searchParams.toString());
+        nextParams.delete('token');
+        const nextQuery = nextParams.toString();
+        router.replace(nextQuery ? `/edit-property/${id}?${nextQuery}` : `/edit-property/${id}`);
+      }
       return;
     }
 

@@ -51,14 +51,16 @@ export const metadata: Metadata = {
     images: ["/images/logo.svg"],
   },
   icons: {
-    icon: "/images/favicon.svg",
-    shortcut: "/images/favicon.svg",
-    apple: "/images/favicon.svg",
+    icon: [
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16.png", sizes: "16x16", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
     other: [
       {
         rel: "mask-icon",
         url: "/images/favicon.svg",
-        color: "#000000",
+        color: "#10B981",
       },
     ],
   },

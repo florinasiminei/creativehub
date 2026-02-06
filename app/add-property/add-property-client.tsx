@@ -119,10 +119,12 @@ export default function AddPropertyPageContent() {
       } catch {
         // ignore storage issues
       }
-      const nextParams = new URLSearchParams(searchParams.toString());
-      nextParams.delete('token');
-      const nextQuery = nextParams.toString();
-      router.replace(nextQuery ? `/add-property?${nextQuery}` : '/add-property');
+      if (!isClient) {
+        const nextParams = new URLSearchParams(searchParams.toString());
+        nextParams.delete('token');
+        const nextQuery = nextParams.toString();
+        router.replace(nextQuery ? `/add-property?${nextQuery}` : '/add-property');
+      }
       setTokenReady(true);
       return;
     }
