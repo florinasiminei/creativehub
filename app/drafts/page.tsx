@@ -22,7 +22,9 @@ export default async function DraftsPage() {
     .from("listings")
     .select(baseSelect)
     .order("display_order", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .order("display_order", { foreignTable: "listing_images", ascending: true })
+    .limit(1, { foreignTable: "listing_images" });
 
   if (error) console.error(error);
 
