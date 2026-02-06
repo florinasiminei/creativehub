@@ -102,14 +102,15 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
         const isActive = index === currentIndex;
         const isNeighbor = Math.abs(index - currentIndex) === 1;
         const eager = isActive || isNeighbor;
+        const loading: "eager" | "lazy" = eager ? "eager" : "lazy";
         return {
           original: url,
           thumbnail: url,
           thumbnailHeight: 64,
           thumbnailWidth: 96,
           description,
-          loading: eager ? "eager" : "lazy",
-          thumbnailLoading: "lazy",
+          loading,
+          thumbnailLoading: "lazy" as const,
           renderItem: (item: GalleryItemCustom) => (
             <GallerySlide src={item.original} alt={item.description || ""} eager={eager} />
           ),
