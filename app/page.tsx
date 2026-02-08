@@ -8,7 +8,6 @@ import type { FacilityOption, ListingRaw } from "@/lib/types";
 export const revalidate = 60 * 60 * 12;
 
 async function getHomeData() {
-  const supabaseAdmin = getSupabaseAdmin();
   const baseSelect = `
     id, title, slug, type, judet, city, sat, capacity, price, is_published, display_order,
     camere, paturi, bai,
@@ -18,36 +17,52 @@ async function getHomeData() {
     )
   `;
 
-  const withOrder = await supabaseAdmin
-    .from("listings")
-    .select(baseSelect)
-    .eq("is_published", true)
-    .order("display_order", { ascending: false, nullsFirst: false })
-    .order("display_order", { foreignTable: "listing_images", ascending: true })
-    .limit(1, { foreignTable: "listing_images" });
+  let mapped: ReturnType<typeof mapListingSummary>[] = [];
+  let facilities: FacilityOption[] = [];
 
-  let data = withOrder.data;
-  let error = withOrder.error;
-
-  if (error && String(error.message || "").includes("display_order")) {
-    const fallback = await supabaseAdmin
+  try {
+    const supabaseAdmin = getSupabaseAdmin();
+    const withOrder = await supabaseAdmin
       .from("listings")
       .select(baseSelect)
       .eq("is_published", true)
+      .order("display_order", { ascending: false, nullsFirst: false })
       .order("display_order", { foreignTable: "listing_images", ascending: true })
       .limit(1, { foreignTable: "listing_images" });
-    data = fallback.data;
-    error = fallback.error;
+
+    let data = withOrder.data;
+    let error = withOrder.error;
+
+    if (error && String(error.message || "").includes("display_order")) {
+      const fallback = await supabaseAdmin
+        .from("listings")
+        .select(baseSelect)
+        .eq("is_published", true)
+        .order("display_order", { foreignTable: "listing_images", ascending: true })
+        .limit(1, { foreignTable: "listing_images" });
+      data = fallback.data;
+      error = fallback.error;
+    }
+
+    if (error) {
+      console.error("Home listings fetch failed:", error.message);
+    } else {
+      mapped = (data as unknown as ListingRaw[]).map((row) => mapListingSummary(row));
+    }
+
+    const { data: facilitiesData, error: facilitiesError } = await supabaseAdmin.from("facilities").select("id, name");
+    if (facilitiesError) {
+      console.error("Home facilities fetch failed:", facilitiesError.message);
+    } else {
+      facilities = (facilitiesData || []) as FacilityOption[];
+    }
+  } catch (error) {
+    console.error("Home data fetch failed:", error);
   }
-
-  if (error) throw error;
-
-  const mapped = (data as unknown as ListingRaw[]).map((row) => mapListingSummary(row));
-  const { data: facilities } = await supabaseAdmin.from("facilities").select("id, name");
 
   return {
     listings: mapped,
-    facilities: sortFacilitiesByPriority((facilities || []) as FacilityOption[]),
+    facilities: sortFacilitiesByPriority(facilities),
   };
 }
 
