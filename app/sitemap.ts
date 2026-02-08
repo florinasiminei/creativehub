@@ -8,8 +8,13 @@ export const revalidate = 60 * 60 * 12;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const rawUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cabn.ro";
-  const siteUrl = rawUrl.replace(/^https?:\/\/www\./, "https://");
+  const siteUrl = rawUrl;
   const lastModified = new Date();
+  const safeDate = (value: unknown) => {
+    const candidate = value ? new Date(String(value)) : null;
+    if (candidate && !Number.isNaN(candidate.getTime())) return candidate;
+    return lastModified;
+  };
 
   let listingEntries: MetadataRoute.Sitemap = [];
   try {
@@ -21,11 +26,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     listingEntries = (data || []).flatMap((row: any) => {
       if (!row?.slug) return [];
-      const modified = row.updated_at || row.created_at || lastModified;
       return [
         {
           url: `${siteUrl}/cazare/${row.slug}`,
-          lastModified: new Date(modified),
+          lastModified: safeDate(row.updated_at || row.created_at),
           changeFrequency: "weekly",
           priority: 0.8,
         },
