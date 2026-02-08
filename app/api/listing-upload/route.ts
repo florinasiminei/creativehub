@@ -11,6 +11,7 @@ const MAX_IMAGE_WIDTH = 2400;
 const WEBP_QUALITY = 82;
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 const MAX_OUTPUT_BYTES = 6 * 1024 * 1024;
+const MAX_LISTING_IMAGES = 12;
 
 export async function POST(request: Request) {
   try {
@@ -39,6 +40,18 @@ export async function POST(request: Request) {
     const alts = form.getAll('alts') as string[];
     const startIndexRaw = form.get('startIndex') as string | null;
     const startIndex = startIndexRaw ? Number(startIndexRaw) || 0 : 0;
+
+    const { count: existingCount } = await supabaseAdmin
+      .from('listing_images')
+      .select('id', { count: 'exact', head: true })
+      .eq('listing_id', listingId);
+    const totalAfter = (existingCount || 0) + files.length;
+    if (totalAfter > MAX_LISTING_IMAGES) {
+      return NextResponse.json(
+        { error: `Maximum ${MAX_LISTING_IMAGES} imagini per listare.` },
+        { status: 400 }
+      );
+    }
     const results: Array<{ id: string; url: string; display_order: number; alt?: string | null }> = [];
     const failures: Array<{ name: string; reason: string }> = [];
 

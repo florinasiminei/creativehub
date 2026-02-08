@@ -393,8 +393,13 @@ export default function EditPropertyPage({ params }: any) {
           onExistingDragEnd={handleExistingDragEnd}
           onExistingMove={moveImage}
           onExistingDelete={async (img) => {
-            await deleteListingImage(img.id, listingToken);
-            setImages(prev => prev.filter(it => it.id !== img.id));
+            try {
+              await deleteListingImage(img.id, listingToken);
+              setImages(prev => prev.filter(it => it.id !== img.id));
+            } catch (err) {
+              setMessageTone('error');
+              setMessage(err instanceof Error ? err.message : 'Nu am putut sterge imaginea.');
+            }
           }}
           descriptionMin={200}
           descriptionMax={320}

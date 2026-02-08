@@ -6,6 +6,8 @@ import { rateLimit } from '@/lib/rateLimit';
 import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
 import { isListingTokenValid } from '@/lib/listingTokens';
 
+const MAX_LISTING_IMAGES = 12;
+
 export async function POST(req: Request) {
   try {
     const limit = rateLimit(req, { windowMs: 60_000, max: 120, keyPrefix: 'listing-upload-complete' });
@@ -38,6 +40,17 @@ export async function POST(req: Request) {
     const { data: publicData } = supabaseAdmin.storage.from('listing-images').getPublicUrl(path);
     const url = (publicData as any)?.publicUrl || (publicData as any)?.public_url || '';
     if (!url) return NextResponse.json({ error: 'public_url_missing' }, { status: 500 });
+
+    const { count: existingCount } = await supabaseAdmin
+      .from('listing_images')
+      .select('id', { count: 'exact', head: true })
+      .eq('listing_id', listingId);
+    if ((existingCount || 0) >= MAX_LISTING_IMAGES) {
+      return NextResponse.json(
+        { error: `Maximum ${MAX_LISTING_IMAGES} imagini per listare.` },
+        { status: 400 }
+      );
+    }
 
     const { data: inserted, error: imgErr } = await supabaseAdmin
       .from('listing_images')

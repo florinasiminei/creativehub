@@ -7,6 +7,7 @@ import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
 import { isListingTokenValid } from '@/lib/listingTokens';
 
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
+const MAX_LISTING_IMAGES = 12;
 
 const MIME_EXT: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -51,6 +52,18 @@ export async function POST(req: Request) {
 
     if (!listingId) return NextResponse.json({ error: 'Missing listingId' }, { status: 400 });
     if (!files.length) return NextResponse.json({ error: 'Missing files' }, { status: 400 });
+
+    const { count: existingCount } = await supabaseAdmin
+      .from('listing_images')
+      .select('id', { count: 'exact', head: true })
+      .eq('listing_id', listingId);
+    const totalAfter = (existingCount || 0) + files.length;
+    if (totalAfter > MAX_LISTING_IMAGES) {
+      return NextResponse.json(
+        { error: `Maximum ${MAX_LISTING_IMAGES} imagini per listare.` },
+        { status: 400 }
+      );
+    }
 
     const role = getDraftRoleFromRequest(req);
     const hasRole = role === 'admin' || role === 'staff';
