@@ -11,24 +11,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = rawUrl.replace(/^https?:\/\/www\./, "https://");
   const lastModified = new Date();
 
-  const supabaseAdmin = getSupabaseAdmin();
-  const { data } = await supabaseAdmin
-    .from("listings")
-    .select("slug, updated_at, created_at")
-    .eq("is_published", true);
+  let listingEntries: MetadataRoute.Sitemap = [];
+  try {
+    const supabaseAdmin = getSupabaseAdmin();
+    const { data } = await supabaseAdmin
+      .from("listings")
+      .select("slug, updated_at, created_at")
+      .eq("is_published", true);
 
-  const listingEntries: MetadataRoute.Sitemap = (data || []).flatMap((row: any) => {
-    if (!row?.slug) return [];
-    const modified = row.updated_at || row.created_at || lastModified;
-    return [
-      {
-        url: `${siteUrl}/cazare/${row.slug}`,
-        lastModified: new Date(modified),
-        changeFrequency: "weekly",
-        priority: 0.8,
-      },
-    ];
-  });
+    listingEntries = (data || []).flatMap((row: any) => {
+      if (!row?.slug) return [];
+      const modified = row.updated_at || row.created_at || lastModified;
+      return [
+        {
+          url: `${siteUrl}/cazare/${row.slug}`,
+          lastModified: new Date(modified),
+          changeFrequency: "weekly",
+          priority: 0.8,
+        },
+      ];
+    });
+  } catch {
+    // Keep sitemap available even if the listings query fails.
+    listingEntries = [];
+  }
 
   const listingTypeEntries: MetadataRoute.Sitemap = LISTING_TYPES.map((type) => ({
     url: `${siteUrl}/cazari/${type.slug}`,
