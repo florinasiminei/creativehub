@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import SimpleTopSearchInput from "@/components/SimpleTopSearchInput";
 
 type SeoPageStatus = "publicata" | "nepublicata" | "draft";
 
@@ -17,7 +18,6 @@ type SeoPageItem = {
   publishedListings: number;
   unpublishedListings: number;
   lastModifiedMs: number | null;
-  author: string | null;
   canTogglePublish: boolean;
   canToggleIndex: boolean;
   pageviews30d: number;
@@ -30,7 +30,7 @@ type Props = {
   pages: SeoPageItem[];
 };
 
-type SortField = "url" | "title" | "views" | "indexable" | "listings" | "lastModified" | "author";
+type SortField = "url" | "title" | "views" | "indexable" | "listings" | "lastModified";
 type SortDir = "asc" | "desc";
 
 function formatDate(ts: number | null): string {
@@ -45,7 +45,6 @@ export default function SeoAdminClient({ pages }: Props) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [indexFilter, setIndexFilter] = useState<"all" | "index" | "noindex">("all");
-  const [authorFilter, setAuthorFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("lastModified");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [viewsWindow, setViewsWindow] = useState<"7d" | "30d">("30d");
@@ -56,22 +55,13 @@ export default function SeoAdminClient({ pages }: Props) {
   const getUniqueViews = (row: SeoPageItem) =>
     viewsWindow === "7d" ? row.uniqueVisitors7d : row.uniqueVisitors30d;
 
-  const authors = useMemo(() => {
-    const unique = new Set<string>();
-    for (const row of rows) {
-      if (row.author) unique.add(row.author);
-    }
-    return Array.from(unique).sort((a, b) => a.localeCompare(b));
-  }, [rows]);
-
   const summary = useMemo(() => {
     const total = rows.length;
     const published = rows.filter((row) => row.status === "publicata").length;
-    const draft = rows.filter((row) => row.status === "draft").length;
     const noindex = rows.filter((row) => !row.indexable).length;
     const totalViews30d = rows.reduce((sum, row) => sum + row.pageviews30d, 0);
     const totalViews7d = rows.reduce((sum, row) => sum + row.pageviews7d, 0);
-    return { total, published, draft, noindex, totalViews30d, totalViews7d };
+    return { total, published, noindex, totalViews30d, totalViews7d };
   }, [rows]);
 
   const filteredRows = useMemo(() => {
@@ -83,7 +73,6 @@ export default function SeoAdminClient({ pages }: Props) {
       }
       if (indexFilter === "index" && !row.indexable) return false;
       if (indexFilter === "noindex" && row.indexable) return false;
-      if (authorFilter !== "all" && (row.author || "-") !== authorFilter) return false;
       return true;
     });
 
@@ -94,13 +83,12 @@ export default function SeoAdminClient({ pages }: Props) {
       else if (sortField === "views") cmp = getViews(a) - getViews(b);
       else if (sortField === "indexable") cmp = Number(a.indexable) - Number(b.indexable);
       else if (sortField === "listings") cmp = a.totalListings - b.totalListings;
-      else if (sortField === "author") cmp = String(a.author || "").localeCompare(String(b.author || ""), "ro");
       else cmp = (a.lastModifiedMs || 0) - (b.lastModifiedMs || 0);
       return sortDir === "asc" ? cmp : -cmp;
     });
 
     return next;
-  }, [rows, search, indexFilter, authorFilter, sortField, sortDir, viewsWindow]);
+  }, [rows, search, indexFilter, sortField, sortDir, viewsWindow]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / perPage));
   const pagedRows = useMemo(() => {
@@ -115,7 +103,7 @@ export default function SeoAdminClient({ pages }: Props) {
 
   useEffect(() => {
     setPageNo(1);
-  }, [search, indexFilter, authorFilter, sortField, sortDir, viewsWindow]);
+  }, [search, indexFilter, sortField, sortDir, viewsWindow]);
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -191,7 +179,7 @@ export default function SeoAdminClient({ pages }: Props) {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 mb-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
         <div className="rounded-xl border border-emerald-100 dark:border-emerald-900/40 bg-emerald-50/70 dark:bg-emerald-950/20 px-4 py-3">
           <div className="text-xs text-emerald-800/80 dark:text-emerald-200/80">Total pagini</div>
           <div className="text-2xl font-semibold">{summary.total}</div>
@@ -199,10 +187,6 @@ export default function SeoAdminClient({ pages }: Props) {
         <div className="rounded-xl border border-emerald-100 dark:border-emerald-900/40 bg-emerald-50/70 dark:bg-emerald-950/20 px-4 py-3">
           <div className="text-xs text-emerald-800/80 dark:text-emerald-200/80">Publicate</div>
           <div className="text-2xl font-semibold">{summary.published}</div>
-        </div>
-        <div className="rounded-xl border border-emerald-100 dark:border-emerald-900/40 bg-emerald-50/70 dark:bg-emerald-950/20 px-4 py-3">
-          <div className="text-xs text-emerald-800/80 dark:text-emerald-200/80">Draft</div>
-          <div className="text-2xl font-semibold">{summary.draft}</div>
         </div>
         <div className="rounded-xl border border-emerald-100 dark:border-emerald-900/40 bg-emerald-50/70 dark:bg-emerald-950/20 px-4 py-3">
           <div className="text-xs text-emerald-800/80 dark:text-emerald-200/80">Noindex</div>
@@ -218,13 +202,12 @@ export default function SeoAdminClient({ pages }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
-        <input
-          type="search"
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        <SimpleTopSearchInput
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Cautare dupa URL, slug, titlu"
-          className="md:col-span-2 rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm"
+          onChange={setSearch}
+          placeholder="Cauta dupa URL, slug, titlu..."
+          className="md:col-span-2"
         />
         <select
           value={indexFilter}
@@ -234,18 +217,6 @@ export default function SeoAdminClient({ pages }: Props) {
           <option value="all">Indexare: toate</option>
           <option value="index">Index</option>
           <option value="noindex">Noindex</option>
-        </select>
-        <select
-          value={authorFilter}
-          onChange={(event) => setAuthorFilter(event.target.value)}
-          className="rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm"
-        >
-          <option value="all">Autor: toti</option>
-          {authors.map((author) => (
-            <option key={author} value={author}>
-              {author}
-            </option>
-          ))}
         </select>
       </div>
 
@@ -269,16 +240,15 @@ export default function SeoAdminClient({ pages }: Props) {
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-        <table className="w-full min-w-[1120px] table-fixed text-xs sm:text-sm">
+        <table className="w-full min-w-[980px] table-fixed text-xs sm:text-sm">
           <colgroup>
-            <col className="w-[20%]" />
-            <col className="w-[14%]" />
+            <col className="w-[22%]" />
+            <col className="w-[16%]" />
             <col className="w-[10%]" />
-            <col className="w-[8%]" />
-            <col className="w-[13%]" />
+            <col className="w-[10%]" />
+            <col className="w-[14%]" />
             <col className="w-[12%]" />
-            <col className="w-[8%]" />
-            <col className="w-[15%]" />
+            <col className="w-[16%]" />
           </colgroup>
           <thead className="bg-gray-50 dark:bg-zinc-800/50 text-left">
             <tr>
@@ -312,11 +282,6 @@ export default function SeoAdminClient({ pages }: Props) {
                   Ultima modificare {sortIndicator("lastModified")}
                 </button>
               </th>
-              <th className="px-2 py-2 font-semibold">
-                <button type="button" onClick={() => toggleSort("author")} className="inline-flex items-center gap-1 hover:underline whitespace-nowrap">
-                  Autor {sortIndicator("author")}
-                </button>
-              </th>
               <th className="px-2 py-2 font-semibold">Actiuni</th>
             </tr>
           </thead>
@@ -344,7 +309,6 @@ export default function SeoAdminClient({ pages }: Props) {
                     </div>
                   </td>
                   <td className="px-2 py-2 align-top whitespace-nowrap">{formatDate(row.lastModifiedMs)}</td>
-                  <td className="px-2 py-2 align-top truncate">{row.author || "-"}</td>
                   <td className="px-2 py-2 align-top">
                     <div className="flex flex-wrap gap-1">
                       {row.url ? (
@@ -394,7 +358,7 @@ export default function SeoAdminClient({ pages }: Props) {
             })}
             {pagedRows.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
+                <td colSpan={7} className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
                   Nicio pagina SEO care sa corespunda filtrelor curente.
                 </td>
               </tr>

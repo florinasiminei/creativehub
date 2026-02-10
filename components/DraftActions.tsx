@@ -121,7 +121,7 @@ export default function DraftActions({ id, isPublished, slug, canDelete = true, 
           className="px-3 py-2 text-xs font-medium bg-emerald-600 text-white rounded-lg disabled:opacity-60"
           disabled={loading}
         >
-          {copied ? "Copiat" : "Copiaza link client"}
+          {copied ? "Copiat" : "Link edit"}
         </button>
       )}
       {slug && (

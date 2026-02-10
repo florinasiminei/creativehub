@@ -28,6 +28,17 @@ export default async function DraftsPage() {
 
   if (error) console.error(error);
 
+  const attractionSelect =
+    "id, title, slug, location_name, price, is_published, created_at, updated_at, attraction_images(image_url, display_order)";
+  const { data: attractionData, error: attractionError } = await supabaseAdmin
+    .from("attractions")
+    .select(attractionSelect)
+    .order("created_at", { ascending: false })
+    .order("display_order", { foreignTable: "attraction_images", ascending: true })
+    .limit(1, { foreignTable: "attraction_images" });
+
+  if (attractionError) console.error(attractionError);
+
   const listings = (data || []) as ListingRaw[];
   const mapped = await Promise.all(
     listings.map(async (row) => {
@@ -46,5 +57,37 @@ export default async function DraftsPage() {
     })
   );
 
-  return <DraftsClient listings={mapped} role={role} inviteToken={inviteToken} siteUrl={siteUrl} />;
+  const mappedAttractions = (attractionData || []).map((row: any) => {
+    const image =
+      Array.isArray(row?.attraction_images) && row.attraction_images.length > 0
+        ? String(row.attraction_images[0]?.image_url || "").trim()
+        : "";
+    const status: "publicat" | "draft" = row?.is_published ? "publicat" : "draft";
+    const numericPrice =
+      row?.price === null || row?.price === undefined || row?.price === ""
+        ? null
+        : Number(row.price);
+    return {
+      id: String(row.id),
+      title: String(row.title || ""),
+      slug: row?.slug ? String(row.slug) : "",
+      locationName: String(row.location_name || ""),
+      price: Number.isFinite(numericPrice) ? numericPrice : null,
+      image: image || "/images/logo.svg",
+      isPublished: Boolean(row?.is_published),
+      status,
+      createdAt: row?.created_at ? String(row.created_at) : null,
+      updatedAt: row?.updated_at ? String(row.updated_at) : null,
+    };
+  });
+
+  return (
+    <DraftsClient
+      listings={mapped}
+      attractions={mappedAttractions}
+      role={role}
+      inviteToken={inviteToken}
+      siteUrl={siteUrl}
+    />
+  );
 }

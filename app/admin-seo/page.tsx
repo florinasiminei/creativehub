@@ -10,7 +10,6 @@ import { allRegions, metroCoreCitySet, normalizeRegionText, type RegionDefinitio
 import {
   getSeoIndexable,
   getSeoMenuVisibility,
-  getSeoPageAuthor,
   getSeoPageLastModifiedMs,
   getSeoPageSlug,
   getSeoPageStatus,
@@ -28,7 +27,6 @@ type ListingMeta = {
   judet: string;
   city: string;
   lastModifiedMs: number | null;
-  author: string | null;
 };
 
 type SeoPageItem = {
@@ -43,7 +41,6 @@ type SeoPageItem = {
   publishedListings: number;
   unpublishedListings: number;
   lastModifiedMs: number | null;
-  author: string | null;
   canTogglePublish: boolean;
   canToggleIndex: boolean;
   pageviews30d: number;
@@ -54,9 +51,8 @@ type SeoPageItem = {
 
 async function fetchListingsMeta(supabaseAdmin: ReturnType<typeof getSupabaseAdmin>, ids: string[]) {
   const selectVariants = [
-    "id, is_published, type, judet, city, updated_at, created_at, created_by_actor, created_by, author",
-    "id, is_published, type, judet, city, updated_at, created_at, created_by_actor, created_by",
     "id, is_published, type, judet, city, updated_at, created_at",
+    "id, is_published, type, judet, city, created_at",
   ];
 
   for (const select of selectVariants) {
@@ -74,10 +70,6 @@ async function fetchListingsMeta(supabaseAdmin: ReturnType<typeof getSupabaseAdm
         : Number.isFinite(createdAt)
         ? createdAt
         : null;
-      const createdBy = typeof row["created_by"] === "string" ? String(row["created_by"]) : null;
-      const createdByActor =
-        typeof row["created_by_actor"] === "string" ? String(row["created_by_actor"]) : null;
-      const author = typeof row["author"] === "string" ? String(row["author"]) : null;
       return {
         id: String(row["id"]),
         isPublished: Boolean(row["is_published"]),
@@ -85,7 +77,6 @@ async function fetchListingsMeta(supabaseAdmin: ReturnType<typeof getSupabaseAdm
         judet: String(row["judet"] || ""),
         city: String(row["city"] || ""),
         lastModifiedMs,
-        author: normalizeAuthorLabel(createdByActor || author || createdBy || null),
       };
     });
   }
@@ -98,34 +89,17 @@ type ListingStats = {
   published: number;
   unpublished: number;
   lastModifiedMs: number | null;
-  author: string | null;
 };
-
-function normalizeAuthorLabel(value: string | null | undefined): "admin" | "georgiana" | "client" {
-  const raw = String(value || "").trim().toLowerCase();
-  if (!raw) return "admin";
-  if (raw.includes("georgiana")) return "georgiana";
-  if (raw.includes("staff")) return "georgiana";
-  if (raw.includes("client") || raw.includes("invite") || raw.includes("owner")) return "client";
-  if (raw.includes("admin")) return "admin";
-  return "admin";
-}
 
 function buildStats(listings: ListingMeta[], predicate: (listing: ListingMeta) => boolean): ListingStats {
   const matched = listings.filter(predicate);
   let published = 0;
   let lastModifiedMs: number | null = null;
-  let author: string | null = null;
-  let authorTs = -1;
 
   for (const listing of matched) {
     if (listing.isPublished) published += 1;
     if (listing.lastModifiedMs !== null && (lastModifiedMs === null || listing.lastModifiedMs > lastModifiedMs)) {
       lastModifiedMs = listing.lastModifiedMs;
-    }
-    if (listing.lastModifiedMs !== null && listing.author && listing.lastModifiedMs > authorTs) {
-      authorTs = listing.lastModifiedMs;
-      author = listing.author;
     }
   }
 
@@ -134,7 +108,6 @@ function buildStats(listings: ListingMeta[], predicate: (listing: ListingMeta) =
     published,
     unpublished: Math.max(0, matched.length - published),
     lastModifiedMs,
-    author,
   };
 }
 
@@ -222,8 +195,6 @@ export default async function AdminSeoPage() {
 
     let publishedListings = 0;
     let lastModifiedMs = getSeoPageLastModifiedMs(row);
-    let latestAuthor: string | null = null;
-    let latestAuthorTs = -1;
 
     for (const listingId of uniqueRelatedIds) {
       const listing = listingById.get(listingId);
@@ -231,10 +202,6 @@ export default async function AdminSeoPage() {
       if (listing.isPublished) publishedListings += 1;
       if (listing.lastModifiedMs !== null && (lastModifiedMs === null || listing.lastModifiedMs > lastModifiedMs)) {
         lastModifiedMs = listing.lastModifiedMs;
-      }
-      if (listing.lastModifiedMs !== null && listing.author && listing.lastModifiedMs > latestAuthorTs) {
-        latestAuthorTs = listing.lastModifiedMs;
-        latestAuthor = listing.author;
       }
     }
 
@@ -254,7 +221,6 @@ export default async function AdminSeoPage() {
       publishedListings,
       unpublishedListings,
       lastModifiedMs,
-      author: normalizeAuthorLabel(latestAuthor || getSeoPageAuthor(row)),
       canTogglePublish: Boolean(toggleMeta.publishField),
       canToggleIndex: Boolean(toggleMeta.indexField && toggleMeta.indexMode),
       pageviews30d: 0,
@@ -279,7 +245,6 @@ export default async function AdminSeoPage() {
     publishedListings: allStats.published,
     unpublishedListings: allStats.unpublished,
     lastModifiedMs: allStats.lastModifiedMs,
-    author: allStats.author,
     canTogglePublish: false,
     canToggleIndex: false,
     pageviews30d: 0,
@@ -302,7 +267,6 @@ export default async function AdminSeoPage() {
       publishedListings: stats.published,
       unpublishedListings: stats.unpublished,
       lastModifiedMs: stats.lastModifiedMs,
-      author: stats.author,
       canTogglePublish: false,
       canToggleIndex: false,
       pageviews30d: 0,
@@ -326,7 +290,6 @@ export default async function AdminSeoPage() {
       publishedListings: stats.published,
       unpublishedListings: stats.unpublished,
       lastModifiedMs: stats.lastModifiedMs,
-      author: stats.author,
       canTogglePublish: false,
       canToggleIndex: false,
       pageviews30d: 0,
@@ -350,7 +313,6 @@ export default async function AdminSeoPage() {
       publishedListings: stats.published,
       unpublishedListings: stats.unpublished,
       lastModifiedMs: stats.lastModifiedMs,
-      author: stats.author,
       canTogglePublish: false,
       canToggleIndex: false,
       pageviews30d: 0,
@@ -378,7 +340,6 @@ export default async function AdminSeoPage() {
         publishedListings: stats.published,
         unpublishedListings: stats.unpublished,
         lastModifiedMs: stats.lastModifiedMs,
-        author: stats.author,
         canTogglePublish: false,
         canToggleIndex: false,
         pageviews30d: 0,
@@ -409,14 +370,12 @@ export default async function AdminSeoPage() {
         status: page.status,
         inMenu: page.inMenu,
         indexable: page.indexable,
-        author: normalizeAuthorLabel(page.author || existing.author || null),
         canTogglePublish: page.canTogglePublish,
         canToggleIndex: page.canToggleIndex,
       });
     } else {
       mergedByKey.set(key, {
         ...page,
-        author: normalizeAuthorLabel(page.author || null),
         pageviews30d: 0,
         uniqueVisitors30d: 0,
         pageviews7d: 0,
