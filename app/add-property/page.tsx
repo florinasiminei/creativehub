@@ -227,6 +227,7 @@ function AddPropertyPageContent() {
       };
       if (isClient) {
         (payload as any).newsletter_opt_in = newsletterOptIn;
+        (payload as any).terms_accepted = acceptedTerms;
       }
       // create listing via server endpoint to avoid RLS errors
       const created = await createListing(payload, selectedFacilities, inviteToken);

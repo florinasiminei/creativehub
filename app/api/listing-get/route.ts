@@ -7,6 +7,7 @@ import { isListingTokenValid } from '@/lib/listingTokens';
 const LISTING_SELECT_BASE =
   'id, title, slug, judet, city, sat, price, capacity, camere, paturi, bai, description, phone, type, lat, lng, is_published';
 const LISTING_SELECT_WITH_NEWSLETTER = `${LISTING_SELECT_BASE}, newsletter_opt_in`;
+const LISTING_SELECT_WITH_CONSENTS = `${LISTING_SELECT_WITH_NEWSLETTER}, terms_accepted, terms_accepted_at`;
 const IMAGES_SELECT = 'id, image_url, display_order, alt';
 
 type ListingGetRow = {
@@ -28,6 +29,8 @@ type ListingGetRow = {
   lng?: number | null;
   is_published?: boolean | null;
   newsletter_opt_in?: boolean | null;
+  terms_accepted?: boolean | null;
+  terms_accepted_at?: string | null;
 };
 
 function asListingGetRow(value: unknown): ListingGetRow | null {
@@ -80,7 +83,10 @@ export async function POST(request: Request) {
       return query.maybeSingle();
     };
 
-    let { data, error } = await runListingQuery(LISTING_SELECT_WITH_NEWSLETTER);
+    let { data, error } = await runListingQuery(LISTING_SELECT_WITH_CONSENTS);
+    if (error && /terms_accepted|terms_accepted_at/i.test(error.message || '')) {
+      ({ data, error } = await runListingQuery(LISTING_SELECT_WITH_NEWSLETTER));
+    }
     if (error && /newsletter_opt_in/i.test(error.message || '')) {
       ({ data, error } = await runListingQuery(LISTING_SELECT_BASE));
     }

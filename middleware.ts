@@ -14,12 +14,13 @@ export function middleware(request: NextRequest) {
   }
 
   const isDrafts = pathname === '/drafts' || pathname.startsWith('/drafts/')
+  const isSeoAdmin = pathname === '/admin-seo' || pathname.startsWith('/admin-seo/')
   const isDraftsLogin = pathname === '/drafts-login'
   const isDraftsLoginApi = pathname === '/api/drafts-login'
   if (isDraftsLogin || isDraftsLoginApi) {
     return NextResponse.next()
   }
-  if (isDrafts) {
+  if (isDrafts || isSeoAdmin) {
     const authHeader = request.headers.get('authorization')
     const authCookie = request.cookies.get('drafts_auth')?.value || null
     const headerAuth = getDraftAuthFromHeader(authHeader)
@@ -41,6 +42,10 @@ export function middleware(request: NextRequest) {
         })
       }
       return response
+    }
+
+    if (isSeoAdmin && role !== 'admin') {
+      return NextResponse.redirect(new URL('/drafts-login?error=1', request.url))
     }
 
     const response = NextResponse.next()

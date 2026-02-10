@@ -10,6 +10,7 @@ import type { Cazare } from "@/lib/utils";
 type DraftItem = Cazare & {
   status: "publicat" | "inactiv" | "draft";
   isPublished: boolean;
+  termsAccepted?: boolean;
   editToken?: string | null;
 };
 
@@ -77,6 +78,10 @@ export default function DraftsClient({ listings, role, inviteToken = null, siteU
   const initialIds = useMemo(() => listings.map((item) => item.id), [listings]);
   const publishedCount = useMemo(
     () => ordered.filter((item) => item.isPublished).length,
+    [ordered]
+  );
+  const clientCompletedCount = useMemo(
+    () => ordered.filter((item) => Boolean(item.termsAccepted)).length,
     [ordered]
   );
   const isDirty = useMemo(() => {
@@ -191,6 +196,15 @@ export default function DraftsClient({ listings, role, inviteToken = null, siteU
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Editează, publică sau șterge orice intrare direct din acest panou.</p>
         </div>
         <div className="flex items-center gap-2">
+          {canDelete && (
+            <button
+              type="button"
+              onClick={() => router.push("/admin-seo")}
+              className="px-3 py-2 text-sm rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-zinc-800 dark:text-gray-100 dark:hover:bg-zinc-700"
+            >
+              Dashboard SEO
+            </button>
+          )}
           {canStaffActions && inviteToken && (
             <button
               type="button"
@@ -213,6 +227,11 @@ export default function DraftsClient({ listings, role, inviteToken = null, siteU
             Total: {ordered.length}
             {canDelete ? ` | Publicate: ${publishedCount}` : ""}
           </div>
+          {canStaffActions && (
+            <div className="text-sm text-gray-700 dark:text-gray-200 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40">
+              Completate de client: {clientCompletedCount}
+            </div>
+          )}
         </div>
       </div>
 

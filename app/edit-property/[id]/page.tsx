@@ -157,6 +157,7 @@ export default function EditPropertyPage({ params }: any) {
             city: localitate,
           });
           setNewsletterOptIn(Boolean((listing as any).newsletter_opt_in));
+          setAcceptedTerms(Boolean((listing as any).terms_accepted));
         }
         setMessage(null);
 
@@ -309,6 +310,7 @@ export default function EditPropertyPage({ params }: any) {
       };
       if (isClient) {
         (updatePayload as any).newsletter_opt_in = newsletterOptIn;
+        (updatePayload as any).terms_accepted = acceptedTerms;
       }
       await updateListing(updatePayload, listingToken);
 

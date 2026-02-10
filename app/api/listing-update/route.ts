@@ -53,6 +53,11 @@ export async function POST(request: Request) {
     if (Object.prototype.hasOwnProperty.call(body, 'newsletter_opt_in')) {
       updateData.newsletter_opt_in = Boolean((body as any).newsletter_opt_in);
     }
+    if (Object.prototype.hasOwnProperty.call(body, 'terms_accepted')) {
+      const termsAccepted = Boolean((body as any).terms_accepted);
+      updateData.terms_accepted = termsAccepted;
+      updateData.terms_accepted_at = termsAccepted ? new Date().toISOString() : null;
+    }
     const toNumber = (value: unknown) => {
       if (value === null || value === undefined) return null;
       if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -96,11 +101,15 @@ export async function POST(request: Request) {
     }
 
     let { error: upErr } = await supabaseAdmin.from('listings').update(updateData).eq('id', id);
-    if (upErr && /lat|lng|latitude|longitude|search_radius|camere|paturi|bai|newsletter_opt_in/i.test(upErr.message || '')) {
+    if (upErr && /lat|lng|latitude|longitude|search_radius|camere|paturi|bai|newsletter_opt_in|terms_accepted|terms_accepted_at/i.test(upErr.message || '')) {
       const fallbackUpdate = { ...updateData };
       const message = String(upErr.message || '');
       if (/newsletter_opt_in/i.test(message)) {
         delete fallbackUpdate.newsletter_opt_in;
+      }
+      if (/terms_accepted|terms_accepted_at/i.test(message)) {
+        delete fallbackUpdate.terms_accepted;
+        delete fallbackUpdate.terms_accepted_at;
       }
       if (/search_radius/i.test(message) && !/lat|lng|latitude|longitude/i.test(message)) {
         delete fallbackUpdate.search_radius;

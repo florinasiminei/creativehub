@@ -16,7 +16,7 @@ export default async function DraftsPage() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || null;
 
   const baseSelect =
-    "id, title, slug, type, judet, city, sat, capacity, price, phone, is_published, display_order, edit_token, listing_images(image_url, display_order)";
+    "id, title, slug, type, judet, city, sat, capacity, price, phone, is_published, terms_accepted, display_order, edit_token, listing_images(image_url, display_order)";
 
   const { data, error } = await supabaseAdmin
     .from("listings")
@@ -41,7 +41,8 @@ export default async function DraftsPage() {
           ? "publicat"
           : "draft";
       const editToken = await ensureListingToken(summary.id, (row as any).edit_token);
-      return { ...summary, status, isPublished, editToken };
+      const termsAccepted = Boolean((row as any).terms_accepted);
+      return { ...summary, status, isPublished, termsAccepted, editToken };
     })
   );
 

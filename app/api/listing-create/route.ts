@@ -94,6 +94,10 @@ export async function POST(req: Request) {
     const parsedBai = toNumber(bai);
     const hasNewsletterOptIn = Object.prototype.hasOwnProperty.call(body, 'newsletter_opt_in');
     const newsletterOptIn = Boolean(body.newsletter_opt_in);
+    const hasTermsAccepted = Object.prototype.hasOwnProperty.call(body, 'terms_accepted');
+    const termsAccepted = Boolean(body.terms_accepted);
+    const createdByActor: 'admin' | 'georgiana' | 'client' =
+      !hasRole && !!hasInvite ? 'client' : role === 'staff' ? 'georgiana' : 'admin';
 
     const normalizeCapacity = (value: unknown) => {
       if (value === null || value === undefined) return '';
@@ -132,9 +136,14 @@ export async function POST(req: Request) {
       search_radius: search_radius || 5,
       is_published: false,
       edit_token: generateListingToken(),
+      created_by_actor: createdByActor,
     };
     if (hasNewsletterOptIn) {
       payload.newsletter_opt_in = newsletterOptIn;
+    }
+    if (hasTermsAccepted) {
+      payload.terms_accepted = termsAccepted;
+      payload.terms_accepted_at = termsAccepted ? new Date().toISOString() : null;
     }
 
     if (Object.prototype.hasOwnProperty.call(body, 'display_order')) {
@@ -158,11 +167,18 @@ export async function POST(req: Request) {
     }
 
     let { data, error } = await supabaseAdmin.from('listings').insert(payload).select('id, edit_token').single();
-    if (error && /lat|lng|latitude|longitude|search_radius|camere|paturi|bai|newsletter_opt_in/i.test(error.message || '')) {
+    if (error && /lat|lng|latitude|longitude|search_radius|camere|paturi|bai|newsletter_opt_in|terms_accepted|terms_accepted_at|created_by_actor/i.test(error.message || '')) {
       const fallbackPayload = { ...payload };
       const message = String(error.message || '');
       if (/newsletter_opt_in/i.test(message)) {
         delete fallbackPayload.newsletter_opt_in;
+      }
+      if (/terms_accepted|terms_accepted_at/i.test(message)) {
+        delete fallbackPayload.terms_accepted;
+        delete fallbackPayload.terms_accepted_at;
+      }
+      if (/created_by_actor/i.test(message)) {
+        delete fallbackPayload.created_by_actor;
       }
       if (/search_radius/i.test(message) && !/lat|lng|latitude|longitude/i.test(message)) {
         delete fallbackPayload.search_radius;
