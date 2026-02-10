@@ -1,20 +1,34 @@
-﻿import Link from "next/link";
+import Image from "next/image";
+import Link from "next/link";
 import type { Metadata } from "next";
-import { Check, Zap, Target, Users, Camera, Globe } from "lucide-react";
+import {
+  FaFacebookF,
+  FaInstagram,
+  FaTiktok,
+  FaWhatsapp,
+  FaEnvelope,
+} from "react-icons/fa";
+import {
+  HeartHandshake,
+  Leaf,
+  PenSquare,
+  Sparkles,
+  Users,
+} from "lucide-react";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cabn.ro";
 
 export const metadata: Metadata = {
-  title: "Despre CABN | Marketing pentru cabane si pensiuni",
+  title: "Despre noi | cabn.ro",
   description:
-    "Afla cum CABN ajuta cabanele si pensiunile din Romania sa creasca prin strategie digitala, foto-video si SEO.",
+    "Cine este echipa cabn, ce face compania, istoricul, misiunea, valorile si datele legale.",
   alternates: {
     canonical: "/about-us",
   },
   openGraph: {
-    title: "Despre CABN",
+    title: "Despre noi | cabn.ro",
     description:
-      "Echipa CABN ofera strategie digitala, productie foto-video si branding pentru cabane si pensiuni.",
+      "Pagina oficiala despre echipa cabn, activitate, istoric, misiune si contact.",
     url: `${siteUrl}/about-us`,
     siteName: "cabn.ro",
     locale: "ro_RO",
@@ -28,311 +42,303 @@ export const metadata: Metadata = {
       },
     ],
   },
-  twitter: {
-    card: "summary_large_image",
-    title: "Despre CABN",
-    description: "Afla cum CABN sprijina brandurile de cabane si pensiuni din Romania.",
-    images: ["/images/logo.svg"],
-  },
 };
 
-const PROCESS = [
-  { step: 1, title: "Analiză", description: "Analizăm povestea și potențialul proprietății tale." },
-  { step: 2, title: "Strategie", description: "Planificăm conceptul vizual și strategia de comunicare." },
-  { step: 3, title: "Producție", description: "Filmări și fotografii de înaltă calitate cu echipamente de ultimă generație." },
-  { step: 4, title: "Editare", description: "Materiale editate profesional pentru aspect premium și impact maxim." },
-  { step: 5, title: "Livrare", description: "Conținut optimizat pentru web, social media și platforme de rezervări." },
+const socialLinks = [
+  {
+    name: "Facebook",
+    href: "https://www.facebook.com/cabn.ro",
+    icon: FaFacebookF,
+  },
+  {
+    name: "Instagram",
+    href: "https://www.instagram.com/cabn.ro/",
+    icon: FaInstagram,
+  },
+  {
+    name: "TikTok",
+    href: "https://www.tiktok.com/@cabn.ro",
+    icon: FaTiktok,
+  },
+  {
+    name: "WhatsApp",
+    href: "https://wa.me/40745298008",
+    icon: FaWhatsapp,
+  },
+];
+
+const discoveryPoints = [
+  {
+    title: "De ce exista cabn",
+    text: "Multe proprietati valoroase raman invizibile sau comunicate generic. Noi construim puntea dintre valoarea reala a unei experiente si perceptia publica.",
+    Icon: Sparkles,
+  },
+  {
+    title: "Ce inseamna lux alternativ",
+    text: "Luxul alternativ inseamna autenticitate, liniste, context local, atentie la detaliu si experiente care lasa urme bune.",
+    Icon: Leaf,
+  },
+  {
+    title: "De ce promovare diferita",
+    text: "Nu lucram pe volum si zgomot. Lucram pe claritate, pozitionare si coerenta, astfel incat brandul sa atraga oamenii potriviti.",
+    Icon: PenSquare,
+  },
+  {
+    title: "Ce probleme rezolvam",
+    text: "Rezolvam comunicarea fragmentata, brandingul inconsistent, dependenta excesiva de platforme terte si lipsa unui sistem de crestere directa.",
+    Icon: HeartHandshake,
+  },
+  {
+    title: "Impact social",
+    text: "Cand o proprietate creste sanatos, cresc si comunitatile din jur: furnizori locali, experiente regionale si economie locala mai stabila.",
+    Icon: Users,
+  },
 ];
 
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-white text-zinc-900 dark:bg-transparent dark:text-white">
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:py-12 sm:px-6 lg:px-8">
-        {/* Header */}
-        <header className="mb-12 sm:mb-16 space-y-4 sm:space-y-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600/80 dark:text-emerald-400/90">
-            Despre noi
-          </p>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight">Despre CABN</h1>
-          
-          {/* Clarification - Positioning */}
-          <div className="rounded-xl border-2 border-emerald-500/40 bg-emerald-50/50 dark:bg-emerald-900/20 p-4 sm:p-6 my-4 sm:my-6">
-            <p className="text-base sm:text-lg font-semibold text-emerald-900 dark:text-emerald-100 mb-2">
-              🎯 CABN.ro nu este o agentie de social media.
-            </p>
-            <p className="text-base sm:text-lg text-emerald-800 dark:text-emerald-200">
-              Suntem partenerul tau de crestere pentru proprietati din turismul alternativ.
-            </p>
-          </div>
-
-          <p className="max-w-3xl text-base sm:text-lg text-zinc-600 dark:text-zinc-300">
-            Suntem creatori, strategi si tehnicieni care ajuta proprietatile de turism alternativ sa atraga cereri directe prin marketing digital, website si continut foto-video.
-          </p>
-        </header>
-
-        {/* Cine suntem */}
-        <section className="mb-12 sm:mb-16 space-y-6 sm:space-y-8">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4">Cine suntem</h2>
-            <p className="text-base sm:text-lg text-zinc-700 dark:text-zinc-300">
-              Suntem o echipă care combină gândirea analitică a corporativului cu o înțelegere profundă a turismului alternativ. Provenind din medii de marketing performant și producție de conținut, am construit o expertiză unică în prezentarea proprietăților care nu sunt simple cazări — sunt experiențe, reconexiuni, momente memorabile.
-            </p>
-          </div>
-
-          {/* Why Our Experience Produces Results */}
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4">De ce experiența noastră produce rezultate reale</h2>
-            <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-3">
-              <div className="rounded-xl border border-zinc-200/70 bg-white/80 p-4 sm:p-6 dark:border-white/10 dark:bg-zinc-900/60">
-                <h3 className="font-semibold text-base sm:text-lg mb-2 sm:mb-3 text-emerald-600 dark:text-emerald-400">Background Corporate</h3>
-                <p className="text-sm sm:text-base text-zinc-700 dark:text-zinc-300">
-                  Înțelegem metricile, KPI-urile și gândirea strategică. Nu facem conținut pentru conținut — totul e legat de obiectivele tale.
-                </p>
-              </div>
-              <div className="rounded-xl border border-zinc-200/70 bg-white/80 p-4 sm:p-6 dark:border-white/10 dark:bg-zinc-900/60">
-                <h3 className="font-semibold text-base sm:text-lg mb-2 sm:mb-3 text-emerald-600 dark:text-emerald-400">Marketing de Performanță</h3>
-                <p className="text-sm sm:text-base text-zinc-700 dark:text-zinc-300">
-                  Fiecare proiect e măsurat prin impact real. Focus pe cereri directe, conversii și creșterea ratei de rezervare.
-                </p>
-              </div>
-              <div className="rounded-xl border border-zinc-200/70 bg-white/80 p-4 sm:p-6 dark:border-white/10 dark:bg-zinc-900/60">
-                <h3 className="font-semibold text-base sm:text-lg mb-2 sm:mb-3 text-emerald-600 dark:text-emerald-400">Storytelling Cinematic</h3>
-                <p className="text-sm sm:text-base text-zinc-700 dark:text-zinc-300">
-                  Diferențierea vizuală nu e lux — e necesitate. Facem ca proprietatea ta să se uite unic pe o piață plină.
-                </p>
-              </div>
+      <section className="relative overflow-hidden [margin-left:calc(50%-50vw)] [margin-right:calc(50%-50vw)] -mt-6 md:-mt-6">
+        <div className="relative h-[62vh] min-h-[420px]">
+          <Image
+            src="https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=2000&q=80"
+            alt="Descopera cabn"
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover"
+          />
+          <div className="absolute inset-0 bg-black/45" />
+          <div className="absolute inset-0 flex items-center justify-center text-white">
+            <div className="mx-auto w-full max-w-6xl px-4 text-center sm:px-6 lg:px-8">
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-300">
+                Descopera cabn
+              </p>
+              <h1 className="mx-auto mt-3 max-w-3xl text-3xl font-semibold leading-tight sm:text-4xl lg:text-5xl">
+                Nu vindem doar servicii.
+                <br />
+                Construim sens, directie si identitate.
+              </h1>
+              <p className="mt-4 max-w-2xl text-sm text-white/90 sm:text-base mx-auto">
+                Povestea noastra despre de ce facem ce facem si cum vedem
+                viitorul turismului alternativ.
+              </p>
             </div>
           </div>
+        </div>
+      </section>
 
+      <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
+        <header className="pb-10">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-700">
+            Cine suntem
+          </p>
+          <h2 className="mt-3 text-3xl font-semibold leading-tight sm:text-4xl">
+            Despre cabn.ro
+          </h2>
+          <p className="mt-5 max-w-3xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 sm:text-base">
+            cabn este o companie specializata in strategie digitala, productie
+            foto-video si dezvoltare de prezenta online pentru proprietati din
+            turismul alternativ din Romania. Lucram cu proprietari care vor
+            crestere sustenabila, standard vizual ridicat si rezervari mai
+            predictibile.
+          </p>
+
+          <div className="mt-7 flex flex-wrap items-center gap-3">
+            <Link
+              href="/servicii"
+              className="inline-flex items-center justify-center rounded-full bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800"
+            >
+              Vezi servicii
+            </Link>
+            <Link
+              href="/contact"
+              className="inline-flex items-center justify-center rounded-full border border-zinc-300 px-5 py-2.5 text-sm font-semibold text-zinc-800 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+            >
+              Contact direct
+            </Link>
+          </div>
+        </header>
+
+        <section className="grid gap-8 border-t border-zinc-200 py-10 dark:border-zinc-800 md:grid-cols-2">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4">Misiunea noastră</h2>
-            <div className="rounded-xl border border-emerald-200/60 bg-emerald-50/40 p-4 sm:p-6 dark:border-emerald-500/20 dark:bg-emerald-900/20">
-              <p className="text-base sm:text-lg text-zinc-700 dark:text-zinc-300 leading-relaxed">
-                Ajutăm proprietarii să nu mai depindă doar de platforme de booking, ci să construiască branduri proprii care atrag oaspeți direct. Rolul nostru e să transformăm o proprietate într-o destinație, o cabană în locul unde oamenii îşi imaginează următoarea experiență memorabilă.
+            <h2 className="text-xl font-semibold">Echipa</h2>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+              Echipa cabn combina competente de marketing, productie vizuala,
+              web si strategie comerciala. Lucram interdisciplinar, cu procese
+              clare si responsabilitate pe fiecare etapa, de la analiza pana la
+              implementare si optimizare.
+            </p>
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold">Ce face compania</h2>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+              Construim sisteme de promovare complete: audit de pozitionare,
+              productie foto-video, website orientat pe conversie, SEO si
+              suport in comunicare. Obiectivul este cresterea cererilor directe
+              si consolidarea brandului proprietatii.
+            </p>
+          </div>
+        </section>
+
+        <section className="grid gap-8 border-t border-zinc-200 py-10 dark:border-zinc-800 md:grid-cols-2">
+          <div>
+            <h2 className="text-xl font-semibold">Istoric</h2>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+              cabn a aparut din nevoia de a aduce standard profesional intr-o
+              piata in care multe proprietati valoroase nu sunt prezentate la
+              adevaratul lor potential. Experienta noastra in proiecte digitale
+              ne-a aratat ca diferenta reala vine din claritate strategica,
+              executie consecventa si masurare continua.
+            </p>
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold">Misiune</h2>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+              Misiunea noastra este sa transformam proprietati bune in branduri
+              credibile, memorabile si competitive. Ne concentram pe crestere
+              sustenabila, nu pe rezultate punctuale fara continuitate.
+            </p>
+          </div>
+        </section>
+
+        <section className="border-t border-zinc-200 py-10 dark:border-zinc-800">
+          <h2 className="text-xl font-semibold">Descopera cabn</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+            Partea de viziune si diferentiere este integrata aici: cum vedem
+            turismul alternativ, ce inseamna crestere sanatoasa si de ce lucram
+            diferit.
+          </p>
+          <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-2">
+            {discoveryPoints.map(({ title, text, Icon }) => (
+              <article key={title}>
+                <div className="inline-flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
+                  <Icon className="h-4 w-4" />
+                  <h3 className="text-base font-semibold">{title}</h3>
+                </div>
+                <p className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+                  {text}
+                </p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="grid gap-8 border-t border-zinc-200 py-10 dark:border-zinc-800 md:grid-cols-2">
+          <div>
+            <h2 className="text-xl font-semibold">Integrare si responsabilitate</h2>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+              Credem intr-un model de crestere care include si dimensiune
+              sociala. In proiectele noastre cautam contexte unde persoane
+              vulnerabile pot fi integrate prin colaborari locale, roluri
+              adaptate si oportunitati reale de dezvoltare.
+            </p>
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold">Design, estetica, storytelling</h2>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">
+              Felul in care arata un brand influenteaza direct increderea pe
+              care o inspira. De aceea lucram cu structura, ritm vizual si
+              naratiune: imaginea, textul si experienta digitala trebuie sa
+              spuna aceeasi poveste.
+            </p>
+          </div>
+        </section>
+
+        <section className="border-t border-zinc-200 py-10 dark:border-zinc-800">
+          <h2 className="text-xl font-semibold">Valori de lucru</h2>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-900 dark:text-zinc-100">
+                Claritate
+              </h3>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                Deciziile si recomandarile sunt explicate concret, fara jargon
+                inutil.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-900 dark:text-zinc-100">
+                Rigoare
+              </h3>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                Lucram pe procese, KPI-uri si standarde de executie stabile.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-900 dark:text-zinc-100">
+                Calitate vizuala
+              </h3>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                Fiecare material publicat trebuie sa sustina pozitionarea
+                premium a brandului.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-900 dark:text-zinc-100">
+                Responsabilitate
+              </h3>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">
+                Ne asumam obiective clare si transparenta pe rezultate.
               </p>
             </div>
           </div>
         </section>
 
-        {/* Ce facem */}
-        <section className="mb-12 sm:mb-16 space-y-6 sm:space-y-8">
+        <section className="grid gap-8 border-t border-zinc-200 py-10 dark:border-zinc-800 md:grid-cols-2">
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-8">Ce facem (și ce se întâmplă ca urmare)</h2>
-            <p className="text-base sm:text-lg text-zinc-700 dark:text-zinc-300 mb-4 sm:mb-8">
-              Nu vorbim doar despre servicii — vorbim despre efecte măsurabile. Iată ce realizăm:
-            </p>
-            <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-3">
-              <div className="rounded-xl border border-zinc-200/70 bg-white/80 p-4 sm:p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900/60">
-                <Camera className="h-6 sm:h-8 w-6 sm:w-8 text-emerald-600 dark:text-emerald-400 mb-3 sm:mb-4" aria-hidden />
-                <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-white mb-2">Conținut care face oaspeții să-și imagineze experiența</h3>
-                <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
-                  Foto și video cinematic realizate cu drone profesionale și camere full-frame. Fiecare imagine invită, nu doar informează.
-                </p>
+            <h2 className="text-xl font-semibold">Date legale</h2>
+            <dl className="mt-4 space-y-2 text-sm text-zinc-600 dark:text-zinc-300">
+              <div className="flex items-center justify-between gap-4">
+                <dt className="font-medium">Denumire</dt>
+                <dd>CABN S.R.L.</dd>
               </div>
-              <div className="rounded-xl border border-zinc-200/70 bg-white/80 p-4 sm:p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900/60">
-                <Globe className="h-6 sm:h-8 w-6 sm:w-8 text-emerald-600 dark:text-emerald-400 mb-3 sm:mb-4" aria-hidden />
-                <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-white mb-2">Website care crește încrederea și conversiile</h3>
-                <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
-                  Prezență online care nu doar arată frumos — construiește încredere și conduce la rezervări directe.
-                </p>
+              <div className="flex items-center justify-between gap-4">
+                <dt className="font-medium">CUI</dt>
+                <dd>52174972</dd>
               </div>
-              <div className="rounded-xl border border-zinc-200/70 bg-white/80 p-4 sm:p-6 shadow-sm dark:border-white/10 dark:bg-zinc-900/60">
-                <Users className="h-6 sm:h-8 w-6 sm:w-8 text-emerald-600 dark:text-emerald-400 mb-3 sm:mb-4" aria-hidden />
-                <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-white mb-2">Social media care aduce oaspeți potriviți</h3>
-                <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
-                  Strategie și conținut care atrage exact publicul care caută ce oferi tu — nu doar randări.
-                </p>
+              <div className="flex items-center justify-between gap-4">
+                <dt className="font-medium">Nr. Reg. Com.</dt>
+                <dd>J2025053051007</dd>
               </div>
-            </div>
+              <div className="flex items-center justify-between gap-4">
+                <dt className="font-medium">EUID</dt>
+                <dd>ROONRC.J2025053051007</dd>
+              </div>
+            </dl>
           </div>
 
           <div>
-            <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">Rezultatul final</h3>
-            <p className="text-base sm:text-lg text-zinc-700 dark:text-zinc-300 p-4 sm:p-6 bg-gradient-to-r from-emerald-50 to-blue-50 dark:from-emerald-900/20 dark:to-blue-900/20 rounded-xl border border-emerald-200/40 dark:border-emerald-500/20">
-              Nu construim conținut — construim sisteme de promovare care generează cereri. Scopul fiecărui proiect e clar: mai multe oaspeți potriviți, rate mai bune de ocupare, brand mai puternic și mai puțină dependență de marketplace-uri.
+            <h2 className="text-xl font-semibold">Contact si social</h2>
+            <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-300">
+              Pentru colaborari:{" "}
+              <a
+                href="mailto:marketing@cabn.ro"
+                className="inline-flex items-center gap-2 font-semibold text-emerald-700 hover:underline dark:text-emerald-300"
+              >
+                <FaEnvelope className="h-3.5 w-3.5" />
+                marketing@cabn.ro
+              </a>
             </p>
-          </div>
-        </section>
 
-        {/* Cum lucrăm */}
-        <section className="mb-12 sm:mb-16 space-y-6 sm:space-y-8">
-          <h2 className="text-2xl sm:text-3xl font-bold">Cum lucrăm</h2>
-          <p className="text-base sm:text-lg text-zinc-700 dark:text-zinc-300">
-            Procesul nostru e simplu și rezultat-oriented: analizăm, planificăm, producem și optimizăm. Fiecare etapă are un scop clar — transformarea vizibilității în cereri reale.
-          </p>
-          <div className="space-y-4">
-            {PROCESS.map(({ step, title, description }, index) => (
-              <div key={step} className="flex gap-4">
-                <div className="flex flex-col items-center">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-emerald-600 to-emerald-500 text-white font-bold shadow-lg">
-                    {step}
-                  </div>
-                  {index < PROCESS.length - 1 && (
-                    <div className="w-1 h-12 bg-gradient-to-b from-emerald-500 to-emerald-200 dark:from-emerald-400 dark:to-emerald-600" />
-                  )}
-                </div>
-                <div className="pb-6 sm:pb-8">
-                  <h3 className="font-semibold text-base sm:text-lg text-zinc-900 dark:text-white">{title}</h3>
-                  <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400">{description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* Observations Section */}
-        <section className="mb-12 sm:mb-16 space-y-6 sm:space-y-8 bg-gradient-to-br from-blue-50 to-emerald-50 dark:from-blue-900/15 dark:to-emerald-900/15 rounded-2xl border border-blue-200/40 dark:border-blue-500/20 p-4 sm:p-8">
-          <h2 className="text-2xl sm:text-3xl font-bold">Ce observăm constant la proprietățile cu care lucrăm</h2>
-          <p className="text-base sm:text-lg text-zinc-700 dark:text-zinc-300">
-            După lucru cu zeci de proprietăți, anumite rezultate se repetă. Nu sunt coincidențe — sunt consecința unei strategii bine gândite:
-          </p>
-          <div className="grid gap-3 sm:gap-6 grid-cols-1 md:grid-cols-2">
-            <div className="flex gap-3 p-3 sm:p-4 bg-white/80 dark:bg-zinc-900/60 rounded-lg border border-zinc-200/50 dark:border-white/10">
-              <Zap className="h-5 sm:h-6 w-5 sm:w-6 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5 sm:mt-1" aria-hidden />
-              <div>
-                <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-white mb-1">Creștere cereri directe</h3>
-                <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">Proprietarii raportează mai multe mesaje și cereri care nu vin prin marketplace-uri.</p>
-              </div>
-            </div>
-            <div className="flex gap-3 p-3 sm:p-4 bg-white/80 dark:bg-zinc-900/60 rounded-lg border border-zinc-200/50 dark:border-white/10">
-              <Users className="h-5 sm:h-6 w-5 sm:w-6 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5 sm:mt-1" aria-hidden />
-              <div>
-                <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-white mb-1">Oaspeți mai potriviți</h3>
-                <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">Oamenii care vin știu ce să se aștepte — de aceea sunt mai mulțumiți și mai rar negociază preț.</p>
-              </div>
-            </div>
-            <div className="flex gap-3 p-3 sm:p-4 bg-white/80 dark:bg-zinc-900/60 rounded-lg border border-zinc-200/50 dark:border-white/10">
-              <Target className="h-5 sm:h-6 w-5 sm:w-6 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5 sm:mt-1" aria-hidden />
-              <div>
-                <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-white mb-1">Mai puține negocieri de preț</h3>
-                <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">Când oaspeții resimț valoarea din marketing, nu mai cer reduceri.</p>
-              </div>
-            </div>
-            <div className="flex gap-3 p-3 sm:p-4 bg-white/80 dark:bg-zinc-900/60 rounded-lg border border-zinc-200/50 dark:border-white/10">
-              <Zap className="h-5 sm:h-6 w-5 sm:w-6 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5 sm:mt-1" aria-hidden />
-              <div>
-                <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-white mb-1">Brand mai recognoscibil</h3>
-                <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">Proprietatea devine un loc despre care oamenii povestesc — și recomandă prietenilor.</p>
-              </div>
+            <div className="mt-5 flex items-center gap-3">
+              {socialLinks.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <a
+                    key={item.name}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={item.name}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition hover:border-emerald-300 hover:text-emerald-700 dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-emerald-700 dark:hover:text-emerald-300"
+                  >
+                    <Icon className="h-4 w-4" />
+                  </a>
+                );
+              })}
             </div>
           </div>
-        </section>
-
-        {/* De ce CABN.ro */}
-        <section className="mb-12 sm:mb-16 space-y-6 sm:space-y-8">
-          <h2 className="text-2xl sm:text-3xl font-bold">De ce CABN.ro</h2>
-          <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2">
-            <div className="flex gap-3 sm:gap-4 p-4 sm:p-6 rounded-xl border border-zinc-200/70 bg-white/80 dark:border-white/10 dark:bg-zinc-900/60">
-              <Target className="h-5 sm:h-6 w-5 sm:w-6 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5 sm:mt-1" aria-hidden />
-              <div>
-                <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-white mb-1">Noi înțelegem turismul alternativ</h3>
-                <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">Nu e doar cazare — e experiență, reconexiune, momente memorabile. Asta se vede în fiecare proiect.</p>
-              </div>
-            </div>
-            <div className="flex gap-3 sm:gap-4 p-4 sm:p-6 rounded-xl border border-zinc-200/70 bg-white/80 dark:border-white/10 dark:bg-zinc-900/60">
-              <Users className="h-5 sm:h-6 w-5 sm:w-6 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5 sm:mt-1" aria-hidden />
-              <div>
-                <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-white mb-1">Fiecare proiect = strategia noastră</h3>
-                <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">Tratăm proprietatea ta ca pe propria noastră afacere. Succesul tău e succesul nostru.</p>
-              </div>
-            </div>
-            <div className="flex gap-3 sm:gap-4 p-4 sm:p-6 rounded-xl border border-zinc-200/70 bg-white/80 dark:border-white/10 dark:bg-zinc-900/60">
-              <Zap className="h-5 sm:h-6 w-5 sm:w-6 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5 sm:mt-1" aria-hidden />
-              <div>
-                <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-white mb-1">Rezultate măsurabile</h3>
-                <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">Nu promisiuni — creștere reală de rezervări, rate mai bune de ocupare și brand mai puternic.</p>
-              </div>
-            </div>
-            <div className="flex gap-3 sm:gap-4 p-4 sm:p-6 rounded-xl border border-zinc-200/70 bg-white/80 dark:border-white/10 dark:bg-zinc-900/60">
-              <Camera className="h-5 sm:h-6 w-5 sm:w-6 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5 sm:mt-1" aria-hidden />
-              <div>
-                <h3 className="font-semibold text-sm sm:text-base text-zinc-900 dark:text-white mb-1">Calitate premium de producție</h3>
-                <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">Drone, camere full-frame, flux de lucru organizat — fiecare pixel e o investiție în succesul tău.</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Ce cred noi — valori și emoție */}
-        <section className="mb-12 sm:mb-16 space-y-6 sm:space-y-8">
-          <h2 className="text-2xl sm:text-3xl font-bold">Ce cred noi</h2>
-          
-          {/* Emotional Component */}
-          <div className="rounded-xl border border-emerald-300/50 bg-gradient-to-r from-emerald-50 to-green-50 dark:from-emerald-900/30 dark:to-green-900/30 p-4 sm:p-8">
-            <h3 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 text-emerald-900 dark:text-emerald-100">Proprietățile sunt locuri de reconectare</h3>
-            <p className="text-base sm:text-lg text-emerald-800 dark:text-emerald-200 leading-relaxed">
-              O cabană nu e doar patru pereți și un loc de dormit. E un spațiu unde oamenii se deconectează de zgomotul zilei, se reconnectează cu natura și cu cei dragi. Rolul nostru e să transmitem asta online — emoția, autenticitatea, promisiunea unei experiențe memorabile. Fiecare fotografie, fiecare video, fiecare cuvânt pe care-l scriem trebuie să spună această poveste.
-            </p>
-          </div>
-
-          {/* Core Values */}
-          <div className="bg-gradient-to-r from-emerald-50 to-blue-50 dark:from-emerald-900/20 dark:to-blue-900/20 rounded-2xl border border-emerald-200/40 dark:border-emerald-500/20 p-4 sm:p-8">
-            <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Valorile care ne ghidează</h3>
-            <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-3">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 mb-2 sm:mb-3">
-                  <Check className="h-4 sm:h-5 w-4 sm:w-5 text-emerald-600 dark:text-emerald-400" aria-hidden />
-                  <h4 className="font-semibold text-sm sm:text-base">Calitate Premium</h4>
-                </div>
-                <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300">
-                  Nu facem compromisuri. Fiecare detaliu e gândit pentru impact.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 mb-2 sm:mb-3">
-                  <Check className="h-4 sm:h-5 w-4 sm:w-5 text-emerald-600 dark:text-emerald-400" aria-hidden />
-                  <h4 className="font-semibold text-sm sm:text-base">Gândire Strategică</h4>
-                </div>
-                <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300">
-                  Fiecare acțiune e legată de obiectivele tale — nu facem conținut pentru conținut.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 mb-2 sm:mb-3">
-                  <Check className="h-4 sm:h-5 w-4 sm:w-5 text-emerald-600 dark:text-emerald-400" aria-hidden />
-                  <h4 className="font-semibold text-sm sm:text-base">Rezultate Concrete</h4>
-                </div>
-                <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300">
-                  Doar rezultate măsurabile — creșterea rezervărilor și a vizibilității sunt metricile noastre.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* CTA Section */}
-        <section className="mb-12 sm:mb-16 space-y-4 sm:space-y-6 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold">Gata de schimbare?</h2>
-          <p className="text-base sm:text-lg text-zinc-700 dark:text-zinc-300 max-w-2xl mx-auto px-2">
-            Dacă ai o cabană, o pensiune sau o proprietate specială, te ajutăm să o arăți lumii așa cum merită.
-          </p>
-          <div className="flex flex-col gap-3 sm:gap-4 justify-center px-4">
-            <Link
-              href="/descoperaCABN"
-              className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-6 sm:px-8 py-2.5 sm:py-3 text-sm font-semibold text-white shadow-lg hover:bg-emerald-700 transition"
-            >
-              Explorează serviciile noastre
-            </Link>
-            <Link
-              href="/contact"
-              className="inline-flex items-center justify-center rounded-full border-2 border-emerald-600 px-6 sm:px-8 py-2.5 sm:py-3 text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition"
-            >
-              Hai să discutăm
-            </Link>
-          </div>
-        </section>
-
-        {/* Portfolio Link */}
-        <section className="text-center py-8 sm:py-12 border-t border-zinc-200 dark:border-white/10">
-          <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 mb-3 sm:mb-4 px-4">
-            Vrei să vezi ce am realizat deja?
-          </p>
-          <Link
-            href="/descoperaCABN"
-            className="text-emerald-600 dark:text-emerald-400 font-semibold hover:underline text-sm sm:text-base inline-block px-4"
-          >
-            Vizitează portofoliul nostru complet →
-          </Link>
         </section>
       </main>
     </div>

@@ -451,7 +451,7 @@ export default function EditPropertyPage({ params }: any) {
                 onChange={(e) => setNewsletterOptIn(e.target.checked)}
                 className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
               />
-              <span>Ma alatur newsletterului/comunitatii CABN.</span>
+              <span>Ma alatur newsletterului/comunitatii cabn.</span>
             </label>
           </div>
         )}

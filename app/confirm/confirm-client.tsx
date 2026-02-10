@@ -43,7 +43,7 @@ export default function ConfirmClient() {
           <Link href={`/cazare/${id}?preview=1&id=${id}`} className="block w-full text-center py-3 rounded-lg border border-emerald-200 text-emerald-700 font-semibold hover:bg-emerald-50 transition">
             Vezi pagina
           </Link>
-          <Link href="/descoperaCABN" className="block w-full text-center py-3 rounded-lg border text-gray-700 font-semibold hover:bg-gray-50 transition">
+          <Link href="/about-us" className="block w-full text-center py-3 rounded-lg border text-gray-700 font-semibold hover:bg-gray-50 transition">
             Inapoi la listari
           </Link>
         </div>

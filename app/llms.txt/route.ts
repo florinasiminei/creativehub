@@ -13,7 +13,7 @@ export function GET(_request: NextRequest) {
     `Sitemap: ${siteUrl}/sitemap.xml`,
     "Pages:",
     `${siteUrl}/`,
-    `${siteUrl}/descoperaCABN`,
+    `${siteUrl}/servicii`,
     `${siteUrl}/about-us`,
     `${siteUrl}/contact`,
     `${siteUrl}/politica-confidentialitate`,

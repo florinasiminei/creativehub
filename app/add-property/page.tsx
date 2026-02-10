@@ -383,7 +383,7 @@ function AddPropertyPageContent() {
                 onChange={(e) => setNewsletterOptIn(e.target.checked)}
                 className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
               />
-              <span>Ma alatur newsletterului/comunitatii CABN.</span>
+              <span>Ma alatur newsletterului/comunitatii cabn.</span>
             </label>
           </div>
         )}
@@ -426,10 +426,10 @@ export default function AddPropertyPage() {
   return (
     <>
       <section className="max-w-6xl 2xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-8">
-        <h1 className="text-3xl font-semibold text-emerald-950">Propune o cabana pe CABN.ro</h1>
+        <h1 className="text-3xl font-semibold text-emerald-950">Propune o cabana pe cabn.ro</h1>
         <p className="mt-3 text-gray-700 max-w-3xl">
           Formularul de mai jos este destinat proprietarilor care doresc evaluare si publicare in
-          catalogul CABN.
+          catalogul cabn.
         </p>
         <p className="mt-2 text-gray-700 max-w-3xl">
           Daca ai primit un link de acces, poti trimite proprietatea cu imagini si detalii complete

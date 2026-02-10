@@ -22,21 +22,9 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname, hash]);
-
-  const trackAddPropertyClick = (placement: "navbar_desktop" | "navbar_mobile") => {
-    if (typeof window === "undefined") return;
-    const gtag = (window as any).gtag;
-    if (typeof gtag === "function") {
-      gtag("event", "add_property_click", {
-        placement,
-        destination: "/descoperaCABN",
-      });
-    }
-  };
 
   return (
     <header
@@ -50,27 +38,25 @@ export default function Navbar() {
         href="#main"
         className="sr-only focus:not-sr-only focus:absolute focus:inset-x-0 focus:top-2 focus:z-50 focus:mx-auto focus:w-max focus:rounded-lg focus:bg-emerald-600 focus:px-3 focus:py-2 focus:text-white"
       >
-        Sari la conținut
+        Sari la continut
       </a>
 
       <div className="px-3 sm:px-4 lg:px-6">
         <div className="flex min-h-[90px] items-center justify-between gap-3 py-3">
-          {/* Logo mare */}
           <Link
             href="/"
-            aria-label="cabn.ro – Pagina principală"
+            aria-label="cabn.ro - Pagina principala"
             className="group flex shrink-0 select-none items-center gap-3 pl-2 sm:pl-3 lg:pl-5"
           >
             <Image
               src="/images/logo.svg"
-              alt="cabn.ro – explorăm cazări autentice"
+              alt="cabn.ro - exploram cazari autentice"
               width={101}
               height={150}
               priority
             />
           </Link>
 
-          {/* Desktop nav */}
           <nav
             className="hidden md:flex min-w-0 flex-1 items-center justify-center"
             aria-label="Meniu principal"
@@ -95,22 +81,10 @@ export default function Navbar() {
             </ul>
           </nav>
 
-          {/* Acțiuni (CTA + Dark mode) */}
           <div className="ml-auto hidden shrink-0 items-center gap-2 md:flex">
-            <Link
-              href="/descoperaCABN"
-              onClick={() => trackAddPropertyClick("navbar_desktop")}
-              className="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-1.5 text-sm font-semibold text-white shadow transition hover:-translate-y-0.5 hover:bg-emerald-600 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
-            >
-              <span aria-hidden="true" className="text-lg font-semibold leading-none">
-                +
-              </span>
-              <span>Adaugă proprietate</span>
-            </Link>
             <DarkModeToggle />
           </div>
 
-          {/* Buton meniu mobil */}
           <div className="flex items-center gap-2 md:hidden">
             <DarkModeToggle />
             <button
@@ -138,7 +112,6 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Meniu mobil */}
         <div
           id="mobile-nav"
           className={classNames(
@@ -146,7 +119,7 @@ export default function Navbar() {
             menuOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
           )}
         >
-          <nav aria-label="Meniu principal – mobil" className="pb-4">
+          <nav aria-label="Meniu principal - mobil" className="pb-4">
             <ul className="grid gap-2 text-sm font-semibold tracking-wide text-zinc-700 dark:text-zinc-200">
               {NAV_LINKS.map((link) => {
                 const active = isActiveLink(pathname, hash, link.href);
@@ -170,19 +143,6 @@ export default function Navbar() {
                   </li>
                 );
               })}
-
-              <li className="pt-1">
-                <Link
-                  href="/descoperaCABN"
-                  onClick={() => trackAddPropertyClick("navbar_mobile")}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-base font-semibold text-white shadow transition hover:-translate-y-0.5 hover:bg-emerald-600 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
-                >
-                  <span aria-hidden="true" className="text-lg font-semibold leading-none">
-                    +
-                  </span>
-                  <span>Adaugă proprietate</span>
-                </Link>
-              </li>
             </ul>
           </nav>
         </div>
@@ -190,4 +150,3 @@ export default function Navbar() {
     </header>
   );
 }
-

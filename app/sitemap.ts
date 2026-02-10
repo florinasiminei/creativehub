@@ -79,7 +79,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     ...listingTypeEntries,
     {
-      url: `${siteUrl}/descoperaCABN`,
+      url: `${siteUrl}/about-us`,
+      lastModified,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    {
+      url: `${siteUrl}/servicii`,
       lastModified,
       changeFrequency: "monthly",
       priority: 0.7,

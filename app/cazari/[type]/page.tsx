@@ -143,7 +143,7 @@ export default async function TypePage({ params }: PageProps) {
             <span>{listingType.label}</span>
           </nav>
           <p className="text-sm uppercase tracking-[0.2em] text-emerald-700 font-semibold">
-            CABN.ro
+            cabn.ro
           </p>
           <h1 className="text-3xl sm:text-4xl font-semibold mt-3">
             {listingType.label} verificate
@@ -154,7 +154,7 @@ export default async function TypePage({ params }: PageProps) {
           </p>
           <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
-              href="/descoperaCABN#contact"
+              href="/servicii"
               className="px-6 py-2.5 rounded-full bg-emerald-700 text-white hover:bg-emerald-800 transition"
             >
               Inscrie proprietatea ta

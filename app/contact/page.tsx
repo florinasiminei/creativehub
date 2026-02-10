@@ -5,16 +5,16 @@ import ContactForm from "@/components/forms/ContactForm";
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cabn.ro";
 
 export const metadata: Metadata = {
-  title: "Contact CABN",
+  title: "Contact cabn.ro",
   description:
-    "Scrie echipei CABN pentru marketing, foto-video și listări de cabane și pensiuni. Răspundem rapid cu o soluție clară.",
+    "Scrie echipei cabn pentru marketing, foto-video și listări de cabane și pensiuni. Răspundem rapid cu o soluție clară.",
   alternates: {
     canonical: "/contact",
   },
   openGraph: {
-    title: "Contact CABN",
+    title: "Contact cabn.ro",
     description:
-      "Contactează echipa CABN pentru marketing, foto-video și listări de cabane și pensiuni.",
+      "Contactează echipa cabn pentru marketing, foto-video și listări de cabane și pensiuni.",
     url: `${siteUrl}/contact`,
     siteName: "cabn.ro",
     locale: "ro_RO",
@@ -22,8 +22,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Contact CABN",
-    description: "Contactează echipa CABN pentru marketing și listări turistice.",
+    title: "Contact cabn.ro",
+    description: "Contactează echipa cabn pentru marketing și listări turistice.",
   },
 };
 
@@ -59,7 +59,7 @@ export default function ContactPage() {
             cabn.ro
           </p>
           <h1 className="text-3xl font-bold tracking-tight leading-tight sm:text-4xl lg:text-5xl">
-            Contact CABN
+            Contact cabn.ro
           </h1>
           <p className="max-w-2xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-300 sm:text-base">
             Spune-ne ce vrei să obții cu proprietatea ta. Îți răspundem cu o propunere clară,
@@ -208,17 +208,17 @@ export default function ContactPage() {
 
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-600/80">
-                    Servicii CABN
+                    Servicii cabn
                   </p>
                   <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-400">
                     Descoperă pachetele de conținut foto-video, SEO și social media dedicate
                     cabanelor și pensiunilor.
                   </p>
                   <a
-                    href="/descoperaCABN"
+                    href="/servicii"
                     className="mt-2 inline-flex text-sm font-semibold text-emerald-700 hover:text-emerald-800 hover:underline dark:text-emerald-200 dark:hover:text-emerald-100"
                   >
-                    Vezi serviciile CABN →
+                    Vezi serviciile cabn →
                   </a>
                 </div>
 

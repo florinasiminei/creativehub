@@ -18,6 +18,12 @@ export default function Footer() {
             Despre noi
           </Link>
           <Link
+            href="/servicii"
+            className="hover:text-emerald-500 transition dark:hover:text-emerald-300"
+          >
+            Servicii
+          </Link>
+          <Link
             href="/contact"
             className="hover:text-emerald-500 transition dark:hover:text-emerald-300"
           >

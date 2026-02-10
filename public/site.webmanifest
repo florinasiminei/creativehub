@@ -1,6 +1,6 @@
 {
-  "name": "CABN.ro",
-  "short_name": "CABN",
+  "name": "cabn.ro",
+  "short_name": "cabn",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

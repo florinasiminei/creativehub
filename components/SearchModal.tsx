@@ -143,7 +143,7 @@ const SearchModal: React.FC<SearchModalProps> = ({
           <div className="fixed inset-0 bg-black/35 backdrop-blur-sm" />
         </Transition.Child>
 
-        <div className="fixed inset-0 flex items-end justify-center p-4 sm:items-center">
+        <div className="fixed inset-0 flex items-end justify-center p-4 pt-[max(env(safe-area-inset-top),1rem)] pb-[max(env(safe-area-inset-bottom),1rem)] sm:items-center">
           <Transition.Child
             as={Fragment}
             enter="duration-100 ease-out"
@@ -154,9 +154,9 @@ const SearchModal: React.FC<SearchModalProps> = ({
             leaveTo="opacity-0"
           >
             <Dialog.Panel
-              className="flex w-full max-w-2xl max-h-[90vh] flex-col overflow-hidden rounded-3xl bg-white text-left shadow-2xl transition-opacity duration-90 dark:bg-zinc-900"
+              className="flex w-full max-w-2xl max-h-[calc(100dvh-2rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] sm:max-h-[90vh] flex-col overflow-hidden rounded-3xl bg-white text-left shadow-2xl transition-opacity duration-90 dark:bg-zinc-900"
             >
-              <div className="relative z-20 border-b border-gray-200/70 bg-white/95 px-5 pb-4 pt-6 backdrop-blur dark:border-zinc-700/60 dark:bg-zinc-900/95">
+              <div className="relative z-20 border-b border-gray-200/70 bg-white/95 px-5 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:pt-6 backdrop-blur dark:border-zinc-700/60 dark:bg-zinc-900/95">
                 <div className="relative flex items-center justify-center">
                   <Dialog.Title className="text-xl font-semibold text-gray-900 dark:text-white">
                     Filtreaza cazarile

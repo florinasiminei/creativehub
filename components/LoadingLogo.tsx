@@ -8,7 +8,7 @@ export default function LoadingLogo() {
       <div className="relative w-[140px] h-[140px] animate-pulse">
         <Image
           src="/images/iconita.svg"
-          alt="CABN.ro se încarcă..."
+          alt="cabn.ro se încarcă..."
           fill
           className="object-contain"
           priority

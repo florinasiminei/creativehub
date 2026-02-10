@@ -77,12 +77,12 @@ export function buildListingPageJsonLd({
   const webPage = {
     '@context': 'https://schema.org',
     '@type': 'WebPage',
-    name: `Cazare ${typeLabel.toLowerCase()} în ${locationLabel || 'România'} | CABN`,
+    name: `Cazare ${typeLabel.toLowerCase()} în ${locationLabel || 'România'} | cabn.ro`,
     url: pageUrl,
     description: description,
     isPartOf: {
       '@type': 'WebSite',
-      name: 'CABN',
+      name: 'cabn',
       url: siteUrl,
     },
   };

@@ -840,14 +840,14 @@ export default function Home({
             <div className="rounded-3xl border border-emerald-100 bg-emerald-50/60 px-6 py-10 text-center">
               <div className="text-5xl mb-3">🏔️</div>
               <h3 className="text-2xl font-semibold text-emerald-900 mb-2">
-                Catalogul CABN.ro este în pregătire
+                Catalogul cabn.ro este în pregătire
               </h3>
               <p className="text-emerald-800/80 max-w-2xl mx-auto">
                 Începem să publicăm, una câte una, cabane autentice, A‑frame‑uri, tiny houses, pensiuni și apartamente atent verificate.
               </p>
               <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Link
-                  href="/descoperaCABN#contact"
+                  href="/servicii"
                   className="px-6 py-2.5 rounded-full bg-emerald-700 text-white hover:bg-emerald-800 transition"
                 >
                   Înscrie proprietatea ta
