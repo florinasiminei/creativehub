@@ -4,6 +4,29 @@ import { rateLimit } from '@/lib/rateLimit';
 import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
 import { generateListingToken } from '@/lib/listingTokens';
 import { syncListingGeoZones } from '@/lib/geoZones';
+import { slugify } from '@/lib/utils';
+
+async function ensureUniqueSlug(supabaseAdmin: ReturnType<typeof getSupabaseAdmin>, baseSlug: string) {
+  const normalizedBase = slugify(baseSlug) || 'cazare';
+  let candidate = normalizedBase;
+  let suffix = 2;
+
+  while (true) {
+    const { count, error } = await supabaseAdmin
+      .from('listings')
+      .select('id', { count: 'exact', head: true })
+      .eq('slug', candidate);
+
+    if (error) return candidate;
+    if (Number(count || 0) === 0) return candidate;
+
+    candidate = `${normalizedBase}-${suffix}`;
+    suffix += 1;
+    if (suffix > 10_000) {
+      return `${normalizedBase}-${Date.now().toString(36)}`;
+    }
+  }
+}
 
 export async function POST(req: Request) {
   try {
@@ -85,9 +108,14 @@ export async function POST(req: Request) {
 
     const normalizedCapacity = normalizeCapacity(capacity);
 
+    const preferredSlug = typeof slug === 'string' ? slugify(slug) : '';
+    const titleSlug = slugify(String(title || ''));
+    const baseSlug = preferredSlug || titleSlug || 'cazare';
+    const uniqueSlug = await ensureUniqueSlug(supabaseAdmin, baseSlug);
+
     const payload: any = {
       title,
-      slug: slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+      slug: uniqueSlug,
       judet: judetVal,
       city: city || null,
       sat: sat || null,

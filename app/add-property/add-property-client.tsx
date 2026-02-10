@@ -12,6 +12,7 @@ import useListingForm from '@/hooks/useListingForm';
 import { markPageModified } from '@/hooks/useRefreshOnNavigation';
 import { createListing, deleteListing } from '@/lib/api/listings';
 import { sortFacilitiesByPriority } from '@/lib/facilitiesCatalog';
+import { slugify } from '@/lib/utils';
 
 type FacilityOption = { id: string; name: string };
 
@@ -204,21 +205,17 @@ export default function AddPropertyPageContent() {
 
     setLoading(true);
     try {
-      const safeBaseSlug = formData.titlu
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '');
-      const uniqueSuffix = Math.random().toString(36).slice(2, 6);
-    const judet = locationData?.county || formData.judet;
-    const city = locationData?.city || formData.localitate || null;
-    const payload = {
-      title: formData.titlu,
-      slug: `${safeBaseSlug}-${uniqueSuffix}`,
-      judet,
-      city,
-      sat: formData.sat || null,
-      price: Number(formData.pret) || 0,
-      capacity: formData.capacitate || '1',
+      const baseSlug = slugify(formData.titlu || '') || 'cazare';
+      const judet = locationData?.county || formData.judet;
+      const city = locationData?.city || formData.localitate || null;
+      const payload = {
+        title: formData.titlu,
+        slug: baseSlug,
+        judet,
+        city,
+        sat: formData.sat || null,
+        price: Number(formData.pret) || 0,
+        capacity: formData.capacitate || '1',
         camere: Number(formData.camere) || 0,
         paturi: Number(formData.paturi) || 0,
         bai: Number(formData.bai) || 0,
