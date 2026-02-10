@@ -49,3 +49,6 @@ docs/
 # 🗂️ Local history/cache
 .history/
 .swc/
+
+# DB migrations
+db/

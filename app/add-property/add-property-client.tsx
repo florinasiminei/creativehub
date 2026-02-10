@@ -70,6 +70,7 @@ export default function AddPropertyPageContent() {
   const [showValidation, setShowValidation] = useState(false);
   const [validationAttempt, setValidationAttempt] = useState(0);
   const [acceptedTerms, setAcceptedTerms] = useState(!isClient);
+  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
   const [isLocationConfirmed, setIsLocationConfirmed] = useState(false);
   const router = useRouter();
   const { uploading, uploadedCount, upload } = useImageUploads({
@@ -138,7 +139,7 @@ export default function AddPropertyPageContent() {
       }
     }
     setTokenReady(true);
-  }, [tokenParam, searchParams, router, inviteToken]);
+  }, [tokenParam, searchParams, router, inviteToken, isClient]);
 
   useEffect(() => {
     setAcceptedTerms(!isClient);
@@ -170,7 +171,7 @@ export default function AddPropertyPageContent() {
     description: formData.descriere,
     descriptionKey: 'descriere',
     descriptionMin: 200,
-    descriptionMax: 320,
+    descriptionMax: 520,
     enforceDescription: isClient,
   });
 
@@ -230,6 +231,9 @@ export default function AddPropertyPageContent() {
         // images uploaded separately
         is_published: false,
       };
+      if (isClient) {
+        (payload as any).newsletter_opt_in = newsletterOptIn;
+      }
       // create listing via server endpoint to avoid RLS errors
       const created = await createListing(payload, selectedFacilities, inviteToken);
       const listingId = created.id;
@@ -358,7 +362,7 @@ export default function AddPropertyPageContent() {
           selectedImagesSubtitle="Trage sau foloseste sagetile pentru ordinea de afisare (5-12 imagini)"
           selectedFailedNames={failedUploads.map((f) => f.name)}
           descriptionMin={200}
-          descriptionMax={320}
+          descriptionMax={520}
           descriptionRequired={isClient}
         />
 
@@ -366,21 +370,32 @@ export default function AddPropertyPageContent() {
         <input type="text" value={formData.honeypot} onChange={e => handleChange('honeypot', e.target.value)} className="hidden" aria-hidden />
 
         {isClient && (
-          <label
-            className={`flex items-start gap-2 text-sm ${
-              showValidation && !acceptedTerms ? 'text-red-700' : 'text-gray-700'
-            }`}
-          >
-            <input
-              type="checkbox"
-              checked={acceptedTerms}
-              onChange={(e) => setAcceptedTerms(e.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-            />
-            <span>
-              Accept termenii si conditiile<span className="text-red-600"> *</span>
-            </span>
-          </label>
+          <div className="space-y-2">
+            <label
+              className={`flex items-start gap-2 text-sm ${
+                showValidation && !acceptedTerms ? 'text-red-700' : 'text-gray-700'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+              />
+              <span>
+                Accept termenii si conditiile<span className="text-red-600"> *</span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={newsletterOptIn}
+                onChange={(e) => setNewsletterOptIn(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+              />
+              <span>Ma alatur newsletterului/comunitatii CABN.</span>
+            </label>
+          </div>
         )}
 
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
@@ -404,7 +419,7 @@ export default function AddPropertyPageContent() {
                     <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-red-500" />
                     <span>
                       <span className="font-medium">{f.name}</span>
-                      {f.reason ? ` ??? ${f.reason === 'file_too_large' ? 'fisier prea mare' : f.reason}` : ''}
+                      {f.reason ? ` - ${f.reason === 'file_too_large' ? 'fisier prea mare' : f.reason}` : ''}
                     </span>
                   </li>
                 ))}

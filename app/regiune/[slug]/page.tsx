@@ -10,12 +10,12 @@ import {
   metroCoreCitySet,
   normalizeRegionText,
 } from "@/lib/regions";
-import { buildListingPageJsonLd } from "@/lib/jsonLd";
+import { buildBreadcrumbJsonLd, buildListingPageJsonLd } from "@/lib/jsonLd";
 import type { ListingRaw } from "@/lib/types";
 import type { Cazare } from "@/lib/utils";
 import type { FacilityOption } from "@/lib/types";
 
-export const revalidate = 60 * 60 * 12;
+export const revalidate = 60 * 60 * 6;
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cabn.ro";
 
@@ -27,18 +27,42 @@ export async function generateStaticParams() {
   return allRegions.map((region) => ({ slug: region.slug }));
 }
 
+async function regionHasListings(region: { counties: string[]; type: string; coreCities?: string[] }) {
+  const supabaseAdmin = getSupabaseAdmin();
+  const { data, error } = await supabaseAdmin
+    .from("listings")
+    .select("city")
+    .eq("is_published", true)
+    .in("judet", region.counties);
+
+  if (error) return true;
+
+  const rows = (data || []) as Array<{ city?: string | null }>;
+  const normalizedMetroCities = region.coreCities
+    ? new Set(region.coreCities.map((c) => normalizeRegionText(c)))
+    : null;
+
+  return rows.some((row) => {
+    const cityNorm = normalizeRegionText(String(row?.city || ""));
+    if (region.type === "metro") {
+      return normalizedMetroCities ? normalizedMetroCities.has(cityNorm) : false;
+    }
+    if (!cityNorm) return true;
+    return !metroCoreCitySet.has(cityNorm);
+  });
+}
+
 export async function generateMetadata({ params }: PageProps) {
   const region = findRegionBySlug(params.slug);
   if (!region) return {};
-  const title =
-    region.type === "metro"
-      ? `Cazare in ${region.name} | CABN.ro`
-      : `Cazare in ${region.name} | CABN.ro`;
+  const title = `Cazare in ${region.name}`;
   const description =
     region.type === "metro"
       ? `Descopera cazari in ${region.name}, cu verificare foto/video si rezervare direct la gazda.`
       : `Descopera cazare atent selectata in ${region.name}, cu verificare foto/video si rezervare direct la gazda.`;
   const canonical = `/regiune/${region.slug}`;
+  const hasListings = await regionHasListings(region);
+
   return {
     title,
     description,
@@ -50,6 +74,7 @@ export async function generateMetadata({ params }: PageProps) {
       description,
       url: `${siteUrl}${canonical}`,
     },
+    robots: hasListings ? undefined : { index: false, follow: true },
   };
 }
 
@@ -119,7 +144,7 @@ export default async function RegionPage({ params }: PageProps) {
   const pageUrl = `${siteUrl}/regiune/${region.slug}`;
   const description = `Descopera cele mai frumoase cazari din ${region.name}. Listari curate, verificate, cu contact direct la gazda.`;
 
-  const jsonLd = buildListingPageJsonLd({
+  const listingJsonLd = buildListingPageJsonLd({
     siteUrl,
     pageUrl,
     typeLabel: "Cazare",
@@ -136,10 +161,18 @@ export default async function RegionPage({ params }: PageProps) {
       priceRange: String(l.price || ""),
     })),
   });
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "Acasa", item: siteUrl },
+    { name: `Regiune ${region.name}`, item: pageUrl },
+  ]);
+  const jsonLdScripts: Record<string, unknown>[] = [
+    breadcrumbJsonLd,
+    ...listingJsonLd.filter((obj) => (obj as any)?.["@type"] !== "BreadcrumbList"),
+  ];
 
   return (
     <>
-      {jsonLd.map((obj, i) => (
+      {jsonLdScripts.map((obj, i) => (
         <script
           key={i}
           type="application/ld+json"
@@ -153,6 +186,7 @@ export default async function RegionPage({ params }: PageProps) {
           initialCazari={listings}
           initialFacilities={sortedFacilities}
           pageTitle={`Cazare in ${region.name}`}
+          allowClientBootstrapFetch={false}
         />
       </Suspense>
     </>

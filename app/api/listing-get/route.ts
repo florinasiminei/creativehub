@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
+import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
+import { isListingTokenValid } from '@/lib/listingTokens';
+
+const LISTING_SELECT_BASE =
+  'id, title, slug, judet, city, sat, price, capacity, camere, paturi, bai, description, phone, type, lat, lng, is_published';
+const LISTING_SELECT_WITH_NEWSLETTER = `${LISTING_SELECT_BASE}, newsletter_opt_in`;
+const IMAGES_SELECT = 'id, image_url, display_order, alt';
 
 export async function POST(request: Request) {
   try {
@@ -11,19 +18,54 @@ export async function POST(request: Request) {
 
     const supabaseAdmin = getSupabaseAdmin();
 
-    const { id, slug, requirePublished } = await request.json();
+    const body = await request.json().catch(() => ({}));
+    const id = body?.id ? String(body.id) : '';
+    const slug = body?.slug ? String(body.slug).trim() : '';
+    const requirePublished = body?.requirePublished === true;
     if (!id && !slug) return NextResponse.json({ error: 'Missing id or slug' }, { status: 400 });
 
-    const query = supabaseAdmin.from('listings').select('*');
-    if (id) query.eq('id', id);
-    else if (slug) query.eq('slug', slug);
-    if (requirePublished) query.eq('is_published', true);
-    const { data, error } = await query.single();
+    const role = getDraftRoleFromRequest(request);
+    const hasRole = role === 'admin' || role === 'staff';
+
+    if (!hasRole) {
+      // Public clients can only read by id using a valid listing token.
+      if (!id) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+      const listingToken = request.headers.get('x-listing-token');
+      const tokenValid = await isListingTokenValid(id, listingToken, supabaseAdmin);
+      if (!tokenValid) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+    }
+
+    const runListingQuery = async (selectFields: string) => {
+      const query = supabaseAdmin.from('listings').select(selectFields);
+      if (id) {
+        query.eq('id', id);
+      } else if (slug) {
+        query.eq('slug', slug);
+        if (!hasRole || requirePublished) {
+          query.eq('is_published', true);
+        }
+      }
+      return query.maybeSingle();
+    };
+
+    let { data, error } = await runListingQuery(LISTING_SELECT_WITH_NEWSLETTER);
+    if (error && /newsletter_opt_in/i.test(error.message || '')) {
+      ({ data, error } = await runListingQuery(LISTING_SELECT_BASE));
+    }
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (!data) return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
 
     // also fetch related images and facilities
     const listingId = data?.id;
-    const { data: images } = await supabaseAdmin.from('listing_images').select('*').eq('listing_id', listingId).order('display_order', { ascending: true });
+    const { data: images } = await supabaseAdmin
+      .from('listing_images')
+      .select(IMAGES_SELECT)
+      .eq('listing_id', listingId)
+      .order('display_order', { ascending: true });
     const { data: facilityRows } = await supabaseAdmin
       .from('listing_facilities')
       .select('facility_id, facilities(id, name)')

@@ -7,6 +7,7 @@ import FacilitiesPicker from './FacilitiesPicker';
 import ImageUploader from './ImageUploader';
 import FormMessage from './FormMessage';
 import LocationPicker from '@/components/LocationPicker';
+import { validateCapacity, validateDescriptionLength, validatePhone } from '@/lib/validation/listing';
 
 type FacilityOption = { id: string; name: string };
 
@@ -141,6 +142,9 @@ export default function ListingForm({
   const [locationsError, setLocationsError] = useState<string | null>(null);
   const [countyQuery, setCountyQuery] = useState('');
   const [cityQuery, setCityQuery] = useState('');
+  const [capacityTouched, setCapacityTouched] = useState(false);
+  const [phoneTouched, setPhoneTouched] = useState(false);
+  const [descriptionTouched, setDescriptionTouched] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -222,12 +226,28 @@ export default function ListingForm({
   const hasDescriptionLimits = typeof descriptionMin === 'number' || typeof descriptionMax === 'number';
   const descriptionRangeLabel =
     typeof descriptionMin === 'number' && typeof descriptionMax === 'number'
-      ? `${descriptionMin}-${descriptionMax}`
+      ? `Intre ${descriptionMin} si ${descriptionMax} de`
       : typeof descriptionMin === 'number'
-        ? `minim ${descriptionMin}`
+        ? `Minim ${descriptionMin}`
         : typeof descriptionMax === 'number'
-          ? `maxim ${descriptionMax}`
+          ? `Maxim ${descriptionMax}`
           : '';
+
+  const liveCapacityError =
+    capacityTouched && formData.capacitate.trim().length > 0 ? validateCapacity(formData.capacitate) : null;
+  const livePhoneError =
+    phoneTouched && formData.telefon.trim().length > 0 ? validatePhone(formData.telefon) : null;
+
+  const descriptionMinValue = typeof descriptionMin === 'number' ? descriptionMin : 0;
+  const descriptionMaxValue = typeof descriptionMax === 'number' ? descriptionMax : Number.MAX_SAFE_INTEGER;
+  const liveDescriptionError =
+    descriptionTouched && descriptionRequired && hasDescriptionLimits
+      ? validateDescriptionLength(formData.descriere, descriptionMinValue, descriptionMaxValue)
+      : null;
+
+  const capacityInvalid = isInvalid('capacitate') || Boolean(liveCapacityError);
+  const phoneInvalid = isInvalid('telefon') || Boolean(livePhoneError);
+  const descriptionInvalid = isInvalid('descriere') || Boolean(liveDescriptionError);
 
   return (
     <>
@@ -419,18 +439,24 @@ export default function ListingForm({
               aria-invalid={isInvalid('pret')}
             />
           </label>
-          <label className={labelClass(isInvalid('capacitate'))}>
+          <label className={labelClass(capacityInvalid)}>
             <span className="text-sm font-medium">Capacitate (pers.)</span>
             <input
               value={formData.capacitate}
               onChange={(e) => onChange('capacitate', e.target.value)}
+              onBlur={() => setCapacityTouched(true)}
               type="text"
               inputMode="text"
               required
               placeholder="Ex: 2-4, 2/4, 4+"
-              className={inputClass(isInvalid('capacitate'))}
-              aria-invalid={isInvalid('capacitate')}
+              className={inputClass(capacityInvalid)}
+              aria-invalid={capacityInvalid}
             />
+            {liveCapacityError && (
+              <FormMessage inline variant="error">
+                {liveCapacityError}
+              </FormMessage>
+            )}
           </label>
         </div>
 
@@ -473,17 +499,23 @@ export default function ListingForm({
           </label>
         </div>
 
-        <label className={labelClass(isInvalid('telefon'))}>
+        <label className={labelClass(phoneInvalid)}>
           <span className="text-sm font-medium">Telefon</span>
           <input
             value={formData.telefon}
             onChange={(e) => onChange('telefon', e.target.value)}
+            onBlur={() => setPhoneTouched(true)}
             required
             inputMode="tel"
             autoComplete="tel"
-            className={inputClass(isInvalid('telefon'))}
-            aria-invalid={isInvalid('telefon')}
+            className={inputClass(phoneInvalid)}
+            aria-invalid={phoneInvalid}
           />
+          {livePhoneError && (
+            <FormMessage inline variant="error">
+              {livePhoneError}
+            </FormMessage>
+          )}
           <span className="text-xs text-gray-500 mt-1 dark:text-gray-400">Ex: 07xx xxx xxx sau +40 7xx xxx xxx</span>
         </label>
 
@@ -504,18 +536,25 @@ export default function ListingForm({
           </select>
         </label>
 
-        <label className={labelClass(isInvalid('descriere'))}>
+        <label className={labelClass(descriptionInvalid)}>
           <span className="text-sm font-medium">Descriere</span>
           <textarea
             value={formData.descriere}
             onChange={(e) => onChange('descriere', e.target.value)}
-            className={inputClass(isInvalid('descriere'))}
+            onBlur={() => setDescriptionTouched(true)}
+            className={inputClass(descriptionInvalid)}
             rows={4}
-            aria-invalid={isInvalid('descriere')}
+            aria-invalid={descriptionInvalid}
+            maxLength={typeof descriptionMax === 'number' ? descriptionMax : undefined}
           />
+          {liveDescriptionError && (
+            <FormMessage inline variant="error">
+              {liveDescriptionError}
+            </FormMessage>
+          )}
           {hasDescriptionLimits && (
             <span className="text-xs text-gray-500 mt-1 dark:text-gray-400">
-              Recomandat {descriptionRangeLabel} caractere. {descriptionLength}
+              {descriptionRangeLabel} caractere. {descriptionLength}
               {typeof descriptionMax === 'number' ? `/${descriptionMax}` : ''}
             </span>
           )}

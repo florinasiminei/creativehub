@@ -69,6 +69,7 @@ function AddPropertyPageContent() {
   const [showValidation, setShowValidation] = useState(false);
   const [validationAttempt, setValidationAttempt] = useState(0);
   const [acceptedTerms, setAcceptedTerms] = useState(!isClient);
+  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
   const [isLocationConfirmed, setIsLocationConfirmed] = useState(false);
   const router = useRouter();
   const { uploading, uploadedCount, upload } = useImageUploads({
@@ -167,7 +168,7 @@ function AddPropertyPageContent() {
     description: formData.descriere,
     descriptionKey: 'descriere',
     descriptionMin: 200,
-    descriptionMax: 320,
+    descriptionMax: 520,
     enforceDescription: isClient,
   });
 
@@ -227,6 +228,9 @@ function AddPropertyPageContent() {
         // images uploaded separately
         is_published: false,
       };
+      if (isClient) {
+        (payload as any).newsletter_opt_in = newsletterOptIn;
+      }
       // create listing via server endpoint to avoid RLS errors
       const created = await createListing(payload, selectedFacilities, inviteToken);
       const listingId = created.id;
@@ -350,26 +354,38 @@ function AddPropertyPageContent() {
           selectedImagesSubtitle="Trage sau foloseste sagetile pentru ordinea de afisare (5-12 imagini)"
           selectedFailedNames={failedUploads.map((f) => f.name)}
           descriptionMin={200}
-          descriptionMax={320}
+          descriptionMax={520}
+          descriptionRequired={isClient}
         />
 
         {/* honeypot */}
         <input type="text" value={formData.honeypot} onChange={e => handleChange('honeypot', e.target.value)} className="hidden" aria-hidden />
 
         {isClient && (
-          <label
-            className={`flex items-start gap-2 text-sm ${
-              showValidation && !acceptedTerms ? 'text-red-700' : 'text-gray-700'
-            }`}
-          >
-            <input
-              type="checkbox"
-              checked={acceptedTerms}
-              onChange={(e) => setAcceptedTerms(e.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-            />
-            <span>Accept termenii si conditiile.</span>
-          </label>
+          <div className="space-y-2">
+            <label
+              className={`flex items-start gap-2 text-sm ${
+                showValidation && !acceptedTerms ? 'text-red-700' : 'text-gray-700'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+              />
+              <span>Accept termenii si conditiile.</span>
+            </label>
+            <label className="flex items-start gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={newsletterOptIn}
+                onChange={(e) => setNewsletterOptIn(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+              />
+              <span>Ma alatur newsletterului/comunitatii CABN.</span>
+            </label>
+          </div>
         )}
 
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
@@ -393,7 +409,7 @@ function AddPropertyPageContent() {
                     <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-red-500" />
                     <span>
                       <span className="font-medium">{f.name}</span>
-                      {f.reason ? ` ??? ${f.reason === 'file_too_large' ? 'fisier prea mare' : f.reason}` : ''}
+                      {f.reason ? ` - ${f.reason === 'file_too_large' ? 'fisier prea mare' : f.reason}` : ''}
                     </span>
                   </li>
                 ))}
@@ -408,15 +424,28 @@ function AddPropertyPageContent() {
 
 export default function AddPropertyPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="max-w-6xl 2xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-10 min-h-[60vh]">
-          <h1 className="text-2xl font-semibold mb-2">Se incarca...</h1>
-          <p className="text-gray-600">Pregatim formularul de publicare.</p>
-        </div>
-      }
-    >
-      <AddPropertyPageContent />
-    </Suspense>
+    <>
+      <section className="max-w-6xl 2xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-8">
+        <h1 className="text-3xl font-semibold text-emerald-950">Propune o cabana pe CABN.ro</h1>
+        <p className="mt-3 text-gray-700 max-w-3xl">
+          Formularul de mai jos este destinat proprietarilor care doresc evaluare si publicare in
+          catalogul CABN.
+        </p>
+        <p className="mt-2 text-gray-700 max-w-3xl">
+          Daca ai primit un link de acces, poti trimite proprietatea cu imagini si detalii complete
+          in cateva minute.
+        </p>
+      </section>
+      <Suspense
+        fallback={
+          <div className="max-w-6xl 2xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-10 min-h-[60vh]">
+            <h2 className="text-2xl font-semibold mb-2">Se incarca...</h2>
+            <p className="text-gray-600">Pregatim formularul de publicare.</p>
+          </div>
+        }
+      >
+        <AddPropertyPageContent />
+      </Suspense>
+    </>
   );
 }

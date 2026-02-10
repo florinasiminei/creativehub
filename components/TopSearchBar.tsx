@@ -47,15 +47,6 @@ const typeLabels: Record<SearchSuggestionType, string> = {
   facilitate: "Facilitate",
 };
 
-const typeOrder: SearchSuggestionType[] = [
-  "destinatie",
-  "localitate",
-  "judet",
-  "regiune",
-  "proprietate",
-  "facilitate",
-];
-
 function getSuggestionIcon(type: SearchSuggestionType) {
   switch (type) {
     case "destinatie":
@@ -72,6 +63,12 @@ function getSuggestionIcon(type: SearchSuggestionType) {
     default:
       return Sparkles;
   }
+}
+
+function shouldHideLocationContext(
+  suggestion: SearchSuggestion
+) {
+  return suggestion.type === "judet" || suggestion.type === "regiune";
 }
 
 function highlightText(
@@ -207,12 +204,7 @@ const TopSearchBar = ({
       map.get(suggestie.type)!.push(suggestie);
     });
 
-    return typeOrder
-      .map((type) => ({
-        type,
-        items: map.get(type) ?? [],
-      }))
-      .filter((group) => group.items.length > 0);
+    return Array.from(map.entries()).map(([type, items]) => ({ type, items }));
   }, [locatiiSugestii]);
 
   const suggestionIndexMap = useMemo(() => {
@@ -279,6 +271,10 @@ const TopSearchBar = ({
                         const globalIndex =
                           suggestionIndexMap.get(suggestie.id) ?? -1;
                         const isActive = globalIndex === sugestieIndex;
+                        const hideContext = shouldHideLocationContext(suggestie);
+                        const subtitlePrefix = hideContext
+                          ? ""
+                          : suggestie.context || typeLabels[suggestie.type];
                         const facilityIcon =
                           suggestie.type === "facilitate"
                             ? facilityIconMap.get(suggestie.facilityId || "") ||
@@ -313,7 +309,7 @@ const TopSearchBar = ({
                                 )}
                               </p>
                               <p className="text-xs text-gray-500 dark:text-gray-400">
-                                {suggestie.context || typeLabels[suggestie.type]} •{" "}
+                                {subtitlePrefix ? `${subtitlePrefix} - ` : ""}
                                 {suggestie.count}{" "}
                                 {suggestie.count === 1 ? "rezultat" : "rezultate"}
                               </p>

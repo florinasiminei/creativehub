@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import LoadingLogo from "@/components/LoadingLogo";
 import PropertyImageGrid from "@/components/listing/PropertyImageGrid";
 import { resolveFacilityIcon } from "@/lib/facilityIcons";
+import { resolveListingTypeIcon } from "@/lib/listingTypeIcons";
 import { MapPin, Users } from "lucide-react";
 
 type Facility = { id: string; name: string };
@@ -36,6 +37,20 @@ type Props = {
 export default function ListingClient({ data }: Props) {
   const [showAllFacilities, setShowAllFacilities] = useState(false);
   const [facilityLimit, setFacilityLimit] = useState(8);
+  const typeLabelMap: Record<string, string> = {
+    cabana: "Cabană",
+    "a-frame": "A-Frame",
+    pensiune: "Pensiune",
+    apartament: "Apartament",
+    "tiny house": "Tiny house",
+    "casa de vacanta": "Casă de vacanță",
+  };
+  const normalizedType = data.type.trim().toLowerCase();
+  const typeLabel = typeLabelMap[normalizedType] ?? normalizedType
+    .split(/[\s-]+/)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1).toLowerCase())
+    .join(normalizedType.includes("-") ? "-" : " ");
   const cityLabel = data.sat ? `${data.city} (${data.sat})` : data.city;
   const locationLabel = [cityLabel, data.judet].filter(Boolean).join(", ") || "România";
   const fallbackWhatsappNumber = String(process.env.NEXT_PUBLIC_WHATSAPP_PHONE || "");
@@ -76,13 +91,22 @@ export default function ListingClient({ data }: Props) {
 
               <div className="text-gray-600 dark:text-gray-400 mb-6 flex flex-wrap items-center gap-x-4 gap-y-1 text-base">
                 <span className="flex items-center gap-1.5">
-                  <MapPin size={16} /> {locationLabel}
+                  <span className="text-emerald-600 dark:text-emerald-400">
+                    <MapPin size={16} />
+                  </span>
+                  {locationLabel}
                 </span>
                 <span>|</span>
-                <span>{data.type}</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="text-emerald-600 dark:text-emerald-400">{resolveListingTypeIcon(data.type)}</span>
+                  {typeLabel}
+                </span>
                 <span>|</span>
                 <span className="flex items-center gap-1.5">
-                  <Users size={16} /> {data.capacity} persoane
+                  <span className="text-emerald-600 dark:text-emerald-400">
+                    <Users size={16} />
+                  </span>
+                  {data.capacity} persoane
                 </span>
               </div>
 

@@ -99,13 +99,29 @@ export default function EditPropertyPage({ params }: any) {
   useEffect(() => {
     let mounted = true;
     async function load() {
+      if (isClient && !listingToken) return;
       try {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (listingToken) headers['x-listing-token'] = listingToken;
+
         const resp = await fetch('/api/listing-get', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ id }),
         });
-        const { listing, images: imgs, facilities: selected } = await resp.json();
+        const body = await resp.json().catch(() => null);
+
+        if (!resp.ok) {
+          if (!mounted) return;
+          if (resp.status === 401) {
+            setMessageTone('error');
+            setMessage('Link-ul de acces este invalid sau a expirat.');
+            return;
+          }
+          throw new Error(body?.error || 'Nu am putut incarca proprietatea.');
+        }
+
+        const { listing, images: imgs, facilities: selected } = body || {};
         const { data: facilities } = await supabase.from('facilities').select('id, name');
 
         if (!mounted) return;
@@ -140,7 +156,9 @@ export default function EditPropertyPage({ params }: any) {
             county: judetValue,
             city: localitate,
           });
+          setNewsletterOptIn(Boolean((listing as any).newsletter_opt_in));
         }
+        setMessage(null);
 
         if (facilities) setFacilitiesList(sortFacilitiesByPriority(facilities as FacilityOption[]));
         if (selected) setSelectedFacilities(Array.isArray(selected) ? selected : (selected || []));
@@ -152,7 +170,7 @@ export default function EditPropertyPage({ params }: any) {
 
     load();
     return () => { mounted = false; };
-  }, [id]);
+  }, [id, isClient, listingToken]);
 
   useEffect(() => {
     setAcceptedTerms(!isClient);
@@ -184,7 +202,7 @@ export default function EditPropertyPage({ params }: any) {
         // ignore storage issues
       }
     }
-  }, [tokenParam, searchParams, router, listingToken, id]);
+  }, [tokenParam, searchParams, router, listingToken, id, isClient]);
 
   const handleChange = (k: keyof FormData, v: string) => {
     setFormData(prev => ({ ...prev, [k]: v }));
@@ -200,9 +218,9 @@ export default function EditPropertyPage({ params }: any) {
   const { error: validationError, invalidFields, imagesInvalid } = useListingForm({
     requiredFields: [
       { key: 'titlu', value: formData.titlu, label: 'Titlu' },
-      { key: 'judet', value: formData.judet, label: 'Jude?' },
+      { key: 'judet', value: formData.judet, label: 'Judet' },
       { key: 'localitate', value: formData.localitate, label: 'Localitate' },
-      { key: 'pret', value: formData.pret, label: 'Pre?' },
+      { key: 'pret', value: formData.pret, label: 'Pret' },
       { key: 'capacitate', value: formData.capacitate, label: 'Capacitate' },
       { key: 'telefon', value: formData.telefon, label: 'Telefon' },
     ],
@@ -215,7 +233,7 @@ export default function EditPropertyPage({ params }: any) {
     description: formData.descriere,
     descriptionKey: 'descriere',
     descriptionMin: 200,
-    descriptionMax: 320,
+    descriptionMax: 520,
     enforceDescription: isClient,
   });
 
@@ -289,6 +307,9 @@ export default function EditPropertyPage({ params }: any) {
         lat: hasCoords ? Number(locationData?.latitude ?? null) : null,
         lng: hasCoords ? Number(locationData?.longitude ?? null) : null,
       };
+      if (isClient) {
+        (updatePayload as any).newsletter_opt_in = newsletterOptIn;
+      }
       await updateListing(updatePayload, listingToken);
 
       // Persist image order
@@ -402,7 +423,7 @@ export default function EditPropertyPage({ params }: any) {
             }
           }}
           descriptionMin={200}
-          descriptionMax={320}
+          descriptionMax={520}
           descriptionRequired={isClient}
         />
 

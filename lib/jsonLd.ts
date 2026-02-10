@@ -172,6 +172,19 @@ export function buildPropertyBreadcrumbJsonLd({
   };
 }
 
+export function buildBreadcrumbJsonLd(items: Array<{ name: string; item: string }>) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: items.map((entry, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: entry.name,
+      item: entry.item,
+    })),
+  };
+}
+
 
 export function buildFaqJsonLd(pageUrl: string, faqs: Array<{ q: string; a: string }>) {
   if (!faqs || faqs.length === 0) return null;

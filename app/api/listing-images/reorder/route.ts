@@ -18,6 +18,10 @@ export async function POST(req: Request) {
     if (!listingId || !Array.isArray(ids)) {
       return NextResponse.json({ error: 'Missing listingId or ids' }, { status: 400 });
     }
+    const normalizedIds = ids.map((id) => String(id)).filter(Boolean);
+    if (normalizedIds.length === 0) {
+      return NextResponse.json({ error: 'Missing image ids' }, { status: 400 });
+    }
 
     const role = getDraftRoleFromRequest(req);
     const hasRole = role === 'admin' || role === 'staff';
@@ -29,9 +33,29 @@ export async function POST(req: Request) {
       }
     }
 
-    for (let i = 0; i < ids.length; i++) {
-      const id = ids[i];
-      await supabaseAdmin.from('listing_images').update({ display_order: i }).eq('id', id);
+    const uniqueIds = Array.from(new Set(normalizedIds));
+    const { data: ownedRows, error: ownedErr } = await supabaseAdmin
+      .from('listing_images')
+      .select('id')
+      .eq('listing_id', String(listingId))
+      .in('id', uniqueIds);
+    if (ownedErr) {
+      return NextResponse.json({ error: ownedErr.message }, { status: 500 });
+    }
+    if ((ownedRows || []).length !== uniqueIds.length) {
+      return NextResponse.json({ error: 'Invalid image ids for listing' }, { status: 400 });
+    }
+
+    for (let i = 0; i < uniqueIds.length; i++) {
+      const id = uniqueIds[i];
+      const { error } = await supabaseAdmin
+        .from('listing_images')
+        .update({ display_order: i })
+        .eq('id', id)
+        .eq('listing_id', String(listingId));
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ ok: true });

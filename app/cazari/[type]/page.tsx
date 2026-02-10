@@ -4,11 +4,11 @@ import ListingsGrid from '@/components/listing/ListingGrid';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { mapListingSummary } from '@/lib/transformers';
 import { getTypeBySlug, LISTING_TYPES } from '@/lib/listingTypes';
-import { buildListingPageJsonLd } from '@/lib/jsonLd';
+import { buildBreadcrumbJsonLd, buildListingPageJsonLd } from '@/lib/jsonLd';
 import type { ListingRaw } from '@/lib/types';
 import type { Cazare } from '@/lib/utils';
 
-export const revalidate = 60 * 60 * 12;
+export const revalidate = 60 * 60 * 6;
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cabn.ro';
 
@@ -20,12 +20,25 @@ export async function generateStaticParams() {
   return LISTING_TYPES.map((type) => ({ type: type.slug }));
 }
 
+async function typeHasListings(typeValue: string): Promise<boolean> {
+  const supabaseAdmin = getSupabaseAdmin();
+  const { count, error } = await supabaseAdmin
+    .from('listings')
+    .select('id', { count: 'exact', head: true })
+    .eq('is_published', true)
+    .eq('type', typeValue);
+
+  if (error) return true;
+  return Number(count || 0) > 0;
+}
+
 export async function generateMetadata({ params }: PageProps) {
   const listingType = getTypeBySlug(params.type);
   if (!listingType) return {};
-  const title = `${listingType.label} in Romania | CABN.ro`;
+  const title = `${listingType.label} in Romania`;
   const description = `Descopera ${listingType.label.toLowerCase()} atent selectate, cu verificare foto/video si rezervare direct la gazda.`;
   const canonical = `/cazari/${listingType.slug}`;
+  const hasListings = await typeHasListings(listingType.value);
   return {
     title,
     description,
@@ -37,6 +50,7 @@ export async function generateMetadata({ params }: PageProps) {
       description,
       url: `${siteUrl}${canonical}`,
     },
+    robots: hasListings ? undefined : { index: false, follow: true },
   };
 }
 
@@ -88,7 +102,7 @@ export default async function TypePage({ params }: PageProps) {
   const pageUrl = `${siteUrl}/cazari/${listingType.slug}`;
   const description = `Listari curate, cu verificare vizuala si contact direct la gazda. Gaseste cele mai frumoase ${listingType.label.toLowerCase()} din Romania.`;
 
-  const jsonLd = buildListingPageJsonLd({
+  const listingJsonLd = buildListingPageJsonLd({
     siteUrl,
     pageUrl,
     typeLabel: listingType.label,
@@ -103,10 +117,18 @@ export default async function TypePage({ params }: PageProps) {
       priceRange: String(l.price || ''),
     })),
   });
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "Acasa", item: siteUrl },
+    { name: listingType.label, item: `${siteUrl}/cazari/${listingType.slug}` },
+  ]);
+  const jsonLdScripts: Record<string, unknown>[] = [
+    breadcrumbJsonLd,
+    ...listingJsonLd.filter((obj) => (obj as any)?.["@type"] !== "BreadcrumbList"),
+  ];
 
   return (
     <>
-      {jsonLd.map((obj, i) => (
+      {jsonLdScripts.map((obj, i) => (
         <script
           key={i}
           type="application/ld+json"
@@ -115,6 +137,11 @@ export default async function TypePage({ params }: PageProps) {
       ))}
       <main className="min-h-screen px-4 lg:px-6 py-10">
         <header className="max-w-4xl mx-auto text-center">
+          <nav aria-label="Breadcrumb" className="text-sm text-emerald-800/80">
+            <Link href="/" className="hover:underline">Acasa</Link>
+            <span className="mx-2">/</span>
+            <span>{listingType.label}</span>
+          </nav>
           <p className="text-sm uppercase tracking-[0.2em] text-emerald-700 font-semibold">
             CABN.ro
           </p>
@@ -122,6 +149,9 @@ export default async function TypePage({ params }: PageProps) {
             {listingType.label} verificate
           </h1>
           <p className="text-gray-600 mt-3">{description}</p>
+          <p className="text-gray-600/90 mt-2 max-w-2xl mx-auto">
+            Rezultatele includ proprietati publicate cu date esentiale pentru comparatie rapida.
+          </p>
           <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
               href="/descoperaCABN#contact"

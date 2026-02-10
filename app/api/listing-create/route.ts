@@ -69,6 +69,8 @@ export async function POST(req: Request) {
     const parsedCamere = toNumber(camere);
     const parsedPaturi = toNumber(paturi);
     const parsedBai = toNumber(bai);
+    const hasNewsletterOptIn = Object.prototype.hasOwnProperty.call(body, 'newsletter_opt_in');
+    const newsletterOptIn = Boolean(body.newsletter_opt_in);
 
     const normalizeCapacity = (value: unknown) => {
       if (value === null || value === undefined) return '';
@@ -103,6 +105,9 @@ export async function POST(req: Request) {
       is_published: false,
       edit_token: generateListingToken(),
     };
+    if (hasNewsletterOptIn) {
+      payload.newsletter_opt_in = newsletterOptIn;
+    }
 
     if (Object.prototype.hasOwnProperty.call(body, 'display_order')) {
       payload.display_order = display_order ?? null;
@@ -125,12 +130,16 @@ export async function POST(req: Request) {
     }
 
     let { data, error } = await supabaseAdmin.from('listings').insert(payload).select('id, edit_token').single();
-    if (error && /lat|lng|latitude|longitude|search_radius|camere|paturi|bai/i.test(error.message || '')) {
+    if (error && /lat|lng|latitude|longitude|search_radius|camere|paturi|bai|newsletter_opt_in/i.test(error.message || '')) {
       const fallbackPayload = { ...payload };
       const message = String(error.message || '');
+      if (/newsletter_opt_in/i.test(message)) {
+        delete fallbackPayload.newsletter_opt_in;
+      }
       if (/search_radius/i.test(message) && !/lat|lng|latitude|longitude/i.test(message)) {
         delete fallbackPayload.search_radius;
-      } else {
+      }
+      if (/lat|lng|latitude|longitude/i.test(message)) {
         delete fallbackPayload.lat;
         delete fallbackPayload.lng;
         delete fallbackPayload.search_radius;

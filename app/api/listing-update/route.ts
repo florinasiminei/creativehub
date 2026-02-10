@@ -50,6 +50,9 @@ export async function POST(request: Request) {
     if (description !== undefined) updateData.description = description;
     if (type !== undefined) updateData.type = type;
     if (is_published !== undefined) updateData.is_published = is_published;
+    if (Object.prototype.hasOwnProperty.call(body, 'newsletter_opt_in')) {
+      updateData.newsletter_opt_in = Boolean((body as any).newsletter_opt_in);
+    }
     const toNumber = (value: unknown) => {
       if (value === null || value === undefined) return null;
       if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -93,12 +96,16 @@ export async function POST(request: Request) {
     }
 
     let { error: upErr } = await supabaseAdmin.from('listings').update(updateData).eq('id', id);
-    if (upErr && /lat|lng|latitude|longitude|search_radius|camere|paturi|bai/i.test(upErr.message || '')) {
+    if (upErr && /lat|lng|latitude|longitude|search_radius|camere|paturi|bai|newsletter_opt_in/i.test(upErr.message || '')) {
       const fallbackUpdate = { ...updateData };
       const message = String(upErr.message || '');
+      if (/newsletter_opt_in/i.test(message)) {
+        delete fallbackUpdate.newsletter_opt_in;
+      }
       if (/search_radius/i.test(message) && !/lat|lng|latitude|longitude/i.test(message)) {
         delete fallbackUpdate.search_radius;
-      } else {
+      }
+      if (/lat|lng|latitude|longitude/i.test(message)) {
         delete fallbackUpdate.lat;
         delete fallbackUpdate.lng;
         delete fallbackUpdate.search_radius;

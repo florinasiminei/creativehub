@@ -8,9 +8,10 @@ import type { Filters, FacilityOption } from "@/lib/types";
 import Slider from "rc-slider";
 import "rc-slider/assets/index.css";
 import { ChevronDown } from "lucide-react";
-import { resolveFacilityIcon, normalizeFacilityName } from "@/lib/facilityIcons";
+import { resolveFacilityIcon } from "@/lib/facilityIcons";
 import { LISTING_TYPES } from "@/lib/listingTypes";
 import { resolveListingTypeIcon } from "@/lib/listingTypeIcons";
+import { groupFacilitiesByCategory } from "@/lib/facilityGroups";
 
 type SearchModalProps = {
   isOpen: boolean;
@@ -28,61 +29,6 @@ type SearchModalProps = {
 const Range = Slider.Range;
 const MAX_COUNTER_VALUE = 16;
 type CounterKey = "camere" | "paturi" | "bai";
-
-const FACILITY_CATEGORIES: Array<{ label: string; keys: string[] }> = [
-  {
-    label: "Relaxare",
-    keys: ["ciubar jacuzzi", "ciubar", "jacuzzi", "sauna", "piscina", "firepit", "hamac"],
-  },
-  {
-    label: "Exterior",
-    keys: [
-      "gratar bbq",
-      "bbq",
-      "gratar",
-      "terasa balcon",
-      "terasa",
-      "balcon",
-      "foisor",
-      "parcare",
-    ],
-  },
-  {
-    label: "Interior",
-    keys: [
-      "bucatarie chicineta",
-      "bucatarie",
-      "chicineta",
-      "aer conditionat",
-      "incalzire",
-      "tv smart tv",
-      "tv",
-      "smart tv",
-      "uscator de rufe",
-      "masina de spalat rufe",
-      "masina de spalat",
-      "semineu soba",
-      "semineu",
-      "soba",
-    ],
-  },
-  {
-    label: "Digital",
-    keys: ["wifi", "wi fi", "wi-fi", "spatiu de lucru dedicat", "birou"],
-  },
-  {
-    label: "Animale",
-    keys: ["accepta animale", "pet friendly", "animale permise"],
-  },
-  {
-    label: "Servicii",
-    keys: ["mic dejun", "mic dejun inclus", "breakfast"],
-  },
-  {
-    label: "Peisaj",
-    keys: ["priveliste", "langa apa", "la munte"],
-  },
-];
 
 const counterConfig: Array<{ key: CounterKey; label: string }> = [
   { key: "camere", label: "Camere" },
@@ -157,47 +103,10 @@ const SearchModal: React.FC<SearchModalProps> = ({
     return [{ ...baseStyle }, { ...baseStyle }];
   }, [isDarkMode]);
 
-  const categorizedFacilities = useMemo(() => {
-    if (!facilitiesList.length) return [];
-
-    const normalizedFacilities = facilitiesList.map((facility) => {
-      const normalized = normalizeFacilityName(facility.name);
-      return {
-        facility,
-        normalized,
-      };
-    });
-
-    const used = new Set<string>();
-    const groups: Array<{ label: string; facilities: FacilityOption[] }> = [];
-
-    FACILITY_CATEGORIES.forEach(({ label, keys }) => {
-      const entries: FacilityOption[] = [];
-      keys.forEach((raw) => {
-        const key = normalizeFacilityName(raw);
-        normalizedFacilities.forEach(({ facility, normalized }) => {
-          if (used.has(facility.id)) return;
-          if (!key) return;
-          if (normalized.includes(key)) {
-            entries.push(facility);
-            used.add(facility.id);
-          }
-        });
-      });
-      if (entries.length > 0) {
-        groups.push({ label, facilities: entries });
-      }
-    });
-
-    const leftovers = normalizedFacilities
-      .map(({ facility }) => facility)
-      .filter((facility) => !used.has(facility.id));
-    if (leftovers.length > 0) {
-      groups.push({ label: "Alte facilitati", facilities: leftovers });
-    }
-
-    return groups;
-  }, [facilitiesList]);
+  const categorizedFacilities = useMemo(
+    () => groupFacilitiesByCategory(facilitiesList),
+    [facilitiesList]
+  );
 
   const toggleFacility = (id: string) => {
     setFilters((prev) => {
@@ -411,7 +320,7 @@ const SearchModal: React.FC<SearchModalProps> = ({
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Facilitati</h3>
                       <div className="mt-0.5 space-y-0">
                         {categorizedFacilities.map((category) => (
-                          <div key={category.label} className="rounded-2xl p-4">
+                          <div key={category.key} className="rounded-2xl p-4">
                             <span className="text-base font-semibold text-gray-900 dark:text-gray-100">
                               {category.label}
                             </span>

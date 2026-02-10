@@ -69,10 +69,19 @@ async function getHomeData() {
 export default async function HomePage() {
   const { listings, facilities } = await getHomeData();
   return (
-    <Suspense
-      fallback={<div className="flex min-h-[60vh] items-center justify-center">Se incarca...</div>}
-    >
-      <HomeClient initialCazari={listings} initialFacilities={facilities} />
-    </Suspense>
+    <>
+      <section className="sr-only">
+        <h1>Cabane si cazari in natura, direct de la proprietari</h1>
+        <p>
+          Descopera cazari selectate din Romania si filtreaza rapid dupa locatie, tip, pret si
+          facilitati.
+        </p>
+      </section>
+      <Suspense
+        fallback={<div className="flex min-h-[60vh] items-center justify-center">Se incarca...</div>}
+      >
+        <HomeClient initialCazari={listings} initialFacilities={facilities} />
+      </Suspense>
+    </>
   );
 }

@@ -2,8 +2,10 @@
 import { FaFacebookF, FaInstagram, FaTiktok, FaWhatsapp, FaPhoneAlt, FaEnvelope } from "react-icons/fa";
 import ContactForm from "@/components/forms/ContactForm";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cabn.ro";
+
 export const metadata: Metadata = {
-  title: "Contact CABN | Cereri pentru cabane și pensiuni",
+  title: "Contact CABN",
   description:
     "Scrie echipei CABN pentru marketing, foto-video și listări de cabane și pensiuni. Răspundem rapid cu o soluție clară.",
   alternates: {
@@ -13,7 +15,7 @@ export const metadata: Metadata = {
     title: "Contact CABN",
     description:
       "Contactează echipa CABN pentru marketing, foto-video și listări de cabane și pensiuni.",
-    url: "https://cabn.ro/contact",
+    url: `${siteUrl}/contact`,
     siteName: "cabn.ro",
     locale: "ro_RO",
     type: "website",

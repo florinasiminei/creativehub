@@ -44,28 +44,48 @@ export function useFuzzyCazari(cazari: Cazare[], filters: Filters) {
     if (filters.keyword.trim()) {
       const keyword = filters.keyword.trim();
       const normalizedKeyword = normalizeRegionText(keyword);
-      const matchedRegion = allRegions.find((region) => {
-        const nameNorm = normalizeRegionText(region.name);
-        const slugNorm = normalizeRegionText(region.slug);
-        return (
-          nameNorm === normalizedKeyword ||
-          slugNorm === normalizedKeyword ||
-          nameNorm.includes(normalizedKeyword)
-        );
+      const hasExactCounty = result.some((c) => {
+        const { county } = parseLocationLabel(c.locatie);
+        return normalizeRegionText(county) === normalizedKeyword;
       });
 
-      if (matchedRegion) {
+      if (hasExactCounty) {
         result = result.filter((c) => {
-          const { city, county } = parseLocationLabel(c.locatie);
-          const region = resolveRegionForLocation(city, county);
-          return region?.slug === matchedRegion.slug;
+          const { county } = parseLocationLabel(c.locatie);
+          return normalizeRegionText(county) === normalizedKeyword;
         });
       } else {
-        const fuse = new Fuse(result, {
-          keys: ["title", "locatie", "facilitiesNames"],
-          threshold: 0.35,
+        const hasExactCity = result.some((c) => {
+          const { city } = parseLocationLabel(c.locatie);
+          return normalizeRegionText(city) === normalizedKeyword;
         });
-        result = fuse.search(keyword).map((r) => r.item);
+
+        if (hasExactCity) {
+          result = result.filter((c) => {
+            const { city } = parseLocationLabel(c.locatie);
+            return normalizeRegionText(city) === normalizedKeyword;
+          });
+        } else {
+          const matchedRegion = allRegions.find((region) => {
+            const nameNorm = normalizeRegionText(region.name);
+            const slugNorm = normalizeRegionText(region.slug);
+            return nameNorm === normalizedKeyword || slugNorm === normalizedKeyword;
+          });
+
+          if (matchedRegion) {
+            result = result.filter((c) => {
+              const { city, county } = parseLocationLabel(c.locatie);
+              const region = resolveRegionForLocation(city, county);
+              return region?.slug === matchedRegion.slug;
+            });
+          } else {
+            const fuse = new Fuse(result, {
+              keys: ["title", "locatie", "facilitiesNames"],
+              threshold: 0.35,
+            });
+            result = fuse.search(keyword).map((r) => r.item);
+          }
+        }
       }
     }
 

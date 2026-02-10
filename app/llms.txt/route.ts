@@ -1,10 +1,10 @@
 ﻿import type { NextRequest } from "next/server";
 
-const DEFAULT_SITE_URL = "https://cabn.ro";
+const DEFAULT_SITE_URL = "https://www.cabn.ro";
 
 export function GET(_request: NextRequest) {
   const rawUrl = process.env.NEXT_PUBLIC_SITE_URL || DEFAULT_SITE_URL;
-  const siteUrl = rawUrl.replace(/^https?:\/\/www\./, "https://");
+  const siteUrl = rawUrl.replace(/\/$/, "");
 
   const body = [
     "# llms.txt",

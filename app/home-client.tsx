@@ -17,7 +17,7 @@ import { getTypeLabel } from "@/lib/listingTypes";
 import { Cazare } from "@/lib/utils";
 import type { FacilityOption, Filters, ListingRaw, SearchSuggestion } from "@/lib/types";
 import { supabase } from "@/lib/supabaseClient";
-import { parseLocationLabel, resolveRegionForLocation } from "@/lib/regions";
+import { normalizeRegionText, parseLocationLabel, resolveRegionForLocation } from "@/lib/regions";
 
 function parseCapacity(capacity: string | number): { min: number; max: number } {
   const str = String(capacity).trim();
@@ -78,12 +78,14 @@ type HomeClientProps = {
   initialCazari?: Cazare[];
   initialFacilities?: FacilityOption[];
   pageTitle?: string;
+  allowClientBootstrapFetch?: boolean;
 };
 
 export default function Home({
   initialCazari = [],
   initialFacilities = [],
   pageTitle,
+  allowClientBootstrapFetch = true,
 }: HomeClientProps) {
   const searchParams = useSearchParams();
   const [cazari, setCazari] = useState<Cazare[]>(initialCazari);
@@ -132,7 +134,7 @@ export default function Home({
   const [persoaneRange, setPersoaneRange] = useState({ min: 1, max: 10 });
   const [locatiiSugestii, setLocatiiSugestii] = useState<SearchSuggestion[]>([]);
   const [sugestieIndex, setSugestieIndex] = useState(-1);
-  const [loading, setLoading] = useState(initialCazari.length === 0);
+  const [loading, setLoading] = useState(allowClientBootstrapFetch && initialCazari.length === 0);
   const [error, setError] = useState<string | null>(null);
   const [showSubmittedNotice, setShowSubmittedNotice] = useState(false);
   const [submittedMessage, setSubmittedMessage] = useState("");
@@ -178,7 +180,13 @@ export default function Home({
   }, [initialCazari, setFilters]);
 
   useEffect(() => {
-    if (initialCazari.length > 0) return;
+    if (!allowClientBootstrapFetch && initialCazari.length === 0) {
+      setLoading(false);
+    }
+  }, [allowClientBootstrapFetch, initialCazari.length]);
+
+  useEffect(() => {
+    if (!allowClientBootstrapFetch || initialCazari.length > 0) return;
     let cancelled = false;
 
     async function fetchCazari() {
@@ -247,7 +255,7 @@ export default function Home({
     return () => {
       cancelled = true;
     };
-  }, [setFilters, initialCazari.length]);
+  }, [setFilters, initialCazari.length, allowClientBootstrapFetch]);
 
   useEffect(() => {
     if (initialFacilities.length > 0) return;
@@ -296,7 +304,6 @@ export default function Home({
       facilityId: string;
     };
 
-    const destinatii = new Map<string, LocationEntry>();
     const localitati = new Map<string, LocationEntry>();
     const judete = new Map<string, LocationEntry>();
     const regiuni = new Map<string, LocationEntry>();
@@ -358,17 +365,6 @@ export default function Home({
           facilityId: undefined,
           aliases,
         });
-      }
-
-      if (propertyLocation) {
-        const entry = ensureLocationEntry(
-          destinatii,
-          propertyLocation.toLowerCase(),
-          propertyLocation,
-          locationParts.slice(1).join(", ") || undefined,
-          locationParts
-        );
-        entry.ids.add(cazare.id);
       }
 
       if (locationParts[0]) {
@@ -443,7 +439,7 @@ export default function Home({
     });
 
     const toRecords = (
-      type: "destinatie" | "localitate" | "judet" | "regiune",
+      type: "localitate" | "judet" | "regiune",
       source: Map<string, LocationEntry>
     ) => {
       source.forEach((entry, key) => {
@@ -464,7 +460,6 @@ export default function Home({
       });
     };
 
-    toRecords("destinatie", destinatii);
     toRecords("localitate", localitati);
     toRecords("judet", judete);
     toRecords("regiune", regiuni);
@@ -495,6 +490,7 @@ export default function Home({
         { name: "aliases", weight: 0.1 },
       ],
       includeMatches: true,
+      includeScore: true,
       threshold: 0.4,
       ignoreLocation: true,
       minMatchCharLength: 1,
@@ -511,8 +507,11 @@ export default function Home({
       return;
     }
 
-    const results = suggestionFuse.search(val, { limit: 12 }).map((result) => {
+    const queryNorm = normalizeRegionText(val);
+
+    const ranked = suggestionFuse.search(val, { limit: 20 }).map((result) => {
       const { item, matches } = result;
+      const labelNorm = normalizeRegionText(item.label);
 
       let highlightRanges: Array<[number, number]> = [];
 
@@ -529,11 +528,87 @@ export default function Home({
       }
 
       const { aliases, ...suggestion } = item;
+      const exact = labelNorm === queryNorm;
+      const startsWith = !exact && labelNorm.startsWith(queryNorm);
+      const contains = !exact && !startsWith && labelNorm.includes(queryNorm);
+      const score = typeof result.score === "number" ? result.score : 1;
+
       return {
         ...suggestion,
         highlightRanges,
+        _exact: exact,
+        _startsWith: startsWith,
+        _contains: contains,
+        _score: score,
       };
     });
+
+    const hasAdminIntent = ranked.some(
+      (item) =>
+        (item.type === "judet" || item.type === "localitate" || item.type === "regiune") &&
+        (item._exact || item._startsWith)
+    );
+
+    const hasPropertyIntent = ranked.some(
+      (item) => item.type === "proprietate" && (item._exact || item._startsWith)
+    );
+
+    const typePriority: Record<SearchSuggestion["type"], number> = hasAdminIntent
+      ? {
+          judet: 0,
+          localitate: 1,
+          regiune: 2,
+          proprietate: 3,
+          facilitate: 4,
+          destinatie: 5,
+        }
+      : hasPropertyIntent
+      ? {
+          proprietate: 0,
+          destinatie: 1,
+          localitate: 2,
+          judet: 3,
+          regiune: 4,
+          facilitate: 5,
+        }
+      : {
+          localitate: 0,
+          judet: 1,
+          regiune: 2,
+          proprietate: 3,
+          destinatie: 4,
+          facilitate: 5,
+        };
+
+    const results = ranked
+      .sort((a, b) => {
+        const aRank = [
+          a._exact ? 0 : 1,
+          a._startsWith ? 0 : 1,
+          a._contains ? 0 : 1,
+          typePriority[a.type],
+          a._score,
+          -a.count,
+          a.label.length,
+        ] as const;
+        const bRank = [
+          b._exact ? 0 : 1,
+          b._startsWith ? 0 : 1,
+          b._contains ? 0 : 1,
+          typePriority[b.type],
+          b._score,
+          -b.count,
+          b.label.length,
+        ] as const;
+
+        for (let i = 0; i < aRank.length; i++) {
+          if (aRank[i] < bRank[i]) return -1;
+          if (aRank[i] > bRank[i]) return 1;
+        }
+        return 0;
+      })
+      .slice(0, 12)
+      .map(({ _exact, _startsWith, _contains, _score, ...suggestion }) => suggestion);
 
     setLocatiiSugestii(results);
   };
@@ -554,7 +629,7 @@ export default function Home({
   };
 
   const locationSuggestionTypes = useMemo(
-    () => new Set<SearchSuggestion["type"]>(["destinatie", "localitate", "judet", "regiune"]),
+    () => new Set<SearchSuggestion["type"]>(["localitate", "judet", "regiune"]),
     []
   );
 

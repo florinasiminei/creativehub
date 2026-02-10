@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import type { Metadata } from "next";
 import { Check, Zap, Target, Users, Camera, Globe } from "lucide-react";
 
@@ -293,7 +293,7 @@ export default function AboutPage() {
                   <h4 className="font-semibold text-sm sm:text-base">Rezultate Concrete</h4>
                 </div>
                 <p className="text-xs sm:text-sm text-zinc-700 dark:text-zinc-300">
-                  Doar mărime — creșterea rezervărilor și a vizibilității sunt metricile noastre.
+                  Doar rezultate măsurabile — creșterea rezervărilor și a vizibilității sunt metricile noastre.
                 </p>
               </div>
             </div>

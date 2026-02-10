@@ -75,6 +75,10 @@ export default function DraftsClient({ listings, role, inviteToken = null, siteU
   };
 
   const initialIds = useMemo(() => listings.map((item) => item.id), [listings]);
+  const publishedCount = useMemo(
+    () => ordered.filter((item) => item.isPublished).length,
+    [ordered]
+  );
   const isDirty = useMemo(() => {
     if (ordered.length != initialIds.length) return true;
     return ordered.some((item, index) => item.id != initialIds[index]);
@@ -207,6 +211,7 @@ export default function DraftsClient({ listings, role, inviteToken = null, siteU
           )}
           <div className="text-sm text-gray-700 dark:text-gray-200 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/40">
             Total: {ordered.length}
+            {canDelete ? ` | Publicate: ${publishedCount}` : ""}
           </div>
         </div>
       </div>

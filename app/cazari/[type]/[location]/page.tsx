@@ -10,7 +10,7 @@ import { getFaqs } from '@/lib/faqData';
 import type { ListingRaw } from '@/lib/types';
 import type { Cazare } from '@/lib/utils';
 
-export const revalidate = 60 * 60 * 12; // 12 hours
+export const revalidate = 60 * 60 * 6; // 6 hours
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cabn.ro';
 
@@ -31,15 +31,45 @@ export async function generateStaticParams() {
   return params;
 }
 
+async function hasListingsForLocation(
+  typeValue: string,
+  region: { counties: string[]; type: string; coreCities?: string[] }
+): Promise<boolean> {
+  const supabaseAdmin = getSupabaseAdmin();
+  const { data, error } = await supabaseAdmin
+    .from('listings')
+    .select('city')
+    .eq('is_published', true)
+    .eq('type', typeValue)
+    .in('judet', region.counties);
+
+  if (error) return true;
+
+  const rows = (data || []) as Array<{ city?: string | null }>;
+  const normalizedMetroCities = region.coreCities
+    ? new Set(region.coreCities.map((c) => normalizeRegionText(c)))
+    : null;
+
+  return rows.some((row) => {
+    const cityNorm = normalizeRegionText(String(row?.city || ""));
+    if (region.type === "metro") {
+      return normalizedMetroCities ? normalizedMetroCities.has(cityNorm) : false;
+    }
+    if (!cityNorm) return true;
+    return !metroCoreCitySet.has(cityNorm);
+  });
+}
+
 export async function generateMetadata({ params }: PageProps) {
   const listingType = getTypeBySlug(params.type);
   const region = findRegionBySlug(params.location);
 
   if (!listingType || !region) return {};
 
-  const title = `Cazare ${listingType.label.toLowerCase()} in ${region.name} | CABN.ro`;
+  const title = `Cazare ${listingType.label.toLowerCase()} in ${region.name}`;
   const description = `Descopera ${listingType.label.toLowerCase()} in ${region.name}, atent selectate, cu rezervare direct la gazda.`;
   const canonical = `/cazari/${listingType.slug}/${region.slug}`;
+  const hasListings = await hasListingsForLocation(listingType.value, region);
 
   return {
     title,
@@ -52,6 +82,7 @@ export async function generateMetadata({ params }: PageProps) {
       description,
       url: `${siteUrl}${canonical}`,
     },
+    robots: hasListings ? undefined : { index: false, follow: true },
   };
 }
 
@@ -164,6 +195,13 @@ export default async function CazariLocationPage({ params }: PageProps) {
       ))}
       <main className="min-h-screen px-4 lg:px-6 py-10">
         <header className="max-w-4xl mx-auto text-center">
+          <nav aria-label="Breadcrumb" className="text-sm text-emerald-800/80">
+            <Link href="/" className="hover:underline">Acasa</Link>
+            <span className="mx-2">/</span>
+            <Link href={`/cazari/${listingType.slug}`} className="hover:underline">{listingType.label}</Link>
+            <span className="mx-2">/</span>
+            <span>{region.name}</span>
+          </nav>
           <p className="text-sm uppercase tracking-[0.2em] text-emerald-700 font-semibold">
             {region.name}
           </p>
@@ -172,6 +210,10 @@ export default async function CazariLocationPage({ params }: PageProps) {
           </h1>
           <p className="text-gray-600 mt-4 max-w-2xl mx-auto">
             {description}
+          </p>
+          <p className="text-gray-600/90 mt-2 max-w-2xl mx-auto">
+            Pagina este actualizata periodic si pastreaza informatia structurala utila pentru
+            indexare si orientarea utilizatorilor.
           </p>
           <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link

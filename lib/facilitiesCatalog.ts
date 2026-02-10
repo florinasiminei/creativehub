@@ -15,6 +15,10 @@ const normalizeFacilityLabel = (value: string) =>
 export const CORE_FACILITY_LABELS = [
   "Wi-Fi",
   "Parcare",
+  "Child friendly",
+  "Gradina",
+  "Vedere la munte",
+  "Zona de relaxare",
   "Bucătărie / Chicinetă",
   "Aer condiționat",
   "Încălzire",

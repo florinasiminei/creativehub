@@ -4,7 +4,7 @@ import ListingClient, { type Listing } from './ListingClient';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { buildPropertyBreadcrumbJsonLd, buildPropertyJsonLd } from '@/lib/jsonLd';
 
-export const revalidate = 60 * 60 * 12;
+export const revalidate = 60 * 60;
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cabn.ro';
 
 type PageProps = {

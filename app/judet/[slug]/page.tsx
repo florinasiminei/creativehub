@@ -4,13 +4,13 @@ import HomeClient from "@/app/home-client";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { mapListingSummary } from "@/lib/transformers";
 import { sortFacilitiesByPriority } from "@/lib/facilitiesCatalog";
-import { buildListingPageJsonLd } from "@/lib/jsonLd";
+import { buildBreadcrumbJsonLd, buildListingPageJsonLd } from "@/lib/jsonLd";
 import { findCountyBySlug, getCounties } from "@/lib/counties";
 import type { ListingRaw } from "@/lib/types";
 import type { Cazare } from "@/lib/utils";
 import type { FacilityOption } from "@/lib/types";
 
-export const revalidate = 60 * 60 * 12;
+export const revalidate = 60 * 60 * 6;
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cabn.ro";
 
@@ -22,12 +22,26 @@ export async function generateStaticParams() {
   return getCounties().map((county) => ({ slug: county.slug }));
 }
 
+async function countyHasListings(countyName: string): Promise<boolean> {
+  const supabaseAdmin = getSupabaseAdmin();
+  const { count, error } = await supabaseAdmin
+    .from("listings")
+    .select("id", { count: "exact", head: true })
+    .eq("is_published", true)
+    .eq("judet", countyName);
+
+  if (error) return true;
+  return Number(count || 0) > 0;
+}
+
 export async function generateMetadata({ params }: PageProps) {
   const county = findCountyBySlug(params.slug);
   if (!county) return {};
-  const title = `Cazare in judetul ${county.name} | CABN.ro`;
+  const title = `Cazare in judetul ${county.name}`;
   const description = `Descopera cazari atent selectate in judetul ${county.name}, cu verificare foto/video si rezervare direct la gazda.`;
   const canonical = `/judet/${county.slug}`;
+  const hasListings = await countyHasListings(county.name);
+
   return {
     title,
     description,
@@ -39,6 +53,7 @@ export async function generateMetadata({ params }: PageProps) {
       description,
       url: `${siteUrl}${canonical}`,
     },
+    robots: hasListings ? undefined : { index: false, follow: true },
   };
 }
 
@@ -92,7 +107,7 @@ export default async function CountyPage({ params }: PageProps) {
   const pageUrl = `${siteUrl}/judet/${county.slug}`;
   const description = `Descopera cele mai frumoase cazari din judetul ${county.name}. Listari curate, verificate, cu contact direct la gazda.`;
 
-  const jsonLd = buildListingPageJsonLd({
+  const listingJsonLd = buildListingPageJsonLd({
     siteUrl,
     pageUrl,
     typeLabel: "Cazare",
@@ -109,10 +124,18 @@ export default async function CountyPage({ params }: PageProps) {
       priceRange: String(l.price || ""),
     })),
   });
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "Acasa", item: siteUrl },
+    { name: `Judet ${county.name}`, item: `${siteUrl}/judet/${county.slug}` },
+  ]);
+  const jsonLdScripts: Record<string, unknown>[] = [
+    breadcrumbJsonLd,
+    ...listingJsonLd.filter((obj) => (obj as any)?.["@type"] !== "BreadcrumbList"),
+  ];
 
   return (
     <>
-      {jsonLd.map((obj, i) => (
+      {jsonLdScripts.map((obj, i) => (
         <script
           key={i}
           type="application/ld+json"
@@ -126,6 +149,7 @@ export default async function CountyPage({ params }: PageProps) {
           initialCazari={listings}
           initialFacilities={sortedFacilities}
           pageTitle={`Cazare in judetul ${county.name}`}
+          allowClientBootstrapFetch={false}
         />
       </Suspense>
     </>

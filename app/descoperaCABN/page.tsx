@@ -49,7 +49,7 @@ const SERVICES = [
   {
     title: "Drone Shots",
     description:
-      "Imagini aeriene care atrag priviri în social media și oferă o perspectivă unica proprietății. Oaspeții înțeleg mai bine zona și se simt mai atrage.",
+      "Imagini aeriene care atrag priviri în social media și oferă o perspectivă unică proprietății. Oaspeții înțeleg mai bine zona și se simt mai atrași.",
     Icon: Video,
   },
   {
@@ -200,7 +200,7 @@ export default function DescoperaCabn() {
                 <TrendingUp className="h-4 sm:h-5 md:h-6 w-4 sm:w-5 md:w-6 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5 sm:mt-0.5 md:mt-1" />
                 <div>
                   <p className="font-semibold text-sm sm:text-base md:text-lg text-zinc-900 dark:text-white">Creșteri de 30-60% în cereri directe</p>
-                  <p className="text-zinc-600 dark:text-zinc-400 text-xs sm:text-xs md:text-sm mt-0.5 sm:mt-1">Oaspeții interesați găsesc ușor proprietatea și au fiducia să se gândească serios.</p>
+                  <p className="text-zinc-600 dark:text-zinc-400 text-xs sm:text-xs md:text-sm mt-0.5 sm:mt-1">Oaspeții interesați găsesc ușor proprietatea și au încrederea să se gândească serios.</p>
                 </div>
               </div>
             </div>
@@ -302,7 +302,7 @@ export default function DescoperaCabn() {
                   <span>Conținut Optimizat pentru Algoritm</span>
                 </h3>
                 <p className="text-xs sm:text-xs md:text-sm text-zinc-700 dark:text-zinc-300">
-                  Fiecare postare este gândită pentru a performa. Reels optimizate, time-lapse-uri, și stories care țin oaspeții angajați și curiosi.
+                  Fiecare postare este gândită pentru a performa. Reels optimizate, time-lapse-uri și stories care țin oaspeții angajați și curioși.
                 </p>
               </div>
             </div>
@@ -328,7 +328,7 @@ export default function DescoperaCabn() {
               </div>
 
               <div className="space-y-3 sm:space-y-4">
-                <h3 className="font-bold text-sm sm:text-base md:text-lg text-blue-900 dark:text-blue-100">Canalele Unde Prezenti Ești</h3>
+                <h3 className="font-bold text-sm sm:text-base md:text-lg text-blue-900 dark:text-blue-100">Canalele unde ești prezent</h3>
                 <div className="grid grid-cols-1 gap-3 sm:gap-3 md:gap-4">
                   <div className="bg-white/30 dark:bg-blue-950/30 rounded-lg p-2.5 sm:p-3 md:p-4 border border-white/40 dark:border-blue-600/20">
                     <p className="font-medium text-xs sm:text-sm text-zinc-800 dark:text-white">Instagram</p>
@@ -336,7 +336,7 @@ export default function DescoperaCabn() {
                   </div>
                   <div className="bg-white/30 dark:bg-blue-950/30 rounded-lg p-2.5 sm:p-3 md:p-4 border border-white/40 dark:border-blue-600/20">
                     <p className="font-medium text-xs sm:text-sm text-zinc-800 dark:text-white">TikTok</p>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-300">Conținut viral și pe punctul și educativ</p>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-300">Conținut viral, la obiect și educativ</p>
                   </div>
                   <div className="bg-white/30 dark:bg-blue-950/30 rounded-lg p-2.5 sm:p-3 md:p-4 border border-white/40 dark:border-blue-600/20">
                     <p className="font-medium text-xs sm:text-sm text-zinc-800 dark:text-white">Facebook</p>

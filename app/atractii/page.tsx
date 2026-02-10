@@ -1,23 +1,26 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cabn.ro";
+
 export const metadata: Metadata = {
-  title: "Atractii | CABN",
+  title: "Atractii",
   description:
     "Atractii si experiente locale langa cabane si pensiuni. In curand, lista completa.",
   alternates: {
     canonical: "/atractii",
   },
   openGraph: {
-    title: "Atractii | CABN",
+    title: "Atractii",
     description: "Atractii si experiente locale langa cabane si pensiuni.",
-    url: "https://cabn.ro/atractii",
+    url: `${siteUrl}/atractii`,
     siteName: "cabn.ro",
     locale: "ro_RO",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Atractii | CABN",
+    title: "Atractii",
     description: "Atractii si experiente locale langa cabane si pensiuni.",
   },
 };
@@ -65,18 +68,18 @@ export default function AtractiiPage() {
           </div>
 
           <div className="mt-5 flex flex-wrap items-center gap-3">
-            <a
+            <Link
               href="/contact"
               className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow hover:bg-emerald-700"
             >
               Spune-ne ce cauti
-            </a>
-            <a
+            </Link>
+            <Link
               href="/"
               className="inline-flex items-center justify-center rounded-full border border-emerald-200 px-5 py-2.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100/70 dark:border-emerald-500/30 dark:text-emerald-100 dark:hover:bg-emerald-500/10"
             >
               Vezi cazari
-            </a>
+            </Link>
           </div>
         </section>
       </main>
