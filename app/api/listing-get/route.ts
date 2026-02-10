@@ -9,6 +9,34 @@ const LISTING_SELECT_BASE =
 const LISTING_SELECT_WITH_NEWSLETTER = `${LISTING_SELECT_BASE}, newsletter_opt_in`;
 const IMAGES_SELECT = 'id, image_url, display_order, alt';
 
+type ListingGetRow = {
+  id: string;
+  title?: string | null;
+  slug?: string | null;
+  judet?: string | null;
+  city?: string | null;
+  sat?: string | null;
+  price?: string | number | null;
+  capacity?: string | null;
+  camere?: number | null;
+  paturi?: number | null;
+  bai?: number | null;
+  description?: string | null;
+  phone?: string | null;
+  type?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  is_published?: boolean | null;
+  newsletter_opt_in?: boolean | null;
+};
+
+function asListingGetRow(value: unknown): ListingGetRow | null {
+  if (!value || typeof value !== 'object') return null;
+  const row = value as Partial<ListingGetRow>;
+  if (typeof row.id !== 'string' || !row.id) return null;
+  return row as ListingGetRow;
+}
+
 export async function POST(request: Request) {
   try {
     const limit = rateLimit(request, { windowMs: 60_000, max: 120, keyPrefix: 'listing-get' });
@@ -57,10 +85,11 @@ export async function POST(request: Request) {
       ({ data, error } = await runListingQuery(LISTING_SELECT_BASE));
     }
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    if (!data) return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
+    const listing = asListingGetRow(data);
+    if (!listing) return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
 
     // also fetch related images and facilities
-    const listingId = data?.id;
+    const listingId = listing.id;
     const { data: images } = await supabaseAdmin
       .from('listing_images')
       .select(IMAGES_SELECT)
@@ -97,7 +126,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
-      listing: data,
+      listing,
       images: images || [],
       facilities: (facilityRows || []).map((r: any) => (r.facilities ? r.facilities.id : r.facility_id)),
       facilitiesDetailed: Array.from(facilitiesMap.values()),
