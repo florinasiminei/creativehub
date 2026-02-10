@@ -3,12 +3,12 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { LISTING_TYPES } from "@/lib/listingTypes";
 import { allRegions, touristRegions } from "@/lib/regions";
 import { getCounties } from "@/lib/counties";
+import { getCanonicalSiteUrl } from "@/lib/siteUrl";
 
 export const revalidate = 60 * 60 * 12;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const rawUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cabn.ro";
-  const siteUrl = rawUrl;
+  const siteUrl = getCanonicalSiteUrl();
   const lastModified = new Date();
   const safeDate = (value: unknown) => {
     const candidate = value ? new Date(String(value)) : null;
@@ -77,6 +77,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 1,
     },
+    {
+      url: `${siteUrl}/cazari`,
+      lastModified,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
     ...listingTypeEntries,
     {
       url: `${siteUrl}/about-us`,
@@ -89,18 +95,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified,
       changeFrequency: "monthly",
       priority: 0.7,
-    },
-    {
-      url: `${siteUrl}/politica-confidentialitate`,
-      lastModified,
-      changeFrequency: "yearly",
-      priority: 0.2,
-    },
-    {
-      url: `${siteUrl}/politica-cookie`,
-      lastModified,
-      changeFrequency: "yearly",
-      priority: 0.2,
     },
     ...regionEntries,
     ...countyEntries,

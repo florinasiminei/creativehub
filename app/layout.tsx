@@ -6,12 +6,13 @@ import { ThemeProvider } from "next-themes";
 import { Analytics } from "@vercel/analytics/next";
 import Script from "next/script";
 import { Inter, JetBrains_Mono } from "next/font/google";
+import { getCanonicalSiteUrl } from "@/lib/siteUrl";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
 const inter = Inter({ variable: "--font-geist-sans", subsets: ["latin"], display: "swap" });
 const jetbrainsMono = JetBrains_Mono({ variable: "--font-geist-mono", subsets: ["latin"], display: "swap" });
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cabn.ro";
+const siteUrl = getCanonicalSiteUrl();
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -20,9 +21,6 @@ export const metadata: Metadata = {
     template: "%s | cabn.ro",
   },
   description: "Descopera cazare in natura in Romania: cabane de inchiriat, pensiuni traditionale si case de vacanta pentru weekend sau vacante in zone naturale.",
-  alternates: {
-    canonical: "/",
-  },
   verification: {
     other: {
       "facebook-domain-verification": "hcd2j15izye7czt4zwxbqwfiuqiydw",

@@ -28,7 +28,9 @@ export default function CazareCard({ cazare }: { cazare: Cazare }) {
         <div className="pt-3 space-y-0.5">
           <div className="flex items-start justify-between">
             <h3 className="font-medium text-base line-clamp-1 text-gray-900 dark:text-white flex-1 pr-2">{cazare.title}</h3>
-            <div className="text-gray-900 dark:text-white text-sm font-medium whitespace-nowrap">{cazare.price} lei</div>
+            <div className="text-gray-900 dark:text-white text-sm font-medium whitespace-nowrap" data-nosnippet>
+              {cazare.price} lei
+            </div>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-[60%]">

@@ -15,18 +15,19 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
+import { getCanonicalSiteUrl, toCanonicalUrl } from "@/lib/siteUrl";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cabn.ro";
+const siteUrl = getCanonicalSiteUrl();
 
 export const metadata: Metadata = {
-  title: "Despre noi | cabn.ro",
+  title: "Despre noi",
   description:
     "Cine este echipa cabn, ce face compania, istoricul, misiunea, valorile si datele legale.",
   alternates: {
-    canonical: "/about-us",
+    canonical: toCanonicalUrl("/about-us"),
   },
   openGraph: {
-    title: "Despre noi | cabn.ro",
+    title: "Despre noi",
     description:
       "Pagina oficiala despre echipa cabn, activitate, istoric, misiune si contact.",
     url: `${siteUrl}/about-us`,

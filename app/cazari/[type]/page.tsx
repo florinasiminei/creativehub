@@ -4,13 +4,14 @@ import ListingsGrid from '@/components/listing/ListingGrid';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { mapListingSummary } from '@/lib/transformers';
 import { getTypeBySlug, LISTING_TYPES } from '@/lib/listingTypes';
+import { getCanonicalSiteUrl } from '@/lib/siteUrl';
 import { buildBreadcrumbJsonLd, buildListingPageJsonLd } from '@/lib/jsonLd';
 import type { ListingRaw } from '@/lib/types';
 import type { Cazare } from '@/lib/utils';
 
 export const revalidate = 60 * 60 * 6;
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cabn.ro';
+const siteUrl = getCanonicalSiteUrl();
 
 type PageProps = {
   params: { type: string };
@@ -35,9 +36,26 @@ async function typeHasListings(typeValue: string): Promise<boolean> {
 export async function generateMetadata({ params }: PageProps) {
   const listingType = getTypeBySlug(params.type);
   if (!listingType) return {};
-  const title = `${listingType.label} in Romania`;
-  const description = `Descopera ${listingType.label.toLowerCase()} atent selectate, cu verificare foto/video si rezervare direct la gazda.`;
-  const canonical = `/cazari/${listingType.slug}`;
+
+  const curatedMetadata: Record<string, { title: string; description: string }> = {
+    cabane: {
+      title: "Cabane de inchiriat in Romania",
+      description:
+        "Gaseste cabane potrivite pentru weekend sau vacanta, cu informatii clare despre capacitate, pret si locatie, plus contact direct la gazda.",
+    },
+    pensiuni: {
+      title: "Pensiuni in Romania pentru sejururi relaxate",
+      description:
+        "Descopera pensiuni verificate unde poti compara rapid facilitatile, zona si pretul, apoi rezervi direct cu proprietarul.",
+    },
+  };
+
+  const curated = curatedMetadata[listingType.slug];
+  const title = curated?.title ?? `${listingType.label} in Romania`;
+  const description =
+    curated?.description ??
+    `Descopera ${listingType.label.toLowerCase()} atent selectate, cu verificare foto/video si rezervare direct la gazda.`;
+  const canonical = new URL(`/cazari/${listingType.slug}`, siteUrl).toString();
   const hasListings = await typeHasListings(listingType.value);
   return {
     title,
@@ -48,7 +66,7 @@ export async function generateMetadata({ params }: PageProps) {
     openGraph: {
       title,
       description,
-      url: `${siteUrl}${canonical}`,
+      url: canonical,
     },
     robots: hasListings ? undefined : { index: false, follow: true },
   };

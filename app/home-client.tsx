@@ -789,6 +789,7 @@ export default function Home({
           </button>
         </div>
       )}
+
       <TopSearchBar
         filters={filters}
         setFilters={setFilters}
@@ -817,6 +818,10 @@ export default function Home({
       <main className="w-full px-4 lg:px-6">
         <section id="cazari" className="py-8">
           <h2 className="text-xl font-medium mb-6">Cazări autentice, atent alese</h2>
+          <p className="mb-6 max-w-3xl text-sm text-gray-600 dark:text-gray-300">
+            Explorează proprietăți verificate din România, cu informații clare despre locație,
+            capacitate și facilități, pentru rezervare directă la gazdă.
+          </p>
 
           {loading && (
             <div className="flex items-center justify-center py-12 min-h-[60vh]">

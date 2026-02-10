@@ -1,18 +1,19 @@
 ﻿import type { Metadata } from "next";
 import { FaFacebookF, FaInstagram, FaTiktok, FaWhatsapp, FaPhoneAlt, FaEnvelope } from "react-icons/fa";
 import ContactForm from "@/components/forms/ContactForm";
+import { getCanonicalSiteUrl, toCanonicalUrl } from "@/lib/siteUrl";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cabn.ro";
+const siteUrl = getCanonicalSiteUrl();
 
 export const metadata: Metadata = {
-  title: "Contact cabn.ro",
+  title: "Contact",
   description:
     "Scrie echipei cabn pentru marketing, foto-video și listări de cabane și pensiuni. Răspundem rapid cu o soluție clară.",
   alternates: {
-    canonical: "/contact",
+    canonical: toCanonicalUrl("/contact"),
   },
   openGraph: {
-    title: "Contact cabn.ro",
+    title: "Contact",
     description:
       "Contactează echipa cabn pentru marketing, foto-video și listări de cabane și pensiuni.",
     url: `${siteUrl}/contact`,
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Contact cabn.ro",
+    title: "Contact",
     description: "Contactează echipa cabn pentru marketing și listări turistice.",
   },
 };
@@ -255,3 +256,5 @@ export default function ContactPage() {
     </div>
   );
 }
+
+

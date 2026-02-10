@@ -1,15 +1,15 @@
 import type { MetadataRoute } from "next";
+import { getCanonicalSiteUrl } from "@/lib/siteUrl";
 
 export default function robots(): MetadataRoute.Robots {
-  const rawUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cabn.ro";
-  const siteUrl = rawUrl;
+  const siteUrl = getCanonicalSiteUrl();
 
   return {
     rules: [
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/add-property", "/edit-property", "/drafts", "/confirm"],
+        disallow: ["/add-property", "/edit-property", "/drafts", "/drafts-login", "/confirm"],
       },
     ],
     sitemap: `${siteUrl}/sitemap.xml`,

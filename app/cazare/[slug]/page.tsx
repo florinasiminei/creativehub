@@ -2,10 +2,11 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import ListingClient, { type Listing } from './ListingClient';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { getCanonicalSiteUrl } from '@/lib/siteUrl';
 import { buildPropertyBreadcrumbJsonLd, buildPropertyJsonLd } from '@/lib/jsonLd';
 
 export const revalidate = 60 * 60;
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cabn.ro';
+const siteUrl = getCanonicalSiteUrl();
 
 type PageProps = {
   params: { slug: string };
@@ -247,11 +248,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const baseTitle = listing.title;
     const titleSuffix = locationLabel ? ` | Cazare în ${locationLabel}` : "";
     const title = `${baseTitle}${titleSuffix}`;
-    const url = `${siteUrl}/cazare/${params.slug}`;
+    const canonical = new URL(`/cazare/${params.slug}`, siteUrl).toString();
+    const url = canonical;
     return {
       title,
       description,
-      alternates: { canonical: url },
+      alternates: { canonical },
       openGraph: {
         title,
         description,

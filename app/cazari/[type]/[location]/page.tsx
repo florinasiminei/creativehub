@@ -4,6 +4,7 @@ import ListingsGrid from '@/components/listing/ListingGrid';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { mapListingSummary } from '@/lib/transformers';
 import { getTypeBySlug, LISTING_TYPES } from '@/lib/listingTypes';
+import { getCanonicalSiteUrl } from '@/lib/siteUrl';
 import { allRegions, findRegionBySlug, metroCoreCitySet, normalizeRegionText } from '@/lib/regions';
 import { buildFaqJsonLd, buildListingPageJsonLd } from '@/lib/jsonLd';
 import { getFaqs } from '@/lib/faqData';
@@ -12,7 +13,7 @@ import type { Cazare } from '@/lib/utils';
 
 export const revalidate = 60 * 60 * 6; // 6 hours
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.cabn.ro';
+const siteUrl = getCanonicalSiteUrl();
 
 type PageProps = {
   params: {
@@ -68,7 +69,7 @@ export async function generateMetadata({ params }: PageProps) {
 
   const title = `Cazare ${listingType.label.toLowerCase()} in ${region.name}`;
   const description = `Descopera ${listingType.label.toLowerCase()} in ${region.name}, atent selectate, cu rezervare direct la gazda.`;
-  const canonical = `/cazari/${listingType.slug}/${region.slug}`;
+  const canonical = new URL(`/cazari/${listingType.slug}/${region.slug}`, siteUrl).toString();
   const hasListings = await hasListingsForLocation(listingType.value, region);
 
   return {
@@ -80,7 +81,7 @@ export async function generateMetadata({ params }: PageProps) {
     openGraph: {
       title,
       description,
-      url: `${siteUrl}${canonical}`,
+      url: canonical,
     },
     robots: hasListings ? undefined : { index: false, follow: true },
   };

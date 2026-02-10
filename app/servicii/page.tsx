@@ -12,18 +12,19 @@ import {
   Zap,
 } from "lucide-react";
 import ContactForm from "@/components/forms/ContactForm";
+import { getCanonicalSiteUrl, toCanonicalUrl } from "@/lib/siteUrl";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cabn.ro";
+const siteUrl = getCanonicalSiteUrl();
 
 export const metadata: Metadata = {
-  title: "Servicii | cabn.ro",
+  title: "Servicii",
   description:
     "Servicii de promovare pentru proprietăți turistice: strategie, foto-video, website, social media, proces clar și CTA direct.",
   alternates: {
-    canonical: "/servicii",
+    canonical: toCanonicalUrl("/servicii"),
   },
   openGraph: {
-    title: "Servicii | cabn.ro",
+    title: "Servicii",
     description:
       "Vezi ce oferim concret: pachete, servicii specifice, proces de lucru și modalități de colaborare.",
     url: `${siteUrl}/servicii`,

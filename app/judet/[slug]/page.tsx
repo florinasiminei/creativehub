@@ -4,6 +4,7 @@ import HomeClient from "@/app/home-client";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { mapListingSummary } from "@/lib/transformers";
 import { sortFacilitiesByPriority } from "@/lib/facilitiesCatalog";
+import { getCanonicalSiteUrl } from "@/lib/siteUrl";
 import { buildBreadcrumbJsonLd, buildListingPageJsonLd } from "@/lib/jsonLd";
 import { findCountyBySlug, getCounties } from "@/lib/counties";
 import type { ListingRaw } from "@/lib/types";
@@ -12,7 +13,7 @@ import type { FacilityOption } from "@/lib/types";
 
 export const revalidate = 60 * 60 * 6;
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cabn.ro";
+const siteUrl = getCanonicalSiteUrl();
 
 type PageProps = {
   params: { slug: string };
@@ -39,7 +40,7 @@ export async function generateMetadata({ params }: PageProps) {
   if (!county) return {};
   const title = `Cazare in judetul ${county.name}`;
   const description = `Descopera cazari atent selectate in judetul ${county.name}, cu verificare foto/video si rezervare direct la gazda.`;
-  const canonical = `/judet/${county.slug}`;
+  const canonical = new URL(`/judet/${county.slug}`, siteUrl).toString();
   const hasListings = await countyHasListings(county.name);
 
   return {
@@ -51,7 +52,7 @@ export async function generateMetadata({ params }: PageProps) {
     openGraph: {
       title,
       description,
-      url: `${siteUrl}${canonical}`,
+      url: canonical,
     },
     robots: hasListings ? undefined : { index: false, follow: true },
   };

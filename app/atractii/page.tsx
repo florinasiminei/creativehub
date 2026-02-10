@@ -1,14 +1,15 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { getCanonicalSiteUrl, toCanonicalUrl } from "@/lib/siteUrl";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cabn.ro";
+const siteUrl = getCanonicalSiteUrl();
 
 export const metadata: Metadata = {
   title: "Atractii",
   description:
     "Atractii si experiente locale langa cabane si pensiuni. In curand, lista completa.",
   alternates: {
-    canonical: "/atractii",
+    canonical: toCanonicalUrl("/atractii"),
   },
   openGraph: {
     title: "Atractii",

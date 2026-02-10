@@ -1,7 +1,5 @@
 export const NAV_LINKS = [
-  { href: "/", label: "Cazări turistice" },
-  { href: "/atractii", label: "Atracții" },
+  { href: "/", label: "Caz\u0103ri turistice" },
+  { href: "/atractii", label: "Atrac\u021bii" },
   { href: "/contact", label: "Contact" },
 ];
-
-

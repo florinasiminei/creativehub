@@ -4,6 +4,7 @@ import HomeClient from "@/app/home-client";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { mapListingSummary } from "@/lib/transformers";
 import { sortFacilitiesByPriority } from "@/lib/facilitiesCatalog";
+import { getCanonicalSiteUrl } from "@/lib/siteUrl";
 import {
   allRegions,
   findRegionBySlug,
@@ -17,7 +18,7 @@ import type { FacilityOption } from "@/lib/types";
 
 export const revalidate = 60 * 60 * 6;
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.cabn.ro";
+const siteUrl = getCanonicalSiteUrl();
 
 type PageProps = {
   params: { slug: string };
@@ -60,7 +61,7 @@ export async function generateMetadata({ params }: PageProps) {
     region.type === "metro"
       ? `Descopera cazari in ${region.name}, cu verificare foto/video si rezervare direct la gazda.`
       : `Descopera cazare atent selectata in ${region.name}, cu verificare foto/video si rezervare direct la gazda.`;
-  const canonical = `/regiune/${region.slug}`;
+  const canonical = new URL(`/regiune/${region.slug}`, siteUrl).toString();
   const hasListings = await regionHasListings(region);
 
   return {
@@ -72,7 +73,7 @@ export async function generateMetadata({ params }: PageProps) {
     openGraph: {
       title,
       description,
-      url: `${siteUrl}${canonical}`,
+      url: canonical,
     },
     robots: hasListings ? undefined : { index: false, follow: true },
   };

@@ -1,11 +1,29 @@
 import HomeClient from "./home-client";
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { mapListingSummary } from "@/lib/transformers";
 import { sortFacilitiesByPriority } from "@/lib/facilitiesCatalog";
+import { getCanonicalSiteUrl, toCanonicalUrl } from "@/lib/siteUrl";
 import type { FacilityOption, ListingRaw } from "@/lib/types";
 
 export const revalidate = 60 * 60 * 12;
+const siteUrl = getCanonicalSiteUrl();
+
+export const metadata: Metadata = {
+  title: "Cazari in natura, direct la gazda",
+  description:
+    "Gasesti rapid cabane, A-Frame-uri si pensiuni verificate in Romania, cu filtre clare si contact direct cu proprietarul.",
+  alternates: {
+    canonical: toCanonicalUrl("/"),
+  },
+  openGraph: {
+    title: "Cazari in natura, direct la gazda",
+    description:
+      "Gasesti rapid cabane, A-Frame-uri si pensiuni verificate in Romania, cu filtre clare si contact direct cu proprietarul.",
+    url: siteUrl,
+  },
+};
 
 async function getHomeData() {
   const baseSelect = `

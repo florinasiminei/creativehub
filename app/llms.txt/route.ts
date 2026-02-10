@@ -1,10 +1,8 @@
-﻿import type { NextRequest } from "next/server";
-
-const DEFAULT_SITE_URL = "https://www.cabn.ro";
+import type { NextRequest } from "next/server";
+import { getCanonicalSiteUrl } from "@/lib/siteUrl";
 
 export function GET(_request: NextRequest) {
-  const rawUrl = process.env.NEXT_PUBLIC_SITE_URL || DEFAULT_SITE_URL;
-  const siteUrl = rawUrl.replace(/\/$/, "");
+  const siteUrl = getCanonicalSiteUrl();
 
   const body = [
     "# llms.txt",
