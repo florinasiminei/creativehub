@@ -256,6 +256,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     image.startsWith("http://") || image.startsWith("https://")
       ? image
       : new URL(image, siteUrl).toString();
+  const shareImage = new URL(
+    `/api/og-image?src=${encodeURIComponent(absoluteImage)}`,
+    siteUrl
+  ).toString();
+  const imageExtension = absoluteImage.split("?")[0]?.split(".").pop()?.toLowerCase();
+  const imageType =
+    imageExtension === "png"
+      ? "image/png"
+      : imageExtension === "webp"
+      ? "image/webp"
+      : "image/jpeg";
 
   return {
     title,
@@ -268,13 +279,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       url: canonical,
       siteName: 'cabn.ro',
       locale: 'ro_RO',
-      images: [{ url: absoluteImage, alt: title }],
+      images: [
+        {
+          url: shareImage,
+          secureUrl: shareImage,
+          width: 1200,
+          height: 630,
+          type: imageType,
+          alt: title,
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: [absoluteImage],
+      images: [shareImage],
     },
   };
 }

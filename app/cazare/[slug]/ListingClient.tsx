@@ -68,9 +68,9 @@ export default function ListingClient({ data }: Props) {
 
   const listingSlug = String(data?.slug || data?.id || "").trim();
   const listingUrl = `${getCanonicalSiteUrl()}/cazare/${encodeURIComponent(listingSlug)}`;
-  const shareText = `Vezi ${data.title} pe cabn.ro`;
+  const shareText = `Vezi ${data.title}`;
   const shareFacebookHref = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(listingUrl)}`;
-  const shareWhatsAppHref = `https://wa.me/?text=${encodeURIComponent(`${shareText} ${listingUrl}`)}`;
+  const shareWhatsAppHref = `https://wa.me/?text=${encodeURIComponent(listingUrl)}`;
 
   const copyListingLink = async () => {
     try {
@@ -95,7 +95,6 @@ export default function ListingClient({ data }: Props) {
       try {
         await navigator.share({
           title: data.title,
-          text: shareText,
           url: listingUrl,
         });
         return;
