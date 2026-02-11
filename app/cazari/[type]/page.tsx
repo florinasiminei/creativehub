@@ -5,6 +5,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { mapListingSummary } from '@/lib/transformers';
 import { getTypeBySlug, LISTING_TYPES } from '@/lib/listingTypes';
 import { getCanonicalSiteUrl } from '@/lib/siteUrl';
+import { hasMinimumPublishedListings } from '@/lib/seoIndexing';
 import { buildBreadcrumbJsonLd, buildListingPageJsonLd } from '@/lib/jsonLd';
 import type { ListingRaw } from '@/lib/types';
 import type { Cazare } from '@/lib/utils';
@@ -21,7 +22,7 @@ export async function generateStaticParams() {
   return LISTING_TYPES.map((type) => ({ type: type.slug }));
 }
 
-async function typeHasListings(typeValue: string): Promise<boolean> {
+async function getPublishedTypeListingsCount(typeValue: string): Promise<number> {
   const supabaseAdmin = getSupabaseAdmin();
   const { count, error } = await supabaseAdmin
     .from('listings')
@@ -29,8 +30,8 @@ async function typeHasListings(typeValue: string): Promise<boolean> {
     .eq('is_published', true)
     .eq('type', typeValue);
 
-  if (error) return true;
-  return Number(count || 0) > 0;
+  if (error) return Number.POSITIVE_INFINITY;
+  return Number(count || 0);
 }
 
 export async function generateMetadata({ params }: PageProps) {
@@ -56,7 +57,8 @@ export async function generateMetadata({ params }: PageProps) {
     curated?.description ??
     `Descopera ${listingType.label.toLowerCase()} atent selectate, cu verificare foto/video si rezervare direct la gazda.`;
   const canonical = new URL(`/cazari/${listingType.slug}`, siteUrl).toString();
-  const hasListings = await typeHasListings(listingType.value);
+  const publishedListingsCount = await getPublishedTypeListingsCount(listingType.value);
+  const shouldIndex = hasMinimumPublishedListings(publishedListingsCount);
   return {
     title,
     description,
@@ -68,7 +70,7 @@ export async function generateMetadata({ params }: PageProps) {
       description,
       url: canonical,
     },
-    robots: hasListings ? undefined : { index: false, follow: true },
+    robots: shouldIndex ? undefined : { index: false, follow: true },
   };
 }
 

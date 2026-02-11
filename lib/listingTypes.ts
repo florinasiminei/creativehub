@@ -1,4 +1,4 @@
-export type ListingTypeValue =
+﻿export type ListingTypeValue =
   | "cabana"
   | "a-frame"
   | "pensiune"

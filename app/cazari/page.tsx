@@ -2,23 +2,46 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LISTING_TYPES } from "@/lib/listingTypes";
 import { getCanonicalSiteUrl, toCanonicalUrl } from "@/lib/siteUrl";
+import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import { hasMinimumPublishedListings } from "@/lib/seoIndexing";
+
+export const revalidate = 60 * 60 * 6;
 
 const siteUrl = getCanonicalSiteUrl();
 
-export const metadata: Metadata = {
-  title: "Cazari verificate pe tipuri",
-  description:
-    "Alege tipul de cazare potrivit pentru planul tau si intra direct in liste curate, cu detalii utile si contact la gazda.",
-  alternates: {
-    canonical: toCanonicalUrl("/cazari"),
-  },
-  openGraph: {
+export async function generateMetadata(): Promise<Metadata> {
+  let shouldIndex = true;
+
+  try {
+    const supabaseAdmin = getSupabaseAdmin();
+    const { count, error } = await supabaseAdmin
+      .from("listings")
+      .select("id", { count: "exact", head: true })
+      .eq("is_published", true);
+
+    if (!error) {
+      shouldIndex = hasMinimumPublishedListings(Number(count || 0));
+    }
+  } catch {
+    shouldIndex = true;
+  }
+
+  return {
     title: "Cazari verificate pe tipuri",
     description:
-      "Selecteaza rapid categoria dorita si compara proprietati reale, publicate cu informatii clare.",
-    url: `${siteUrl}/cazari`,
-  },
-};
+      "Alege tipul de cazare potrivit pentru planul tau si intra direct in liste curate, cu detalii utile si contact la gazda.",
+    alternates: {
+      canonical: toCanonicalUrl("/cazari"),
+    },
+    openGraph: {
+      title: "Cazari verificate pe tipuri",
+      description:
+        "Selecteaza rapid categoria dorita si compara proprietati reale, publicate cu informatii clare.",
+      url: `${siteUrl}/cazari`,
+    },
+    robots: shouldIndex ? undefined : { index: false, follow: true },
+  };
+}
 
 export default function CazariIndexPage() {
   return (

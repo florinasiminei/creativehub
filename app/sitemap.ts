@@ -4,12 +4,14 @@ import { LISTING_TYPES } from "@/lib/listingTypes";
 import { allRegions, touristRegions } from "@/lib/regions";
 import { getCounties } from "@/lib/counties";
 import { getCanonicalSiteUrl } from "@/lib/siteUrl";
+import { fetchTypeFacilityCountyCombos } from "@/lib/typeFacilityCountySeo";
 
 export const revalidate = 60 * 60 * 12;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = getCanonicalSiteUrl();
   const lastModified = new Date();
+  const supabaseAdmin = getSupabaseAdmin();
   const safeDate = (value: unknown) => {
     const candidate = value ? new Date(String(value)) : null;
     if (candidate && !Number.isNaN(candidate.getTime())) return candidate;
@@ -18,7 +20,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   let listingEntries: MetadataRoute.Sitemap = [];
   try {
-    const supabaseAdmin = getSupabaseAdmin();
     const { data } = await supabaseAdmin
       .from("listings")
       .select("slug, updated_at, created_at")
@@ -70,6 +71,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }))
   );
 
+  let typeFacilityCountyEntries: MetadataRoute.Sitemap = [];
+  try {
+    const combos = await fetchTypeFacilityCountyCombos(supabaseAdmin, { publishedOnly: true });
+    typeFacilityCountyEntries = combos.map((combo) => ({
+      url: `${siteUrl}/cazari/${combo.typeSlug}/${combo.facilitySlug}/${combo.countySlug}`,
+      lastModified,
+      changeFrequency: "weekly",
+      priority: 0.55,
+    }));
+  } catch {
+    typeFacilityCountyEntries = [];
+  }
+
   return [
     {
       url: `${siteUrl}/`,
@@ -99,6 +113,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...regionEntries,
     ...countyEntries,
     ...typeRegionEntries,
+    ...typeFacilityCountyEntries,
     ...listingEntries,
   ];
 }

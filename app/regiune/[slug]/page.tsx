@@ -5,12 +5,10 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { mapListingSummary } from "@/lib/transformers";
 import { sortFacilitiesByPriority } from "@/lib/facilitiesCatalog";
 import { getCanonicalSiteUrl } from "@/lib/siteUrl";
-import {
-  allRegions,
-  findRegionBySlug,
-  metroCoreCitySet,
-  normalizeRegionText,
-} from "@/lib/regions";
+import { hasMinimumPublishedListings } from "@/lib/seoIndexing";
+import { findCountyBySlug, getCounties } from "@/lib/counties";
+import { slugify } from "@/lib/utils";
+import { allRegions, findRegionBySlug, normalizeRegionText } from "@/lib/regions";
 import { buildBreadcrumbJsonLd, buildListingPageJsonLd } from "@/lib/jsonLd";
 import type { ListingRaw } from "@/lib/types";
 import type { Cazare } from "@/lib/utils";
@@ -24,33 +22,52 @@ type PageProps = {
   params: { slug: string };
 };
 
+function resolveRegionCountyNames(regionCounties: string[]): string[] {
+  const counties = getCounties();
+  const byKey = new Map(counties.map((county) => [normalizeRegionText(county.name), county.name] as const));
+  const resolved = regionCounties
+    .map((county) => {
+      const byNormalized = byKey.get(normalizeRegionText(county));
+      if (byNormalized) return byNormalized;
+      const fuzzy = findCountyBySlug(slugify(String(county || "")));
+      return fuzzy?.name || county;
+    })
+    .filter(Boolean);
+  return Array.from(new Set(resolved));
+}
+
 export async function generateStaticParams() {
   return allRegions.map((region) => ({ slug: region.slug }));
 }
 
-async function regionHasListings(region: { counties: string[]; type: string; coreCities?: string[] }) {
+async function getPublishedRegionListingsCount(region: {
+  counties: string[];
+  type: string;
+  coreCities?: string[];
+}): Promise<number> {
+  const countyNames = resolveRegionCountyNames(region.counties);
   const supabaseAdmin = getSupabaseAdmin();
   const { data, error } = await supabaseAdmin
     .from("listings")
     .select("city")
     .eq("is_published", true)
-    .in("judet", region.counties);
+    .in("judet", countyNames);
 
-  if (error) return true;
+  if (error) return Number.POSITIVE_INFINITY;
 
   const rows = (data || []) as Array<{ city?: string | null }>;
   const normalizedMetroCities = region.coreCities
     ? new Set(region.coreCities.map((c) => normalizeRegionText(c)))
     : null;
 
-  return rows.some((row) => {
+  if (region.type !== "metro") return rows.length;
+
+  let count = 0;
+  for (const row of rows) {
     const cityNorm = normalizeRegionText(String(row?.city || ""));
-    if (region.type === "metro") {
-      return normalizedMetroCities ? normalizedMetroCities.has(cityNorm) : false;
-    }
-    if (!cityNorm) return true;
-    return !metroCoreCitySet.has(cityNorm);
-  });
+    if (normalizedMetroCities && normalizedMetroCities.has(cityNorm)) count += 1;
+  }
+  return count;
 }
 
 export async function generateMetadata({ params }: PageProps) {
@@ -62,7 +79,8 @@ export async function generateMetadata({ params }: PageProps) {
       ? `Descopera cazari in ${region.name}, cu verificare foto/video si rezervare direct la gazda.`
       : `Descopera cazare atent selectata in ${region.name}, cu verificare foto/video si rezervare direct la gazda.`;
   const canonical = new URL(`/regiune/${region.slug}`, siteUrl).toString();
-  const hasListings = await regionHasListings(region);
+  const publishedListingsCount = await getPublishedRegionListingsCount(region);
+  const shouldIndex = hasMinimumPublishedListings(publishedListingsCount);
 
   return {
     title,
@@ -75,12 +93,13 @@ export async function generateMetadata({ params }: PageProps) {
       description,
       url: canonical,
     },
-    robots: hasListings ? undefined : { index: false, follow: true },
+    robots: shouldIndex ? undefined : { index: false, follow: true },
   };
 }
 
 
 async function getRegionListings(region: { counties: string[]; type: string; coreCities?: string[] }): Promise<Cazare[]> {
+  const countyNames = resolveRegionCountyNames(region.counties);
   const supabaseAdmin = getSupabaseAdmin();
   const baseSelect = `
     id, title, slug, type, judet, city, sat, capacity, price, phone, is_published, display_order,
@@ -95,7 +114,7 @@ async function getRegionListings(region: { counties: string[]; type: string; cor
     .from("listings")
     .select(baseSelect)
     .eq("is_published", true)
-    .in("judet", region.counties)
+    .in("judet", countyNames)
     .order("display_order", { ascending: false, nullsFirst: false })
     .order("display_order", { foreignTable: "listing_images", ascending: true })
     .limit(1, { foreignTable: "listing_images" });
@@ -108,7 +127,7 @@ async function getRegionListings(region: { counties: string[]; type: string; cor
       .from("listings")
       .select(baseSelect)
       .eq("is_published", true)
-      .in("judet", region.counties)
+      .in("judet", countyNames)
       .order("display_order", { foreignTable: "listing_images", ascending: true })
       .limit(1, { foreignTable: "listing_images" });
     data = fallback.data;
@@ -122,14 +141,13 @@ async function getRegionListings(region: { counties: string[]; type: string; cor
     ? new Set(region.coreCities.map((c) => normalizeRegionText(c)))
     : null;
 
-  const filtered = rows.filter((row) => {
-    const cityNorm = normalizeRegionText(String((row as any).city || ""));
-    if (region.type === "metro") {
-      return normalizedMetroCities ? normalizedMetroCities.has(cityNorm) : false;
-    }
-    if (!cityNorm) return true;
-    return !metroCoreCitySet.has(cityNorm);
-  });
+  const filtered =
+    region.type === "metro"
+      ? rows.filter((row) => {
+          const cityNorm = normalizeRegionText(String((row as any).city || ""));
+          return normalizedMetroCities ? normalizedMetroCities.has(cityNorm) : false;
+        })
+      : rows;
 
   return filtered.map((row) => mapListingSummary(row));
 }

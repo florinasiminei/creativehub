@@ -6,10 +6,12 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getRoleFromEncodedAuth } from "@/lib/draftsAuth";
 import { getTypeBySlug, LISTING_TYPES } from "@/lib/listingTypes";
 import { findCountyBySlug, getCounties } from "@/lib/counties";
+import { fetchTypeFacilityCountyCombos, type TypeFacilityCountyCombo } from "@/lib/typeFacilityCountySeo";
+import { hasMinimumPublishedListings } from "@/lib/seoIndexing";
+import { slugify } from "@/lib/utils";
 import {
   allRegions,
   findRegionBySlug,
-  metroCoreCitySet,
   normalizeRegionText,
   type RegionDefinition,
   type RegionType,
@@ -38,6 +40,14 @@ type ListingMeta = {
   lastModifiedMs: number | null;
 };
 
+type AttractionMeta = {
+  id: string;
+  isPublished: boolean;
+  slug: string;
+  title: string;
+  lastModifiedMs: number | null;
+};
+
 const REGION_URL_ALIASES = new Map<string, string>([
   ["/regiune/transilvania", "/regiune/transilvania-rurala"],
 ]);
@@ -62,13 +72,17 @@ type SeoPageItem = {
   pageKind:
     | "home"
     | "cazari_index"
+    | "atractii_index"
     | "type"
     | "judet"
     | "regiune"
     | "localitate"
     | "type_region"
     | "type_localitate"
+    | "type_facility_judet"
     | "listing"
+    | "atractie"
+    | "static"
     | "geo_zone";
   title: string;
   status: SeoPageStatus;
@@ -124,6 +138,40 @@ async function fetchListingsMeta(supabaseAdmin: ReturnType<typeof getSupabaseAdm
   return [] as ListingMeta[];
 }
 
+async function fetchAttractionsMeta(
+  supabaseAdmin: ReturnType<typeof getSupabaseAdmin>
+): Promise<AttractionMeta[]> {
+  const selectVariants = [
+    "id, title, slug, is_published, updated_at, created_at",
+    "id, title, slug, is_published, created_at",
+  ];
+
+  for (const select of selectVariants) {
+    const { data, error } = await supabaseAdmin.from("attractions").select(select);
+    if (error) continue;
+
+    const rows = ((data || []) as unknown) as Array<Record<string, unknown>>;
+    return rows.map((row) => {
+      const updatedAt = row["updated_at"] ? new Date(String(row["updated_at"])).getTime() : Number.NaN;
+      const createdAt = row["created_at"] ? new Date(String(row["created_at"])).getTime() : Number.NaN;
+      const lastModifiedMs = Number.isFinite(updatedAt)
+        ? updatedAt
+        : Number.isFinite(createdAt)
+        ? createdAt
+        : null;
+      return {
+        id: String(row["id"] || ""),
+        isPublished: Boolean(row["is_published"]),
+        slug: String(row["slug"] || "").trim(),
+        title: String(row["title"] || "").trim(),
+        lastModifiedMs,
+      };
+    });
+  }
+
+  return [];
+}
+
 type ListingStats = {
   total: number;
   published: number;
@@ -152,7 +200,15 @@ function buildStats(listings: ListingMeta[], predicate: (listing: ListingMeta) =
 }
 
 function buildRegionMatcher(region: RegionDefinition): (listing: ListingMeta) => boolean {
-  const regionCountyKeys = new Set(region.counties.map((county) => normalizeRegionText(county)));
+  const regionCountyKeys = new Set(
+    region.counties.map((county) => {
+      const normalized = normalizeRegionText(county);
+      const direct = getCounties().find((item) => normalizeRegionText(item.name) === normalized);
+      if (direct) return normalizeRegionText(direct.name);
+      const fuzzy = findCountyBySlug(slugify(String(county || "")));
+      return fuzzy ? normalizeRegionText(fuzzy.name) : normalized;
+    })
+  );
   const coreCities =
     region.type === "metro"
       ? new Set((region.coreCities || []).map((city) => normalizeRegionText(city)))
@@ -160,10 +216,8 @@ function buildRegionMatcher(region: RegionDefinition): (listing: ListingMeta) =>
 
   return (listing: ListingMeta): boolean => {
     if (!regionCountyKeys.has(listing.judetKey)) return false;
-    const cityNorm = listing.cityKey;
-    if (region.type === "metro") return coreCities ? coreCities.has(cityNorm) : false;
-    if (!cityNorm) return true;
-    return !metroCoreCitySet.has(cityNorm);
+    if (region.type === "metro") return coreCities ? coreCities.has(listing.cityKey) : false;
+    return true;
   };
 }
 
@@ -209,10 +263,21 @@ function createRoutePage(params: RoutePageParams): SeoPageItem {
   };
 }
 
-function buildRoutePages(listings: ListingMeta[]): SeoPageItem[] {
+function buildRoutePages(
+  listings: ListingMeta[],
+  attractions: AttractionMeta[],
+  typeFacilityCountyCombos: TypeFacilityCountyCombo[]
+): SeoPageItem[] {
   const routePages: SeoPageItem[] = [];
   const allStats = buildStats(listings, () => true);
   const regionMatchers = new Map(allRegions.map((region) => [region.slug, buildRegionMatcher(region)]));
+  const listingById = new Map(listings.map((listing) => [listing.id, listing]));
+  const emptyListingStats: ListingStats = {
+    total: 0,
+    published: 0,
+    unpublished: 0,
+    lastModifiedMs: null,
+  };
 
   routePages.push(
     createRoutePage({
@@ -234,10 +299,88 @@ function buildRoutePages(listings: ListingMeta[]): SeoPageItem[] {
       url: "/cazari",
       pageKind: "cazari_index",
       title: "Cazari verificate pe tipuri",
-      indexable: true,
+      indexable: hasMinimumPublishedListings(allStats.published),
       stats: allStats,
     })
   );
+
+  const staticPages = [
+    { slug: "about-us", url: "/about-us", title: "Despre noi", indexable: true, inMenu: false },
+    { slug: "servicii", url: "/servicii", title: "Servicii", indexable: true, inMenu: false },
+    { slug: "contact", url: "/contact", title: "Contact", indexable: true, inMenu: false },
+    {
+      slug: "politica-confidentialitate",
+      url: "/politica-confidentialitate",
+      title: "Politica de confidentialitate",
+      indexable: false,
+      inMenu: false,
+    },
+    {
+      slug: "politica-cookie",
+      url: "/politica-cookie",
+      title: "Politica de cookie-uri",
+      indexable: false,
+      inMenu: false,
+    },
+  ] as const;
+
+  for (const page of staticPages) {
+    routePages.push(
+      createRoutePage({
+        id: `route:static:${page.slug}`,
+        slug: page.slug,
+        url: page.url,
+        pageKind: "static",
+        title: page.title,
+        inMenu: page.inMenu,
+        indexable: page.indexable,
+        stats: emptyListingStats,
+      })
+    );
+  }
+
+  const publishedAttractions = attractions.filter((item) => item.isPublished && item.slug);
+  let attractionsLastModifiedMs: number | null = null;
+  for (const attraction of publishedAttractions) {
+    if (
+      attraction.lastModifiedMs !== null &&
+      (attractionsLastModifiedMs === null || attraction.lastModifiedMs > attractionsLastModifiedMs)
+    ) {
+      attractionsLastModifiedMs = attraction.lastModifiedMs;
+    }
+  }
+
+  routePages.push(
+    createRoutePage({
+      id: "route:atractii",
+      slug: "atractii",
+      url: "/atractii",
+      pageKind: "atractii_index",
+      title: "Atractii",
+      indexable: true,
+      stats: {
+        ...emptyListingStats,
+        lastModifiedMs: attractionsLastModifiedMs,
+      },
+    })
+  );
+
+  for (const attraction of publishedAttractions) {
+    routePages.push(
+      createRoutePage({
+        id: `route:atractie:${attraction.id}`,
+        slug: attraction.slug,
+        url: `/atractie/${attraction.slug}`,
+        pageKind: "atractie",
+        title: attraction.title || `Atractie ${attraction.slug}`,
+        indexable: true,
+        stats: {
+          ...emptyListingStats,
+          lastModifiedMs: attraction.lastModifiedMs,
+        },
+      })
+    );
+  }
 
   for (const type of LISTING_TYPES) {
     const stats = buildStats(listings, (listing) => listing.typeKey === type.value);
@@ -248,7 +391,7 @@ function buildRoutePages(listings: ListingMeta[]): SeoPageItem[] {
         url: `/cazari/${type.slug}`,
         pageKind: "type",
         title: type.label,
-        indexable: stats.published > 0,
+        indexable: hasMinimumPublishedListings(stats.published),
         stats,
       })
     );
@@ -264,7 +407,7 @@ function buildRoutePages(listings: ListingMeta[]): SeoPageItem[] {
         url: `/judet/${county.slug}`,
         pageKind: "judet",
         title: `Cazare in judetul ${county.name}`,
-        indexable: stats.published > 0,
+        indexable: hasMinimumPublishedListings(stats.published),
         stats,
       })
     );
@@ -280,7 +423,7 @@ function buildRoutePages(listings: ListingMeta[]): SeoPageItem[] {
         url: `/regiune/${region.slug}`,
         pageKind: region.type === "touristic" ? "regiune" : "localitate",
         title: `Cazare in ${region.name}`,
-        indexable: stats.published > 0,
+        indexable: hasMinimumPublishedListings(stats.published),
         stats,
       })
     );
@@ -300,11 +443,44 @@ function buildRoutePages(listings: ListingMeta[]): SeoPageItem[] {
           url: `/cazari/${type.slug}/${region.slug}`,
           pageKind: region.type === "metro" ? "type_localitate" : "type_region",
           title: `${type.label} in ${region.name}`,
-          indexable: stats.published > 0,
+          indexable: hasMinimumPublishedListings(stats.published),
           stats,
         })
       );
     }
+  }
+
+  for (const combo of typeFacilityCountyCombos) {
+    const relatedListings = combo.listingIds
+      .map((id) => listingById.get(id))
+      .filter((listing): listing is ListingMeta => Boolean(listing));
+    if (relatedListings.length === 0) continue;
+
+    let published = 0;
+    let lastModifiedMs: number | null = null;
+    for (const listing of relatedListings) {
+      if (listing.isPublished) published += 1;
+      if (listing.lastModifiedMs !== null && (lastModifiedMs === null || listing.lastModifiedMs > lastModifiedMs)) {
+        lastModifiedMs = listing.lastModifiedMs;
+      }
+    }
+
+    routePages.push(
+      createRoutePage({
+        id: `route:type-facility-judet:${combo.typeSlug}:${combo.facilitySlug}:${combo.countySlug}`,
+        slug: `${combo.typeSlug}/${combo.facilitySlug}/${combo.countySlug}`,
+        url: `/cazari/${combo.typeSlug}/${combo.facilitySlug}/${combo.countySlug}`,
+        pageKind: "type_facility_judet",
+        title: `${combo.typeLabel} cu ${combo.facilityName} in judetul ${combo.countyName}`,
+        indexable: hasMinimumPublishedListings(published),
+        stats: {
+          total: relatedListings.length,
+          published,
+          unpublished: Math.max(0, relatedListings.length - published),
+          lastModifiedMs,
+        },
+      })
+    );
   }
 
   for (const listing of listings) {
@@ -393,6 +569,20 @@ function mergePages(routePages: SeoPageItem[], geoPages: SeoPageItem[]): SeoPage
   }
 
   return Array.from(mergedByKey.values());
+}
+
+function requiresListingsThreshold(pageKind: SeoPageItem["pageKind"]): boolean {
+  return (
+    pageKind === "cazari_index" ||
+    pageKind === "type" ||
+    pageKind === "judet" ||
+    pageKind === "regiune" ||
+    pageKind === "localitate" ||
+    pageKind === "type_region" ||
+    pageKind === "type_localitate" ||
+    pageKind === "type_facility_judet" ||
+    pageKind === "geo_zone"
+  );
 }
 
 async function applyPageviewMetrics(
@@ -589,6 +779,8 @@ export default async function AdminSeoPage() {
   }
 
   const listings = await fetchListingsMeta(supabaseAdmin, []);
+  const attractions = await fetchAttractionsMeta(supabaseAdmin);
+  const typeFacilityCountyCombos = await fetchTypeFacilityCountyCombos(supabaseAdmin);
   const listingById = new Map(listings.map((row) => [row.id, row]));
 
   const relationMap = new Map<string, string[]>();
@@ -656,8 +848,16 @@ export default async function AdminSeoPage() {
     };
   });
 
-  const routePages = buildRoutePages(listings);
-  const mergedPages = mergePages(routePages, geoPages);
+  const routePages = buildRoutePages(listings, attractions, typeFacilityCountyCombos);
+  const mergedPages = mergePages(routePages, geoPages).map((page) => {
+    if (!requiresListingsThreshold(page.pageKind)) return page;
+    if (hasMinimumPublishedListings(page.publishedListings)) return page;
+    return {
+      ...page,
+      indexable: false,
+      canToggleIndex: false,
+    };
+  });
 
   try {
     await applyPageviewMetrics(supabaseAdmin, mergedPages);

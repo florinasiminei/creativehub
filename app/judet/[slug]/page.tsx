@@ -5,6 +5,7 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { mapListingSummary } from "@/lib/transformers";
 import { sortFacilitiesByPriority } from "@/lib/facilitiesCatalog";
 import { getCanonicalSiteUrl } from "@/lib/siteUrl";
+import { hasMinimumPublishedListings } from "@/lib/seoIndexing";
 import { buildBreadcrumbJsonLd, buildListingPageJsonLd } from "@/lib/jsonLd";
 import { findCountyBySlug, getCounties } from "@/lib/counties";
 import type { ListingRaw } from "@/lib/types";
@@ -23,7 +24,7 @@ export async function generateStaticParams() {
   return getCounties().map((county) => ({ slug: county.slug }));
 }
 
-async function countyHasListings(countyName: string): Promise<boolean> {
+async function getPublishedCountyListingsCount(countyName: string): Promise<number> {
   const supabaseAdmin = getSupabaseAdmin();
   const { count, error } = await supabaseAdmin
     .from("listings")
@@ -31,8 +32,8 @@ async function countyHasListings(countyName: string): Promise<boolean> {
     .eq("is_published", true)
     .eq("judet", countyName);
 
-  if (error) return true;
-  return Number(count || 0) > 0;
+  if (error) return Number.POSITIVE_INFINITY;
+  return Number(count || 0);
 }
 
 export async function generateMetadata({ params }: PageProps) {
@@ -41,7 +42,8 @@ export async function generateMetadata({ params }: PageProps) {
   const title = `Cazare in judetul ${county.name}`;
   const description = `Descopera cazari atent selectate in judetul ${county.name}, cu verificare foto/video si rezervare direct la gazda.`;
   const canonical = new URL(`/judet/${county.slug}`, siteUrl).toString();
-  const hasListings = await countyHasListings(county.name);
+  const publishedListingsCount = await getPublishedCountyListingsCount(county.name);
+  const shouldIndex = hasMinimumPublishedListings(publishedListingsCount);
 
   return {
     title,
@@ -54,7 +56,7 @@ export async function generateMetadata({ params }: PageProps) {
       description,
       url: canonical,
     },
-    robots: hasListings ? undefined : { index: false, follow: true },
+    robots: shouldIndex ? undefined : { index: false, follow: true },
   };
 }
 

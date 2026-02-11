@@ -14,13 +14,17 @@ type SeoPageItem = {
   pageKind:
     | "home"
     | "cazari_index"
+    | "atractii_index"
     | "type"
     | "judet"
     | "regiune"
     | "localitate"
     | "type_region"
     | "type_localitate"
+    | "type_facility_judet"
     | "listing"
+    | "atractie"
+    | "static"
     | "geo_zone";
   title: string;
   status: SeoPageStatus;
@@ -51,13 +55,17 @@ type PageKindFilter =
   | "all"
   | "home"
   | "cazari_index"
+  | "atractii_index"
   | "type"
   | "judet"
   | "regiune"
   | "localitate"
   | "type_region"
   | "type_localitate"
+  | "type_facility_judet"
   | "listing"
+  | "atractie"
+  | "static"
   | "geo_zone";
 
 const INDEX_FILTER_OPTIONS: Array<{ value: IndexFilter; label: string }> = [
@@ -70,12 +78,16 @@ const PAGE_KIND_FILTER_OPTIONS: Array<{ value: PageKindFilter; label: string }> 
   { value: "all", label: "Tip pagina: toate" },
   { value: "home", label: "Homepage" },
   { value: "listing", label: "Pagina individuala cazare" },
+  { value: "atractii_index", label: "Hub /atractii" },
+  { value: "atractie", label: "Pagina individuala atractie" },
   { value: "judet", label: "Pagina judet" },
   { value: "regiune", label: "Pagina regiune" },
   { value: "localitate", label: "Pagina localitate" },
   { value: "type", label: "Pagina tip cazare" },
   { value: "type_region", label: "Pagina tip + regiune" },
   { value: "type_localitate", label: "Pagina tip + localitate" },
+  { value: "type_facility_judet", label: "Pagina tip + facilitate + judet" },
+  { value: "static", label: "Pagina statica" },
   { value: "cazari_index", label: "Hub /cazari" },
   { value: "geo_zone", label: "Alte pagini geo" },
 ];

@@ -1,4 +1,4 @@
-export type RegionType = "touristic" | "metro";
+﻿export type RegionType = "touristic" | "metro";
 
 export type RegionDefinition = {
   name: string;

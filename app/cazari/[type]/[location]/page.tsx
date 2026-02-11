@@ -5,7 +5,10 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { mapListingSummary } from '@/lib/transformers';
 import { getTypeBySlug, LISTING_TYPES } from '@/lib/listingTypes';
 import { getCanonicalSiteUrl } from '@/lib/siteUrl';
-import { allRegions, findRegionBySlug, metroCoreCitySet, normalizeRegionText } from '@/lib/regions';
+import { hasMinimumPublishedListings } from '@/lib/seoIndexing';
+import { findCountyBySlug, getCounties } from '@/lib/counties';
+import { allRegions, findRegionBySlug, normalizeRegionText } from '@/lib/regions';
+import { slugify } from '@/lib/utils';
 import { buildFaqJsonLd, buildListingPageJsonLd } from '@/lib/jsonLd';
 import { getFaqs } from '@/lib/faqData';
 import type { ListingRaw } from '@/lib/types';
@@ -22,6 +25,20 @@ type PageProps = {
   };
 };
 
+function resolveRegionCountyNames(regionCounties: string[]): string[] {
+  const counties = getCounties();
+  const byKey = new Map(counties.map((county) => [normalizeRegionText(county.name), county.name] as const));
+  const resolved = regionCounties
+    .map((county) => {
+      const byNormalized = byKey.get(normalizeRegionText(county));
+      if (byNormalized) return byNormalized;
+      const fuzzy = findCountyBySlug(slugify(String(county || '')));
+      return fuzzy?.name || county;
+    })
+    .filter(Boolean);
+  return Array.from(new Set(resolved));
+}
+
 export async function generateStaticParams() {
   const params: Array<{ type: string; location: string }> = [];
   for (const type of LISTING_TYPES) {
@@ -32,33 +49,34 @@ export async function generateStaticParams() {
   return params;
 }
 
-async function hasListingsForLocation(
+async function getPublishedListingsCountForLocation(
   typeValue: string,
   region: { counties: string[]; type: string; coreCities?: string[] }
-): Promise<boolean> {
+): Promise<number> {
+  const countyNames = resolveRegionCountyNames(region.counties);
   const supabaseAdmin = getSupabaseAdmin();
   const { data, error } = await supabaseAdmin
     .from('listings')
     .select('city')
     .eq('is_published', true)
     .eq('type', typeValue)
-    .in('judet', region.counties);
+    .in('judet', countyNames);
 
-  if (error) return true;
+  if (error) return Number.POSITIVE_INFINITY;
 
   const rows = (data || []) as Array<{ city?: string | null }>;
   const normalizedMetroCities = region.coreCities
     ? new Set(region.coreCities.map((c) => normalizeRegionText(c)))
     : null;
 
-  return rows.some((row) => {
+  if (region.type !== "metro") return rows.length;
+
+  let count = 0;
+  for (const row of rows) {
     const cityNorm = normalizeRegionText(String(row?.city || ""));
-    if (region.type === "metro") {
-      return normalizedMetroCities ? normalizedMetroCities.has(cityNorm) : false;
-    }
-    if (!cityNorm) return true;
-    return !metroCoreCitySet.has(cityNorm);
-  });
+    if (normalizedMetroCities && normalizedMetroCities.has(cityNorm)) count += 1;
+  }
+  return count;
 }
 
 export async function generateMetadata({ params }: PageProps) {
@@ -70,7 +88,8 @@ export async function generateMetadata({ params }: PageProps) {
   const title = `Cazare ${listingType.label.toLowerCase()} in ${region.name}`;
   const description = `Descopera ${listingType.label.toLowerCase()} in ${region.name}, atent selectate, cu rezervare direct la gazda.`;
   const canonical = new URL(`/cazari/${listingType.slug}/${region.slug}`, siteUrl).toString();
-  const hasListings = await hasListingsForLocation(listingType.value, region);
+  const publishedListingsCount = await getPublishedListingsCountForLocation(listingType.value, region);
+  const shouldIndex = hasMinimumPublishedListings(publishedListingsCount);
 
   return {
     title,
@@ -83,7 +102,7 @@ export async function generateMetadata({ params }: PageProps) {
       description,
       url: canonical,
     },
-    robots: hasListings ? undefined : { index: false, follow: true },
+    robots: shouldIndex ? undefined : { index: false, follow: true },
   };
 }
 
@@ -92,6 +111,7 @@ async function getListingsForLocation(
   typeValue: string,
   region: { counties: string[]; type: string; coreCities?: string[] }
 ): Promise<Cazare[]> {
+  const countyNames = resolveRegionCountyNames(region.counties);
   const supabaseAdmin = getSupabaseAdmin();
   const baseSelect = `
     id, title, slug, type, judet, city, sat, capacity, price, phone, is_published, display_order,
@@ -108,7 +128,7 @@ async function getListingsForLocation(
     .select(baseSelect)
     .eq('is_published', true)
     .eq('type', typeValue)
-    .in('judet', region.counties)
+    .in('judet', countyNames)
     .order('display_order', { ascending: false, nullsFirst: false })
     .order('display_order', { foreignTable: 'listing_images', ascending: true })
     .limit(1, { foreignTable: 'listing_images' });
@@ -123,7 +143,7 @@ async function getListingsForLocation(
       .select(baseSelect)
       .eq('is_published', true)
       .eq('type', typeValue)
-      .in('judet', region.counties)
+      .in('judet', countyNames)
       .order('display_order', { foreignTable: 'listing_images', ascending: true })
       .limit(1, { foreignTable: 'listing_images' });
     data = fallback.data;
@@ -137,14 +157,13 @@ async function getListingsForLocation(
     ? new Set(region.coreCities.map((c) => normalizeRegionText(c)))
     : null;
 
-  const filtered = rows.filter((row) => {
-    const cityNorm = normalizeRegionText(String((row as any).city || ""));
-    if (region.type === "metro") {
-      return normalizedMetroCities ? normalizedMetroCities.has(cityNorm) : false;
-    }
-    if (!cityNorm) return true;
-    return !metroCoreCitySet.has(cityNorm);
-  });
+  const filtered =
+    region.type === "metro"
+      ? rows.filter((row) => {
+          const cityNorm = normalizeRegionText(String((row as any).city || ""));
+          return normalizedMetroCities ? normalizedMetroCities.has(cityNorm) : false;
+        })
+      : rows;
 
   return filtered.map((row) => mapListingSummary(row));
 }
@@ -212,10 +231,6 @@ export default async function CazariLocationPage({ params }: PageProps) {
           <p className="text-gray-600 mt-4 max-w-2xl mx-auto">
             {description}
           </p>
-          <p className="text-gray-600/90 mt-2 max-w-2xl mx-auto">
-            Pagina este actualizata periodic si pastreaza informatia structurala utila pentru
-            indexare si orientarea utilizatorilor.
-          </p>
           <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
               href="/add-property"
@@ -244,7 +259,9 @@ export default async function CazariLocationPage({ params }: PageProps) {
               </p>
             </div>
           ) : (
-            <ListingsGrid cazari={listings} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-2 gap-y-8">
+              <ListingsGrid cazari={listings} />
+            </div>
           )}
         </section>
 
