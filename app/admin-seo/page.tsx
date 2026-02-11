@@ -94,10 +94,17 @@ type SeoPageItem = {
   lastModifiedMs: number | null;
   canTogglePublish: boolean;
   canToggleIndex: boolean;
+  pageviews1h: number;
+  uniqueVisitors1h: number;
+  pageviews6h: number;
+  uniqueVisitors6h: number;
+  pageviews1d: number;
+  uniqueVisitors1d: number;
   pageviews30d: number;
   uniqueVisitors30d: number;
   pageviews7d: number;
   uniqueVisitors7d: number;
+  lastSeenViewMs: number | null;
   isInconsistent: boolean;
 };
 
@@ -222,10 +229,17 @@ function buildRegionMatcher(region: RegionDefinition): (listing: ListingMeta) =>
 }
 
 const EMPTY_TRAFFIC = {
+  pageviews1h: 0,
+  uniqueVisitors1h: 0,
+  pageviews6h: 0,
+  uniqueVisitors6h: 0,
+  pageviews1d: 0,
+  uniqueVisitors1d: 0,
   pageviews30d: 0,
   uniqueVisitors30d: 0,
   pageviews7d: 0,
   uniqueVisitors7d: 0,
+  lastSeenViewMs: null,
 };
 
 type RoutePageParams = {
@@ -598,6 +612,9 @@ async function applyPageviewMetrics(
   const nowMs = Date.now();
   const since30Ms = nowMs - 30 * 24 * 60 * 60 * 1000;
   const since7Ms = nowMs - 7 * 24 * 60 * 60 * 1000;
+  const since1hMs = nowMs - 60 * 60 * 1000;
+  const since1dMs = nowMs - 24 * 60 * 60 * 1000;
+  const since6hMs = nowMs - 6 * 60 * 60 * 1000;
   const since30Iso = new Date(since30Ms).toISOString();
   const pageviewsData: Array<{ path?: string | null; anon_id?: string | null; created_at?: string | null }> = [];
   const batchSize = 100;
@@ -625,6 +642,13 @@ async function applyPageviewMetrics(
   const uniquesMap30 = new Map<string, Set<string>>();
   const viewsMap7 = new Map<string, number>();
   const uniquesMap7 = new Map<string, Set<string>>();
+  const viewsMap1h = new Map<string, number>();
+  const uniquesMap1h = new Map<string, Set<string>>();
+  const viewsMap1d = new Map<string, number>();
+  const uniquesMap1d = new Map<string, Set<string>>();
+  const viewsMap6h = new Map<string, number>();
+  const uniquesMap6h = new Map<string, Set<string>>();
+  const lastSeenMap = new Map<string, number>();
 
   for (const row of pageviewsData) {
     const path = typeof row.path === "string" ? row.path : null;
@@ -638,6 +662,12 @@ async function applyPageviewMetrics(
     }
 
     const createdMs = row.created_at ? new Date(String(row.created_at)).getTime() : Number.NaN;
+    if (Number.isFinite(createdMs)) {
+      const prev = lastSeenMap.get(path);
+      if (prev === undefined || createdMs > prev) {
+        lastSeenMap.set(path, createdMs);
+      }
+    }
     if (Number.isFinite(createdMs) && createdMs >= since7Ms) {
       viewsMap7.set(path, (viewsMap7.get(path) || 0) + 1);
       if (row.anon_id) {
@@ -645,15 +675,49 @@ async function applyPageviewMetrics(
         uniques.add(String(row.anon_id));
         uniquesMap7.set(path, uniques);
       }
+
+      if (createdMs >= since1dMs) {
+        viewsMap1d.set(path, (viewsMap1d.get(path) || 0) + 1);
+        if (row.anon_id) {
+          const uniques = uniquesMap1d.get(path) || new Set<string>();
+          uniques.add(String(row.anon_id));
+          uniquesMap1d.set(path, uniques);
+        }
+      }
+
+      if (createdMs >= since6hMs) {
+        viewsMap6h.set(path, (viewsMap6h.get(path) || 0) + 1);
+        if (row.anon_id) {
+          const uniques = uniquesMap6h.get(path) || new Set<string>();
+          uniques.add(String(row.anon_id));
+          uniquesMap6h.set(path, uniques);
+        }
+      }
+
+      if (createdMs >= since1hMs) {
+        viewsMap1h.set(path, (viewsMap1h.get(path) || 0) + 1);
+        if (row.anon_id) {
+          const uniques = uniquesMap1h.get(path) || new Set<string>();
+          uniques.add(String(row.anon_id));
+          uniquesMap1h.set(path, uniques);
+        }
+      }
     }
   }
 
   for (const page of pages) {
     const path = page.url || "";
+    page.pageviews1h = viewsMap1h.get(path) || 0;
+    page.uniqueVisitors1h = uniquesMap1h.get(path)?.size || 0;
+    page.pageviews6h = viewsMap6h.get(path) || 0;
+    page.uniqueVisitors6h = uniquesMap6h.get(path)?.size || 0;
+    page.pageviews1d = viewsMap1d.get(path) || 0;
+    page.uniqueVisitors1d = uniquesMap1d.get(path)?.size || 0;
     page.pageviews30d = viewsMap30.get(path) || 0;
     page.uniqueVisitors30d = uniquesMap30.get(path)?.size || 0;
     page.pageviews7d = viewsMap7.get(path) || 0;
     page.uniqueVisitors7d = uniquesMap7.get(path)?.size || 0;
+    page.lastSeenViewMs = lastSeenMap.get(path) ?? null;
   }
 }
 
@@ -853,10 +917,7 @@ export default async function AdminSeoPage() {
       lastModifiedMs,
       canTogglePublish: Boolean(toggleMeta.publishField),
       canToggleIndex: Boolean(toggleMeta.indexField && toggleMeta.indexMode),
-      pageviews30d: 0,
-      uniqueVisitors30d: 0,
-      pageviews7d: 0,
-      uniqueVisitors7d: 0,
+      ...EMPTY_TRAFFIC,
       isInconsistent: !zoneUrl || pageKind === "geo_zone",
     };
   });

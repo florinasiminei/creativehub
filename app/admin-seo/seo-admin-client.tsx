@@ -36,10 +36,17 @@ type SeoPageItem = {
   lastModifiedMs: number | null;
   canTogglePublish: boolean;
   canToggleIndex: boolean;
+  pageviews1h: number;
+  uniqueVisitors1h: number;
+  pageviews6h: number;
+  uniqueVisitors6h: number;
+  pageviews1d: number;
+  uniqueVisitors1d: number;
   pageviews30d: number;
   uniqueVisitors30d: number;
   pageviews7d: number;
   uniqueVisitors7d: number;
+  lastSeenViewMs: number | null;
   isInconsistent: boolean;
 };
 
@@ -47,9 +54,9 @@ type Props = {
   pages: SeoPageItem[];
 };
 
-type SortField = "url" | "title" | "views" | "indexable" | "listings" | "lastModified";
+type SortField = "url" | "title" | "views" | "indexable" | "listings" | "lastModified" | "lastSeenView";
 type SortDir = "asc" | "desc";
-type ViewsWindow = "7d" | "30d";
+type ViewsWindow = "1h" | "6h" | "1d" | "7d" | "30d";
 type IndexFilter = "all" | "index" | "noindex";
 type PageKindFilter =
   | "all"
@@ -99,21 +106,53 @@ const SORT_DEFAULT_DIR: Record<SortField, SortDir> = {
   indexable: "asc",
   listings: "desc",
   lastModified: "desc",
+  lastSeenView: "desc",
 };
+
+const VIEWS_WINDOW_OPTIONS: Array<{ value: ViewsWindow; label: string }> = [
+  { value: "1h", label: "1h" },
+  { value: "6h", label: "6h" },
+  { value: "1d", label: "1z" },
+  { value: "7d", label: "7z" },
+  { value: "30d", label: "30z" },
+];
 
 function formatDate(ts: number | null): string {
   if (!ts) return "-";
   const date = new Date(ts);
   if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleString("ro-RO");
+  return date.toLocaleDateString("ro-RO");
+}
+
+function formatTime(ts: number | null): string {
+  if (!ts) return "-";
+  const date = new Date(ts);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" });
 }
 
 function getViewsByWindow(row: SeoPageItem, viewsWindow: ViewsWindow): number {
-  return viewsWindow === "7d" ? row.pageviews7d : row.pageviews30d;
+  if (viewsWindow === "1h") return row.pageviews1h;
+  if (viewsWindow === "6h") return row.pageviews6h;
+  if (viewsWindow === "1d") return row.pageviews1d;
+  if (viewsWindow === "7d") return row.pageviews7d;
+  return row.pageviews30d;
 }
 
 function getUniqueViewsByWindow(row: SeoPageItem, viewsWindow: ViewsWindow): number {
-  return viewsWindow === "7d" ? row.uniqueVisitors7d : row.uniqueVisitors30d;
+  if (viewsWindow === "1h") return row.uniqueVisitors1h;
+  if (viewsWindow === "6h") return row.uniqueVisitors6h;
+  if (viewsWindow === "1d") return row.uniqueVisitors1d;
+  if (viewsWindow === "7d") return row.uniqueVisitors7d;
+  return row.uniqueVisitors30d;
+}
+
+function getViewsWindowLabel(viewsWindow: ViewsWindow): string {
+  if (viewsWindow === "1h") return "1h";
+  if (viewsWindow === "6h") return "6h";
+  if (viewsWindow === "1d") return "1z";
+  if (viewsWindow === "7d") return "7z";
+  return "30z";
 }
 
 function compareRows(a: SeoPageItem, b: SeoPageItem, sortField: SortField, viewsWindow: ViewsWindow): number {
@@ -122,6 +161,7 @@ function compareRows(a: SeoPageItem, b: SeoPageItem, sortField: SortField, views
   if (sortField === "views") return getViewsByWindow(a, viewsWindow) - getViewsByWindow(b, viewsWindow);
   if (sortField === "indexable") return Number(a.indexable) - Number(b.indexable);
   if (sortField === "listings") return a.totalListings - b.totalListings;
+  if (sortField === "lastSeenView") return (a.lastSeenViewMs || 0) - (b.lastSeenViewMs || 0);
   return (a.lastModifiedMs || 0) - (b.lastModifiedMs || 0);
 }
 
@@ -164,10 +204,9 @@ export default function SeoAdminClient({ pages }: Props) {
   const summary = useMemo(() => {
     const total = filteredRows.length;
     const noindex = filteredRows.filter((row) => !row.indexable).length;
-    const totalViews30d = filteredRows.reduce((sum, row) => sum + row.pageviews30d, 0);
-    const totalViews7d = filteredRows.reduce((sum, row) => sum + row.pageviews7d, 0);
-    return { total, noindex, totalViews30d, totalViews7d };
-  }, [filteredRows]);
+    const totalViews = filteredRows.reduce((sum, row) => sum + getViewsByWindow(row, viewsWindow), 0);
+    return { total, noindex, totalViews };
+  }, [filteredRows, viewsWindow]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / perPage));
   const pagedRows = useMemo(() => {
@@ -194,10 +233,12 @@ export default function SeoAdminClient({ pages }: Props) {
   };
 
   const sortIndicator = (field: SortField) => {
-    if (sortField !== field) return <span className="inline-block w-3 text-center text-gray-400">.</span>;
+    if (sortField !== field) {
+      return <span className="inline-flex items-center justify-center w-4 text-[11px] text-gray-300 dark:text-zinc-600">↕</span>;
+    }
     return (
-      <span className="inline-block w-3 text-center text-emerald-600 dark:text-emerald-300">
-        {sortDir === "asc" ? "^" : "v"}
+      <span className="inline-flex items-center justify-center w-4 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+        {sortDir === "asc" ? "↑" : "↓"}
       </span>
     );
   };
@@ -268,11 +309,9 @@ export default function SeoAdminClient({ pages }: Props) {
         </div>
         <div className="rounded-xl border border-emerald-100 dark:border-emerald-900/40 bg-emerald-50/70 dark:bg-emerald-950/20 px-4 py-3">
           <div className="text-xs text-emerald-800/80 dark:text-emerald-200/80">
-            Pageviews {viewsWindow === "7d" ? "7z" : "30z"}
+            Pageviews {getViewsWindowLabel(viewsWindow)}
           </div>
-          <div className="text-2xl font-semibold">
-            {viewsWindow === "7d" ? summary.totalViews7d : summary.totalViews30d}
-          </div>
+          <div className="text-2xl font-semibold">{summary.totalViews}</div>
         </div>
       </div>
 
@@ -309,33 +348,30 @@ export default function SeoAdminClient({ pages }: Props) {
 
       <div className="flex flex-wrap justify-end items-center gap-2 mb-4">
         <div className="inline-flex rounded-lg border border-gray-200 dark:border-zinc-700 overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setViewsWindow("7d")}
-            className={`px-3 py-2 text-xs sm:text-sm ${viewsWindow === "7d" ? "bg-emerald-600 text-white" : "bg-white dark:bg-zinc-900"}`}
-          >
-            7z
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewsWindow("30d")}
-            className={`px-3 py-2 text-xs sm:text-sm ${viewsWindow === "30d" ? "bg-emerald-600 text-white" : "bg-white dark:bg-zinc-900"}`}
-          >
-            30z
-          </button>
+          {VIEWS_WINDOW_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setViewsWindow(option.value)}
+              className={`px-3 py-2 text-xs sm:text-sm ${viewsWindow === option.value ? "bg-emerald-600 text-white" : "bg-white dark:bg-zinc-900"}`}
+            >
+              {option.label}
+            </button>
+          ))}
         </div>
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
         <table className="w-full min-w-[980px] table-fixed text-xs sm:text-sm">
           <colgroup>
-            <col className="w-[22%]" />
+            <col className="w-[15%]" />
             <col className="w-[16%]" />
-            <col className="w-[10%]" />
-            <col className="w-[10%]" />
+            <col className="w-[8%]" />
+            <col className="w-[8%]" />
             <col className="w-[14%]" />
-            <col className="w-[12%]" />
-            <col className="w-[16%]" />
+            <col className="w-[11%]" />
+            <col className="w-[10%]" />
+            <col className="w-[18%]" />
           </colgroup>
           <thead className="bg-gray-50 dark:bg-zinc-800/50 text-left">
             <tr>
@@ -351,7 +387,7 @@ export default function SeoAdminClient({ pages }: Props) {
               </th>
               <th className="px-2 py-2 font-semibold">
                 <button type="button" onClick={() => toggleSort("views")} className="inline-flex items-center gap-1 hover:underline whitespace-nowrap">
-                  Views {viewsWindow === "7d" ? "7z" : "30z"} {sortIndicator("views")}
+                  Views {getViewsWindowLabel(viewsWindow)} {sortIndicator("views")}
                 </button>
               </th>
               <th className="px-2 py-2 font-semibold">
@@ -369,6 +405,11 @@ export default function SeoAdminClient({ pages }: Props) {
                   Ultima modificare {sortIndicator("lastModified")}
                 </button>
               </th>
+              <th className="px-2 py-2 font-semibold">
+                <button type="button" onClick={() => toggleSort("lastSeenView")} className="inline-flex items-center gap-1 hover:underline whitespace-nowrap">
+                  Ultimul view {sortIndicator("lastSeenView")}
+                </button>
+              </th>
               <th className="px-2 py-2 font-semibold">Actiuni</th>
             </tr>
           </thead>
@@ -378,11 +419,17 @@ export default function SeoAdminClient({ pages }: Props) {
               return (
                 <tr key={row.id} className="border-t border-gray-100 dark:border-zinc-800">
                   <td className="px-2 py-2 align-top">
-                    <div className="font-medium truncate">{row.url || "-"}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{row.slug}</div>
+                    <div className="font-medium truncate" title={row.url || "-"}>
+                      {row.url || "-"}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 truncate" title={row.slug}>
+                      {row.slug}
+                    </div>
                   </td>
                   <td className="px-2 py-2 align-top">
-                    <span className="line-clamp-2">{row.title}</span>
+                    <span className="block truncate" title={row.title}>
+                      {row.title}
+                    </span>
                   </td>
                   <td className="px-2 py-2 align-top">
                     <div>{getViews(row)}</div>
@@ -395,7 +442,14 @@ export default function SeoAdminClient({ pages }: Props) {
                       Publicate: {row.publishedListings} | Nepublicate: {row.unpublishedListings}
                     </div>
                   </td>
-                  <td className="px-2 py-2 align-top whitespace-nowrap">{formatDate(row.lastModifiedMs)}</td>
+                  <td className="px-2 py-2 align-top whitespace-nowrap">
+                    <div>{formatDate(row.lastModifiedMs)}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{formatTime(row.lastModifiedMs)}</div>
+                  </td>
+                  <td className="px-2 py-2 align-top whitespace-nowrap">
+                    <div>{formatDate(row.lastSeenViewMs)}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{formatTime(row.lastSeenViewMs)}</div>
+                  </td>
                   <td className="px-2 py-2 align-top">
                     <div className="flex flex-wrap gap-1">
                       {row.openUrl || row.url ? (
@@ -445,7 +499,7 @@ export default function SeoAdminClient({ pages }: Props) {
             })}
             {pagedRows.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
+                <td colSpan={8} className="px-3 py-8 text-center text-gray-500 dark:text-gray-400">
                   Nicio pagina SEO care sa corespunda filtrelor curente.
                 </td>
               </tr>
