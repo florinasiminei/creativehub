@@ -599,21 +599,34 @@ async function applyPageviewMetrics(
   const since30Ms = nowMs - 30 * 24 * 60 * 60 * 1000;
   const since7Ms = nowMs - 7 * 24 * 60 * 60 * 1000;
   const since30Iso = new Date(since30Ms).toISOString();
+  const pageviewsData: Array<{ path?: string | null; anon_id?: string | null; created_at?: string | null }> = [];
+  const batchSize = 100;
 
-  const { data: pageviewsData, error: pageviewsError } = await supabaseAdmin
-    .from("seo_pageviews")
-    .select("path, anon_id, created_at")
-    .in("path", urls)
-    .gte("created_at", since30Iso);
+  for (let index = 0; index < urls.length; index += batchSize) {
+    const batch = urls.slice(index, index + batchSize);
+    const { data, error } = await supabaseAdmin
+      .from("seo_pageviews")
+      .select("path, anon_id, created_at")
+      .in("path", batch)
+      .gte("created_at", since30Iso);
 
-  if (pageviewsError || !pageviewsData) return;
+    if (error) {
+      throw new Error(`seo_pageviews fetch failed at batch ${index / batchSize + 1}: ${error.message}`);
+    }
+
+    if (data?.length) {
+      pageviewsData.push(
+        ...(data as Array<{ path?: string | null; anon_id?: string | null; created_at?: string | null }>)
+      );
+    }
+  }
 
   const viewsMap30 = new Map<string, number>();
   const uniquesMap30 = new Map<string, Set<string>>();
   const viewsMap7 = new Map<string, number>();
   const uniquesMap7 = new Map<string, Set<string>>();
 
-  for (const row of pageviewsData as Array<{ path?: string | null; anon_id?: string | null; created_at?: string | null }>) {
+  for (const row of pageviewsData) {
     const path = typeof row.path === "string" ? row.path : null;
     if (!path) continue;
 
@@ -861,8 +874,11 @@ export default async function AdminSeoPage() {
 
   try {
     await applyPageviewMetrics(supabaseAdmin, mergedPages);
-  } catch {
-    // keep dashboard available even if pageviews data cannot be fetched
+  } catch (error) {
+    console.error(
+      "[admin-seo] pageviews metrics failed",
+      error instanceof Error ? error.message : error
+    );
   }
 
   return <SeoAdminClient pages={mergedPages} />;

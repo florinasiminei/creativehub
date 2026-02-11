@@ -205,6 +205,7 @@ Interiorul este amenajat cu gust, oferind spații generoase și luminoase. Fieca
 
   const listing: Listing & { judet?: string; city?: string; sat?: string } = {
     id: row.id,
+    slug: row.slug ?? undefined,
     title: row.title,
     city: row.city ?? undefined,
     sat: row.sat ?? undefined,
@@ -237,37 +238,45 @@ function truncate(text: string, max = 160) {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const listing = await fetchListing(params.slug);
   if (!listing) return {};
+
   const description = truncate(listing.description);
   const image = listing.images?.[0] || '/images/logo.svg';
-    const cityLabel = listing.city
-      ? listing.sat
-        ? `${listing.city} (${listing.sat})`
-        : listing.city
-      : "";
-    const locationLabel = [cityLabel, listing.judet].filter(Boolean).join(", ");
-    const baseTitle = listing.title;
-    const titleSuffix = locationLabel ? ` | Cazare în ${locationLabel}` : "";
-    const title = `${baseTitle}${titleSuffix}`;
-    const canonical = new URL(`/cazare/${params.slug}`, siteUrl).toString();
-    const url = canonical;
-    return {
+  const cityLabel = listing.city
+    ? listing.sat
+      ? `${listing.city} (${listing.sat})`
+      : listing.city
+    : "";
+  const locationLabel = [cityLabel, listing.judet].filter(Boolean).join(", ");
+  const baseTitle = listing.title;
+  const titleSuffix = locationLabel ? ` | Cazare in ${locationLabel}` : "";
+  const title = `${baseTitle}${titleSuffix}`;
+  const canonicalPath = listing.slug ? `/cazare/${listing.slug}` : `/cazare/${params.slug}`;
+  const canonical = new URL(canonicalPath, siteUrl).toString();
+  const absoluteImage =
+    image.startsWith("http://") || image.startsWith("https://")
+      ? image
+      : new URL(image, siteUrl).toString();
+
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: {
       title,
       description,
-      alternates: { canonical },
-      openGraph: {
-        title,
-        description,
-        type: 'website',
-        url,
-        images: [{ url: image }],
-      },
-      twitter: {
-        card: 'summary_large_image',
-        title,
-        description,
-        images: [image],
-      },
-    };
+      type: 'website',
+      url: canonical,
+      siteName: 'cabn.ro',
+      locale: 'ro_RO',
+      images: [{ url: absoluteImage, alt: title }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [absoluteImage],
+    },
+  };
 }
 
 export default async function CazarePage({ params, searchParams }: PageProps) {

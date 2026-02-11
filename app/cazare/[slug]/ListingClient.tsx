@@ -6,11 +6,13 @@ import SubtleBackLink from "@/components/SubtleBackLink";
 import PropertyImageGrid from "@/components/listing/PropertyImageGrid";
 import { resolveFacilityIcon } from "@/lib/facilityIcons";
 import { resolveListingTypeIcon } from "@/lib/listingTypeIcons";
-import { MapPin, Users } from "lucide-react";
+import { getCanonicalSiteUrl } from "@/lib/siteUrl";
+import { Check, Copy, MapPin, PhoneCall, Share2, Users } from "lucide-react";
 
 type Facility = { id: string; name: string };
 export type Listing = {
   id: string;
+  slug?: string;
   title: string;
   city?: string;
   sat?: string;
@@ -38,6 +40,8 @@ type Props = {
 export default function ListingClient({ data }: Props) {
   const [showAllFacilities, setShowAllFacilities] = useState(false);
   const [facilityLimit, setFacilityLimit] = useState(8);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [showShareFallback, setShowShareFallback] = useState(false);
   const typeLabelMap: Record<string, string> = {
     cabana: "Cabană",
     "a-frame": "A-Frame",
@@ -61,6 +65,56 @@ export default function ListingClient({ data }: Props) {
   const whatsappHref = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
     data ? `Bună! Sunt interesat de ${data.title}.` : "Bună! Sunt interesat de proprietate."
   )}`;
+
+  const listingSlug = String(data?.slug || data?.id || "").trim();
+  const listingUrl = `${getCanonicalSiteUrl()}/cazare/${encodeURIComponent(listingSlug)}`;
+  const shareText = `Vezi ${data.title} pe cabn.ro`;
+  const shareFacebookHref = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(listingUrl)}`;
+  const shareWhatsAppHref = `https://wa.me/?text=${encodeURIComponent(`${shareText} ${listingUrl}`)}`;
+
+  const copyListingLink = async () => {
+    try {
+      await navigator.clipboard.writeText(listingUrl);
+      setCopiedLink(true);
+      window.setTimeout(() => setCopiedLink(false), 1800);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const isLikelyMobileDevice = () => {
+    if (typeof navigator === "undefined") return false;
+    const nav = navigator as Navigator & { userAgentData?: { mobile?: boolean } };
+    if (typeof nav.userAgentData?.mobile === "boolean") return nav.userAgentData.mobile;
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+  };
+
+  const handleShareClick = async () => {
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function" && isLikelyMobileDevice()) {
+      try {
+        await navigator.share({
+          title: data.title,
+          text: shareText,
+          url: listingUrl,
+        });
+        return;
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      }
+    }
+    setShowShareFallback((prev) => !prev);
+  };
+
+  const handleDesktopShare = (url: string) => {
+    setShowShareFallback(false);
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const handleCopyFromFallback = async () => {
+    await copyListingLink();
+    setShowShareFallback(false);
+  };
 
   useEffect(() => {
     const getLimit = () => {
@@ -131,11 +185,11 @@ export default function ListingClient({ data }: Props) {
                     {data.description}
                   </p>
                   <div className="mt-3 text-xs text-gray-500 dark:text-gray-400 flex flex-wrap items-center gap-2">
-                    <span>🚪 {data.camere ?? 0} camere</span>
+                    <span>{data.camere ?? 0} camere</span>
                     <span>·</span>
-                    <span>🛏️ {data.paturi ?? 0} paturi</span>
+                    <span>{data.paturi ?? 0} paturi</span>
                     <span>·</span>
-                    <span>🛁 {data.bai ?? 0} bai</span>
+                    <span>{data.bai ?? 0} băi</span>
                   </div>
                 </div>
 
@@ -263,9 +317,7 @@ export default function ListingClient({ data }: Props) {
                             href={`tel:${telHref}`}
                             className="group inline-flex w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-[#34D399] via-[#10B981] to-[#047857] px-5 py-4 text-base font-semibold text-white shadow-lg shadow-emerald-500/20 transition-all duration-300 hover:-translate-y-[2px] hover:shadow-emerald-500/30 focus-visible:-translate-y-[1px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#10B981]"
                           >
-                            <span aria-hidden="true" className="text-xl leading-none">
-                              📞
-                            </span>
+                            <PhoneCall size={18} aria-hidden="true" />
                             <span>Sună acum</span>
                           </a>
                         )}
@@ -275,9 +327,6 @@ export default function ListingClient({ data }: Props) {
                           rel="noopener noreferrer"
                           className="group inline-flex w-full items-center justify-center gap-3 rounded-xl border border-[#25D366] bg-white/40 px-5 py-4 text-base font-semibold text-[#0c4a2f] shadow-sm transition-all duration-300 hover:-translate-y-[2px] hover:bg-[#25D366]/10 hover:shadow-md focus-visible:-translate-y-[1px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#25D366] dark:bg-transparent dark:text-[#25D366]"
                         >
-                          <span aria-hidden="true" className="text-xl leading-none">
-                            💬
-                          </span>
                           <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#25D366] text-white">
                             <svg
                               xmlns="http://www.w3.org/2000/svg"
@@ -293,6 +342,47 @@ export default function ListingClient({ data }: Props) {
                         </a>
                       </div>
 
+                      <div className="space-y-2">
+                        <p className="text-[11px] font-medium lowercase tracking-[0.18em] text-gray-500/80 dark:text-gray-400/90">
+                          distribuie
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleShareClick}
+                          aria-label="Share"
+                          title="Share"
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 dark:border-zinc-700 dark:text-gray-200 dark:hover:bg-zinc-800"
+                        >
+                          <Share2 size={16} aria-hidden="true" />
+                          <span>Share</span>
+                        </button>
+                        {showShareFallback ? (
+                          <div className="grid grid-cols-3 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleDesktopShare(shareFacebookHref)}
+                              className="inline-flex items-center justify-center rounded-lg border border-gray-200 px-2 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-100 dark:border-zinc-700 dark:text-gray-200 dark:hover:bg-zinc-800"
+                            >
+                              Facebook
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDesktopShare(shareWhatsAppHref)}
+                              className="inline-flex items-center justify-center rounded-lg border border-gray-200 px-2 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-100 dark:border-zinc-700 dark:text-gray-200 dark:hover:bg-zinc-800"
+                            >
+                              WhatsApp
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleCopyFromFallback}
+                              className="inline-flex items-center justify-center gap-1 rounded-lg border border-gray-200 px-2 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-100 dark:border-zinc-700 dark:text-gray-200 dark:hover:bg-zinc-800"
+                            >
+                              {copiedLink ? <Check size={13} aria-hidden="true" /> : <Copy size={13} aria-hidden="true" />}
+                              <span>{copiedLink ? "Copied" : "Copy"}</span>
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
                       <p className="text-center text-xs text-gray-500 dark:text-gray-400">
                         Nu păstrăm istoricul apelurilor.
                       </p>
