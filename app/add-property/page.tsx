@@ -372,7 +372,9 @@ function AddPropertyPageContent() {
                 onChange={(e) => setAcceptedTerms(e.target.checked)}
                 className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
               />
-              <span>Accept termenii si conditiile.</span>
+              <span>
+                Accept termenii si conditiile<span className="text-red-600"> *</span>
+              </span>
             </label>
             <label className="flex items-start gap-2 text-sm text-gray-700">
               <input
