@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { Suspense } from "react";
 import HomeClient from "@/app/home-client";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
@@ -100,6 +100,9 @@ async function getCountyListings(countyName: string): Promise<Cazare[]> {
 export default async function CountyPage({ params }: PageProps) {
   const county = findCountyBySlug(params.slug);
   if (!county) return notFound();
+  if (params.slug !== county.slug) {
+    permanentRedirect(`/judet/${county.slug}`);
+  }
 
   const listings = await getCountyListings(county.name);
   const supabaseAdmin = getSupabaseAdmin();

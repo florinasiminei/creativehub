@@ -22,6 +22,7 @@ as supplemental guidance when it doesn't conflict with this file.
 - Add imports at the top without reordering unrelated imports.
 - Use types from `lib/types.ts` when available.
 - Prefer existing utilities in `lib/` before adding new ones.
+- Preserve UTF-8 encoding for all files when editing/creating content.
 
 ## Data access
 - Client: `lib/supabaseClient.ts`

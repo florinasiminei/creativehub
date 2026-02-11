@@ -1,3 +1,4 @@
+import { findCountyBySlug } from "@/lib/counties";
 type AnyRow = Record<string, unknown>;
 
 export type SeoPageStatus = "publicata" | "nepublicata" | "draft";
@@ -43,10 +44,56 @@ function pickDateMs(row: AnyRow, keys: string[]): number | null {
   return null;
 }
 
-function inferPathFromType(type: string | null, slug: string | null): string | null {
-  if (!slug) return null;
+function decodeSafe(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function stripQueryAndHash(path: string): string {
+  return path.split("#")[0].split("?")[0];
+}
+
+function normalizeSeoPath(path: string): string {
+  let pathname = "/";
+  try {
+    const parsed = new URL(path, "https://cabn.local");
+    pathname = parsed.pathname || "/";
+  } catch {
+    pathname = stripQueryAndHash(path);
+  }
+
+  pathname = stripQueryAndHash(pathname).trim();
+  if (!pathname.startsWith("/")) pathname = `/${pathname}`;
+  pathname = pathname.replace(/\/{2,}/g, "/").toLowerCase();
+  pathname = pathname
+    .replace(/^\/judete\//, "/judet/")
+    .replace(/^\/judetul\//, "/judet/")
+    .replace(/^\/regiuni\//, "/regiune/");
+
+  if (pathname.length > 1 && pathname.endsWith("/")) pathname = pathname.slice(0, -1);
+
+  const judetMatch = pathname.match(/^\/judet\/([^/]+)$/);
+  if (judetMatch?.[1]) {
+    const county = findCountyBySlug(decodeSafe(judetMatch[1]));
+    if (county) pathname = `/judet/${county.slug}`;
+  }
+
+  return pathname || "/";
+}
+
+function inferPathFromType(row: AnyRow, type: string | null, slug: string | null): string | null {
   const normalizedType = (type || "").toLowerCase();
-  if (normalizedType === "judet" || normalizedType === "county") return `/judet/${slug}`;
+  if (normalizedType === "judet" || normalizedType === "county") {
+    const countyFromName = findCountyBySlug(pickString(row, ["name", "title", "label", "county_name"]) || "");
+    const countyFromSlug = findCountyBySlug(slug || "");
+    const resolvedSlug = countyFromName?.slug || countyFromSlug?.slug || slug;
+    if (!resolvedSlug) return null;
+    return `/judet/${resolvedSlug}`;
+  }
+  if (!slug) return null;
   if (normalizedType === "regiune" || normalizedType === "region") return `/regiune/${slug}`;
   if (normalizedType === "tip" || normalizedType === "type") return `/cazari/${slug}`;
   return `/${slug}`;
@@ -140,15 +187,16 @@ export function getSeoPageUrl(row: AnyRow): string | null {
     if (directPath.startsWith("http://") || directPath.startsWith("https://")) {
       try {
         const parsed = new URL(directPath);
-        return parsed.pathname || "/";
+        return normalizeSeoPath(parsed.pathname || "/");
       } catch {
-        return directPath;
+        return normalizeSeoPath(directPath);
       }
     }
-    return directPath.startsWith("/") ? directPath : `/${directPath}`;
+    return normalizeSeoPath(directPath);
   }
 
   const type = pickString(row, ["type", "zone_type"]);
   const slug = pickString(row, ["slug"]);
-  return inferPathFromType(type, slug);
+  const inferred = inferPathFromType(row, type, slug);
+  return inferred ? normalizeSeoPath(inferred) : null;
 }

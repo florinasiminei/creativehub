@@ -4,9 +4,16 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getRoleFromEncodedAuth } from "@/lib/draftsAuth";
-import { LISTING_TYPES } from "@/lib/listingTypes";
-import { getCounties } from "@/lib/counties";
-import { allRegions, metroCoreCitySet, normalizeRegionText, type RegionDefinition } from "@/lib/regions";
+import { getTypeBySlug, LISTING_TYPES } from "@/lib/listingTypes";
+import { findCountyBySlug, getCounties } from "@/lib/counties";
+import {
+  allRegions,
+  findRegionBySlug,
+  metroCoreCitySet,
+  normalizeRegionText,
+  type RegionDefinition,
+  type RegionType,
+} from "@/lib/regions";
 import {
   getSeoIndexable,
   getSeoMenuVisibility,
@@ -23,16 +30,46 @@ import SeoAdminClient from "./seo-admin-client";
 type ListingMeta = {
   id: string;
   isPublished: boolean;
-  type: string;
-  judet: string;
-  city: string;
+  slug: string;
+  title: string;
+  typeKey: string;
+  judetKey: string;
+  cityKey: string;
   lastModifiedMs: number | null;
 };
+
+const REGION_URL_ALIASES = new Map<string, string>([
+  ["/regiune/transilvania", "/regiune/transilvania-rurala"],
+]);
+
+function canonicalizeRegionUrl(url: string | null): string | null {
+  if (!url) return url;
+  const normalized = String(url).trim().toLowerCase();
+  return REGION_URL_ALIASES.get(normalized) || url;
+}
+
+function slugFromRegionUrl(url: string | null, fallback: string): string {
+  if (!url) return fallback;
+  const match = String(url).trim().toLowerCase().match(/^\/regiune\/([^/?#]+)/);
+  return match?.[1] || fallback;
+}
 
 type SeoPageItem = {
   id: string;
   slug: string;
   url: string | null;
+  openUrl?: string | null;
+  pageKind:
+    | "home"
+    | "cazari_index"
+    | "type"
+    | "judet"
+    | "regiune"
+    | "localitate"
+    | "type_region"
+    | "type_localitate"
+    | "listing"
+    | "geo_zone";
   title: string;
   status: SeoPageStatus;
   inMenu: boolean;
@@ -47,12 +84,13 @@ type SeoPageItem = {
   uniqueVisitors30d: number;
   pageviews7d: number;
   uniqueVisitors7d: number;
+  isInconsistent: boolean;
 };
 
 async function fetchListingsMeta(supabaseAdmin: ReturnType<typeof getSupabaseAdmin>, ids: string[]) {
   const selectVariants = [
-    "id, is_published, type, judet, city, updated_at, created_at",
-    "id, is_published, type, judet, city, created_at",
+    "id, title, slug, is_published, type, judet, city, updated_at, created_at",
+    "id, title, slug, is_published, type, judet, city, created_at",
   ];
 
   for (const select of selectVariants) {
@@ -73,9 +111,11 @@ async function fetchListingsMeta(supabaseAdmin: ReturnType<typeof getSupabaseAdm
       return {
         id: String(row["id"]),
         isPublished: Boolean(row["is_published"]),
-        type: String(row["type"] || ""),
-        judet: String(row["judet"] || ""),
-        city: String(row["city"] || ""),
+        slug: String(row["slug"] || ""),
+        title: String(row["title"] || ""),
+        typeKey: String(row["type"] || "").trim().toLowerCase(),
+        judetKey: normalizeRegionText(String(row["judet"] || "")),
+        cityKey: normalizeRegionText(String(row["city"] || "")),
         lastModifiedMs,
       };
     });
@@ -111,15 +151,388 @@ function buildStats(listings: ListingMeta[], predicate: (listing: ListingMeta) =
   };
 }
 
-function isListingInRegion(listing: ListingMeta, region: RegionDefinition): boolean {
-  if (!region.counties.includes(listing.judet)) return false;
-  const cityNorm = normalizeRegionText(String(listing.city || ""));
-  if (region.type === "metro") {
-    const coreCities = new Set((region.coreCities || []).map((city) => normalizeRegionText(city)));
-    return coreCities.has(cityNorm);
+function buildRegionMatcher(region: RegionDefinition): (listing: ListingMeta) => boolean {
+  const regionCountyKeys = new Set(region.counties.map((county) => normalizeRegionText(county)));
+  const coreCities =
+    region.type === "metro"
+      ? new Set((region.coreCities || []).map((city) => normalizeRegionText(city)))
+      : null;
+
+  return (listing: ListingMeta): boolean => {
+    if (!regionCountyKeys.has(listing.judetKey)) return false;
+    const cityNorm = listing.cityKey;
+    if (region.type === "metro") return coreCities ? coreCities.has(cityNorm) : false;
+    if (!cityNorm) return true;
+    return !metroCoreCitySet.has(cityNorm);
+  };
+}
+
+const EMPTY_TRAFFIC = {
+  pageviews30d: 0,
+  uniqueVisitors30d: 0,
+  pageviews7d: 0,
+  uniqueVisitors7d: 0,
+};
+
+type RoutePageParams = {
+  id: string;
+  slug: string;
+  url: string;
+  openUrl?: string;
+  pageKind: SeoPageItem["pageKind"];
+  title: string;
+  status?: SeoPageStatus;
+  inMenu?: boolean;
+  indexable: boolean;
+  stats: ListingStats;
+};
+
+function createRoutePage(params: RoutePageParams): SeoPageItem {
+  return {
+    id: params.id,
+    slug: params.slug,
+    url: params.url,
+    openUrl: params.openUrl ?? params.url,
+    pageKind: params.pageKind,
+    title: params.title,
+    status: params.status ?? "publicata",
+    inMenu: params.inMenu ?? false,
+    indexable: params.indexable,
+    totalListings: params.stats.total,
+    publishedListings: params.stats.published,
+    unpublishedListings: params.stats.unpublished,
+    lastModifiedMs: params.stats.lastModifiedMs,
+    canTogglePublish: false,
+    canToggleIndex: false,
+    ...EMPTY_TRAFFIC,
+    isInconsistent: false,
+  };
+}
+
+function buildRoutePages(listings: ListingMeta[]): SeoPageItem[] {
+  const routePages: SeoPageItem[] = [];
+  const allStats = buildStats(listings, () => true);
+  const regionMatchers = new Map(allRegions.map((region) => [region.slug, buildRegionMatcher(region)]));
+
+  routePages.push(
+    createRoutePage({
+      id: "route:home",
+      slug: "home",
+      url: "/",
+      pageKind: "home",
+      title: "Homepage",
+      inMenu: true,
+      indexable: true,
+      stats: allStats,
+    })
+  );
+
+  routePages.push(
+    createRoutePage({
+      id: "route:cazari",
+      slug: "cazari",
+      url: "/cazari",
+      pageKind: "cazari_index",
+      title: "Cazari verificate pe tipuri",
+      indexable: true,
+      stats: allStats,
+    })
+  );
+
+  for (const type of LISTING_TYPES) {
+    const stats = buildStats(listings, (listing) => listing.typeKey === type.value);
+    routePages.push(
+      createRoutePage({
+        id: `route:type:${type.slug}`,
+        slug: type.slug,
+        url: `/cazari/${type.slug}`,
+        pageKind: "type",
+        title: type.label,
+        indexable: stats.published > 0,
+        stats,
+      })
+    );
   }
-  if (!cityNorm) return true;
-  return !metroCoreCitySet.has(cityNorm);
+
+  for (const county of getCounties()) {
+    const countyKey = normalizeRegionText(county.name);
+    const stats = buildStats(listings, (listing) => listing.judetKey === countyKey);
+    routePages.push(
+      createRoutePage({
+        id: `route:judet:${county.slug}`,
+        slug: county.slug,
+        url: `/judet/${county.slug}`,
+        pageKind: "judet",
+        title: `Cazare in judetul ${county.name}`,
+        indexable: stats.published > 0,
+        stats,
+      })
+    );
+  }
+
+  for (const region of allRegions) {
+    const matchesRegion = regionMatchers.get(region.slug)!;
+    const stats = buildStats(listings, (listing) => matchesRegion(listing));
+    routePages.push(
+      createRoutePage({
+        id: `route:regiune:${region.slug}`,
+        slug: region.slug,
+        url: `/regiune/${region.slug}`,
+        pageKind: region.type === "touristic" ? "regiune" : "localitate",
+        title: `Cazare in ${region.name}`,
+        indexable: stats.published > 0,
+        stats,
+      })
+    );
+  }
+
+  for (const type of LISTING_TYPES) {
+    for (const region of allRegions) {
+      const matchesRegion = regionMatchers.get(region.slug)!;
+      const stats = buildStats(
+        listings,
+        (listing) => listing.typeKey === type.value && matchesRegion(listing)
+      );
+      routePages.push(
+        createRoutePage({
+          id: `route:type-region:${type.slug}:${region.slug}`,
+          slug: `${type.slug}/${region.slug}`,
+          url: `/cazari/${type.slug}/${region.slug}`,
+          pageKind: region.type === "metro" ? "type_localitate" : "type_region",
+          title: `${type.label} in ${region.name}`,
+          indexable: stats.published > 0,
+          stats,
+        })
+      );
+    }
+  }
+
+  for (const listing of listings) {
+    const listingSlug = String(listing.slug || "").trim();
+    if (!listingSlug) continue;
+    const listingPath = `/cazare/${listingSlug}`;
+    const previewPath = `${listingPath}?preview=1&id=${listing.id}`;
+    routePages.push(
+      createRoutePage({
+        id: `route:listing:${listing.id}`,
+        slug: listingSlug,
+        url: listingPath,
+        openUrl: listing.isPublished ? listingPath : previewPath,
+        pageKind: "listing",
+        title: listing.title || `Cazare ${listingSlug}`,
+        status: listing.isPublished ? "publicata" : "nepublicata",
+        indexable: listing.isPublished,
+        stats: {
+          total: 1,
+          published: listing.isPublished ? 1 : 0,
+          unpublished: listing.isPublished ? 0 : 1,
+          lastModifiedMs: listing.lastModifiedMs,
+        },
+      })
+    );
+  }
+
+  return routePages;
+}
+
+function mergePages(routePages: SeoPageItem[], geoPages: SeoPageItem[]): SeoPageItem[] {
+  const mergedByKey = new Map<string, SeoPageItem>();
+
+  for (const page of routePages) {
+    const key = page.url || page.id;
+    mergedByKey.set(key, {
+      ...page,
+      openUrl: page.openUrl ?? page.url,
+      ...EMPTY_TRAFFIC,
+    });
+  }
+
+  for (const page of geoPages) {
+    const key = page.url || page.id;
+    const existing = mergedByKey.get(key);
+
+    if (!existing) {
+      mergedByKey.set(key, {
+        ...page,
+        openUrl: page.openUrl ?? page.url,
+        ...EMPTY_TRAFFIC,
+      });
+      continue;
+    }
+
+    const mergedLastModified =
+      existing.lastModifiedMs === null
+        ? page.lastModifiedMs
+        : page.lastModifiedMs === null
+        ? existing.lastModifiedMs
+        : Math.max(existing.lastModifiedMs, page.lastModifiedMs);
+
+    mergedByKey.set(key, {
+      ...existing,
+      openUrl: existing.openUrl ?? existing.url,
+      slug:
+        existing.id.startsWith("route:")
+          ? existing.slug
+          : page.slug && page.slug !== "-"
+          ? page.slug
+          : existing.slug,
+      title:
+        existing.id.startsWith("route:")
+          ? existing.title
+          : page.title && page.title !== "Pagina fara titlu"
+          ? page.title
+          : existing.title,
+      status: page.status,
+      inMenu: page.inMenu,
+      indexable: page.indexable,
+      lastModifiedMs: mergedLastModified,
+      canTogglePublish: page.canTogglePublish,
+      canToggleIndex: page.canToggleIndex,
+      isInconsistent: false,
+    });
+  }
+
+  return Array.from(mergedByKey.values());
+}
+
+async function applyPageviewMetrics(
+  supabaseAdmin: ReturnType<typeof getSupabaseAdmin>,
+  pages: SeoPageItem[]
+): Promise<void> {
+  const urls = Array.from(
+    new Set(pages.map((page) => page.url).filter((url): url is string => Boolean(url)))
+  );
+
+  if (urls.length === 0) return;
+
+  const nowMs = Date.now();
+  const since30Ms = nowMs - 30 * 24 * 60 * 60 * 1000;
+  const since7Ms = nowMs - 7 * 24 * 60 * 60 * 1000;
+  const since30Iso = new Date(since30Ms).toISOString();
+
+  const { data: pageviewsData, error: pageviewsError } = await supabaseAdmin
+    .from("seo_pageviews")
+    .select("path, anon_id, created_at")
+    .in("path", urls)
+    .gte("created_at", since30Iso);
+
+  if (pageviewsError || !pageviewsData) return;
+
+  const viewsMap30 = new Map<string, number>();
+  const uniquesMap30 = new Map<string, Set<string>>();
+  const viewsMap7 = new Map<string, number>();
+  const uniquesMap7 = new Map<string, Set<string>>();
+
+  for (const row of pageviewsData as Array<{ path?: string | null; anon_id?: string | null; created_at?: string | null }>) {
+    const path = typeof row.path === "string" ? row.path : null;
+    if (!path) continue;
+
+    viewsMap30.set(path, (viewsMap30.get(path) || 0) + 1);
+    if (row.anon_id) {
+      const uniques = uniquesMap30.get(path) || new Set<string>();
+      uniques.add(String(row.anon_id));
+      uniquesMap30.set(path, uniques);
+    }
+
+    const createdMs = row.created_at ? new Date(String(row.created_at)).getTime() : Number.NaN;
+    if (Number.isFinite(createdMs) && createdMs >= since7Ms) {
+      viewsMap7.set(path, (viewsMap7.get(path) || 0) + 1);
+      if (row.anon_id) {
+        const uniques = uniquesMap7.get(path) || new Set<string>();
+        uniques.add(String(row.anon_id));
+        uniquesMap7.set(path, uniques);
+      }
+    }
+  }
+
+  for (const page of pages) {
+    const path = page.url || "";
+    page.pageviews30d = viewsMap30.get(path) || 0;
+    page.uniqueVisitors30d = uniquesMap30.get(path)?.size || 0;
+    page.pageviews7d = viewsMap7.get(path) || 0;
+    page.uniqueVisitors7d = uniquesMap7.get(path)?.size || 0;
+  }
+}
+
+function inferGeoPageKind(
+  row: Record<string, unknown>,
+  url: string | null,
+  slug: string,
+  regionKindBySlug: Map<string, RegionType>
+): SeoPageItem["pageKind"] {
+  const zoneType = String(row.type || "")
+    .trim()
+    .toLowerCase();
+  const normalizedUrl = String(url || "")
+    .trim()
+    .toLowerCase();
+  const normalizedSlug = String(slug || "")
+    .trim()
+    .toLowerCase();
+  const isLocalType =
+    zoneType === "localitate" ||
+    zoneType.includes("local") ||
+    zoneType === "oras" ||
+    zoneType === "municipiu" ||
+    zoneType === "comuna" ||
+    zoneType === "city";
+  const isLocalPath =
+    normalizedUrl.startsWith("/localitate/") ||
+    normalizedUrl.startsWith("/localitati/") ||
+    normalizedUrl.startsWith("/oras/");
+
+  if (normalizedUrl === "/") return "home";
+  if (normalizedUrl === "/cazari") return "cazari_index";
+
+  const listingMatch = normalizedUrl.match(/^\/cazare\/([^/]+)$/);
+  if (listingMatch?.[1]) return "listing";
+
+  // Locality signal has priority over region pattern to avoid misclassification.
+  if (isLocalType || isLocalPath) return "localitate";
+
+  const countyMatch = normalizedUrl.match(/^\/judet\/([^/]+)$/);
+  if (countyMatch?.[1]) {
+    const county = findCountyBySlug(countyMatch[1]);
+    return county ? "judet" : "geo_zone";
+  }
+
+  const regionMatch = normalizedUrl.match(/^\/regiune\/([^/]+)$/);
+  if (regionMatch?.[1]) {
+    const regionKind = regionKindBySlug.get(regionMatch[1]);
+    if (regionKind === "metro") return "localitate";
+    // Any non-metro /regiune/* URL is treated as region to keep one SEO category.
+    return "regiune";
+  }
+
+  const typeRegionMatch = normalizedUrl.match(/^\/cazari\/([^/]+)\/([^/]+)$/);
+  if (typeRegionMatch?.[1] && typeRegionMatch?.[2]) {
+    const typeSlug = typeRegionMatch[1];
+    const regionSlug = typeRegionMatch[2];
+    const listingType = getTypeBySlug(typeSlug);
+    const region = findRegionBySlug(regionSlug);
+    if (!listingType || !region) return "geo_zone";
+    return region.type === "metro" ? "type_localitate" : "type_region";
+  }
+
+  const typeMatch = normalizedUrl.match(/^\/cazari\/([^/]+)$/);
+  if (typeMatch?.[1]) {
+    return getTypeBySlug(typeMatch[1]) ? "type" : "geo_zone";
+  }
+
+  if (zoneType === "judet") {
+    const county = findCountyBySlug(normalizedSlug);
+    return county ? "judet" : "geo_zone";
+  }
+
+  if (zoneType === "regiune") {
+    const regionSlugFromUrl = normalizedUrl.startsWith("/regiune/") ? normalizedUrl.slice("/regiune/".length) : "";
+    const regionSlugCandidate = regionSlugFromUrl || normalizedSlug;
+    const regionKind = regionKindBySlug.get(regionSlugCandidate);
+    if (regionKind === "metro") return "localitate";
+    return "regiune";
+  }
+
+  return "geo_zone";
 }
 
 export default async function AdminSeoPage() {
@@ -188,8 +601,18 @@ export default async function AdminSeoPage() {
     else relationMap.set(zoneId, [listingId]);
   }
 
+  const regionKindBySlug = new Map(
+    allRegions.map((region) => [region.slug.toLowerCase(), region.type] as const)
+  );
+
   const geoPages: SeoPageItem[] = zones.map((row) => {
     const zoneId = String(row.id);
+    const zoneSlugRaw = getSeoPageSlug(row);
+    const zoneUrlRaw = getSeoPageUrl(row);
+    const zoneUrl = canonicalizeRegionUrl(zoneUrlRaw);
+    const zoneSlug =
+      zoneUrl !== zoneUrlRaw ? slugFromRegionUrl(zoneUrl, zoneSlugRaw) : zoneSlugRaw;
+    const pageKind = inferGeoPageKind(row, zoneUrl, zoneSlug, regionKindBySlug);
     const relatedIds = relationMap.get(zoneId) || [];
     const uniqueRelatedIds = Array.from(new Set(relatedIds));
 
@@ -211,8 +634,10 @@ export default async function AdminSeoPage() {
 
     return {
       id: zoneId,
-      slug: getSeoPageSlug(row),
-      url: getSeoPageUrl(row),
+      slug: zoneSlug,
+      url: zoneUrl,
+      openUrl: zoneUrl,
+      pageKind,
       title: getSeoPageTitle(row),
       status: getSeoPageStatus(row),
       inMenu: getSeoMenuVisibility(row),
@@ -227,216 +652,17 @@ export default async function AdminSeoPage() {
       uniqueVisitors30d: 0,
       pageviews7d: 0,
       uniqueVisitors7d: 0,
+      isInconsistent: !zoneUrl || pageKind === "geo_zone",
     };
   });
 
-  const routePages: SeoPageItem[] = [];
+  const routePages = buildRoutePages(listings);
+  const mergedPages = mergePages(routePages, geoPages);
 
-  const allStats = buildStats(listings, () => true);
-  routePages.push({
-    id: "route:cazari",
-    slug: "cazari",
-    url: "/cazari",
-    title: "Cazari verificate pe tipuri",
-    status: "publicata",
-    inMenu: false,
-    indexable: true,
-    totalListings: allStats.total,
-    publishedListings: allStats.published,
-    unpublishedListings: allStats.unpublished,
-    lastModifiedMs: allStats.lastModifiedMs,
-    canTogglePublish: false,
-    canToggleIndex: false,
-    pageviews30d: 0,
-    uniqueVisitors30d: 0,
-    pageviews7d: 0,
-    uniqueVisitors7d: 0,
-  });
-
-  for (const type of LISTING_TYPES) {
-    const stats = buildStats(listings, (listing) => listing.type === type.value);
-    routePages.push({
-      id: `route:type:${type.slug}`,
-      slug: type.slug,
-      url: `/cazari/${type.slug}`,
-      title: type.label,
-      status: "publicata",
-      inMenu: false,
-      indexable: stats.published > 0,
-      totalListings: stats.total,
-      publishedListings: stats.published,
-      unpublishedListings: stats.unpublished,
-      lastModifiedMs: stats.lastModifiedMs,
-      canTogglePublish: false,
-      canToggleIndex: false,
-      pageviews30d: 0,
-      uniqueVisitors30d: 0,
-      pageviews7d: 0,
-      uniqueVisitors7d: 0,
-    });
-  }
-
-  for (const county of getCounties()) {
-    const stats = buildStats(listings, (listing) => listing.judet === county.name);
-    routePages.push({
-      id: `route:judet:${county.slug}`,
-      slug: county.slug,
-      url: `/judet/${county.slug}`,
-      title: `Cazare in judetul ${county.name}`,
-      status: "publicata",
-      inMenu: false,
-      indexable: stats.published > 0,
-      totalListings: stats.total,
-      publishedListings: stats.published,
-      unpublishedListings: stats.unpublished,
-      lastModifiedMs: stats.lastModifiedMs,
-      canTogglePublish: false,
-      canToggleIndex: false,
-      pageviews30d: 0,
-      uniqueVisitors30d: 0,
-      pageviews7d: 0,
-      uniqueVisitors7d: 0,
-    });
-  }
-
-  for (const region of allRegions) {
-    const stats = buildStats(listings, (listing) => isListingInRegion(listing, region));
-    routePages.push({
-      id: `route:regiune:${region.slug}`,
-      slug: region.slug,
-      url: `/regiune/${region.slug}`,
-      title: `Cazare in ${region.name}`,
-      status: "publicata",
-      inMenu: false,
-      indexable: stats.published > 0,
-      totalListings: stats.total,
-      publishedListings: stats.published,
-      unpublishedListings: stats.unpublished,
-      lastModifiedMs: stats.lastModifiedMs,
-      canTogglePublish: false,
-      canToggleIndex: false,
-      pageviews30d: 0,
-      uniqueVisitors30d: 0,
-      pageviews7d: 0,
-      uniqueVisitors7d: 0,
-    });
-  }
-
-  for (const type of LISTING_TYPES) {
-    for (const region of allRegions) {
-      const stats = buildStats(
-        listings,
-        (listing) => listing.type === type.value && isListingInRegion(listing, region)
-      );
-      routePages.push({
-        id: `route:type-region:${type.slug}:${region.slug}`,
-        slug: `${type.slug}/${region.slug}`,
-        url: `/cazari/${type.slug}/${region.slug}`,
-        title: `${type.label} in ${region.name}`,
-        status: "publicata",
-        inMenu: false,
-        indexable: stats.published > 0,
-        totalListings: stats.total,
-        publishedListings: stats.published,
-        unpublishedListings: stats.unpublished,
-        lastModifiedMs: stats.lastModifiedMs,
-        canTogglePublish: false,
-        canToggleIndex: false,
-        pageviews30d: 0,
-        uniqueVisitors30d: 0,
-        pageviews7d: 0,
-        uniqueVisitors7d: 0,
-      });
-    }
-  }
-
-  const mergedByKey = new Map<string, SeoPageItem>();
-  for (const page of routePages) {
-    const key = page.url || page.id;
-    mergedByKey.set(key, {
-      ...page,
-      pageviews30d: 0,
-      uniqueVisitors30d: 0,
-      pageviews7d: 0,
-      uniqueVisitors7d: 0,
-    });
-  }
-  for (const page of geoPages) {
-    const key = page.url || page.id;
-    if (mergedByKey.has(key)) {
-      const existing = mergedByKey.get(key)!;
-      mergedByKey.set(key, {
-        ...existing,
-        status: page.status,
-        inMenu: page.inMenu,
-        indexable: page.indexable,
-        canTogglePublish: page.canTogglePublish,
-        canToggleIndex: page.canToggleIndex,
-      });
-    } else {
-      mergedByKey.set(key, {
-        ...page,
-        pageviews30d: 0,
-        uniqueVisitors30d: 0,
-        pageviews7d: 0,
-        uniqueVisitors7d: 0,
-      });
-    }
-  }
-
-  const mergedPages = Array.from(mergedByKey.values());
-  const urls = Array.from(new Set(mergedPages.map((page) => page.url).filter((url): url is string => Boolean(url))));
-
-  if (urls.length > 0) {
-    try {
-      const nowMs = Date.now();
-      const since30Ms = nowMs - 30 * 24 * 60 * 60 * 1000;
-      const since7Ms = nowMs - 7 * 24 * 60 * 60 * 1000;
-      const since = new Date(since30Ms).toISOString();
-      const { data: pageviewsData, error: pageviewsError } = await supabaseAdmin
-        .from("seo_pageviews")
-        .select("path, anon_id, created_at")
-        .in("path", urls)
-        .gte("created_at", since);
-
-      if (!pageviewsError && pageviewsData) {
-        const viewsMap30 = new Map<string, number>();
-        const uniquesMap30 = new Map<string, Set<string>>();
-        const viewsMap7 = new Map<string, number>();
-        const uniquesMap7 = new Map<string, Set<string>>();
-
-        for (const row of pageviewsData as Array<{ path?: string | null; anon_id?: string | null; created_at?: string | null }>) {
-          const path = typeof row.path === "string" ? row.path : null;
-          if (!path) continue;
-          viewsMap30.set(path, (viewsMap30.get(path) || 0) + 1);
-          if (row.anon_id) {
-            const set = uniquesMap30.get(path) || new Set<string>();
-            set.add(String(row.anon_id));
-            uniquesMap30.set(path, set);
-          }
-
-          const createdMs = row.created_at ? new Date(String(row.created_at)).getTime() : Number.NaN;
-          if (Number.isFinite(createdMs) && createdMs >= since7Ms) {
-            viewsMap7.set(path, (viewsMap7.get(path) || 0) + 1);
-            if (row.anon_id) {
-              const set = uniquesMap7.get(path) || new Set<string>();
-              set.add(String(row.anon_id));
-              uniquesMap7.set(path, set);
-            }
-          }
-        }
-
-        for (const page of mergedPages) {
-          const path = page.url || "";
-          page.pageviews30d = viewsMap30.get(path) || 0;
-          page.uniqueVisitors30d = uniquesMap30.get(path)?.size || 0;
-          page.pageviews7d = viewsMap7.get(path) || 0;
-          page.uniqueVisitors7d = uniquesMap7.get(path)?.size || 0;
-        }
-      }
-    } catch {
-      // keep dashboard available even if pageviews data cannot be fetched
-    }
+  try {
+    await applyPageviewMetrics(supabaseAdmin, mergedPages);
+  } catch {
+    // keep dashboard available even if pageviews data cannot be fetched
   }
 
   return <SeoAdminClient pages={mergedPages} />;

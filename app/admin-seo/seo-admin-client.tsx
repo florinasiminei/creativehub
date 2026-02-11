@@ -10,6 +10,18 @@ type SeoPageItem = {
   id: string;
   slug: string;
   url: string | null;
+  openUrl?: string | null;
+  pageKind:
+    | "home"
+    | "cazari_index"
+    | "type"
+    | "judet"
+    | "regiune"
+    | "localitate"
+    | "type_region"
+    | "type_localitate"
+    | "listing"
+    | "geo_zone";
   title: string;
   status: SeoPageStatus;
   inMenu: boolean;
@@ -24,6 +36,7 @@ type SeoPageItem = {
   uniqueVisitors30d: number;
   pageviews7d: number;
   uniqueVisitors7d: number;
+  isInconsistent: boolean;
 };
 
 type Props = {
@@ -32,6 +45,49 @@ type Props = {
 
 type SortField = "url" | "title" | "views" | "indexable" | "listings" | "lastModified";
 type SortDir = "asc" | "desc";
+type ViewsWindow = "7d" | "30d";
+type IndexFilter = "all" | "index" | "noindex";
+type PageKindFilter =
+  | "all"
+  | "home"
+  | "cazari_index"
+  | "type"
+  | "judet"
+  | "regiune"
+  | "localitate"
+  | "type_region"
+  | "type_localitate"
+  | "listing"
+  | "geo_zone";
+
+const INDEX_FILTER_OPTIONS: Array<{ value: IndexFilter; label: string }> = [
+  { value: "all", label: "Indexare: toate" },
+  { value: "index", label: "Index" },
+  { value: "noindex", label: "Noindex" },
+];
+
+const PAGE_KIND_FILTER_OPTIONS: Array<{ value: PageKindFilter; label: string }> = [
+  { value: "all", label: "Tip pagina: toate" },
+  { value: "home", label: "Homepage" },
+  { value: "listing", label: "Pagina individuala cazare" },
+  { value: "judet", label: "Pagina judet" },
+  { value: "regiune", label: "Pagina regiune" },
+  { value: "localitate", label: "Pagina localitate" },
+  { value: "type", label: "Pagina tip cazare" },
+  { value: "type_region", label: "Pagina tip + regiune" },
+  { value: "type_localitate", label: "Pagina tip + localitate" },
+  { value: "cazari_index", label: "Hub /cazari" },
+  { value: "geo_zone", label: "Alte pagini geo" },
+];
+
+const SORT_DEFAULT_DIR: Record<SortField, SortDir> = {
+  url: "asc",
+  title: "asc",
+  views: "desc",
+  indexable: "asc",
+  listings: "desc",
+  lastModified: "desc",
+};
 
 function formatDate(ts: number | null): string {
   if (!ts) return "-";
@@ -40,29 +96,37 @@ function formatDate(ts: number | null): string {
   return date.toLocaleString("ro-RO");
 }
 
+function getViewsByWindow(row: SeoPageItem, viewsWindow: ViewsWindow): number {
+  return viewsWindow === "7d" ? row.pageviews7d : row.pageviews30d;
+}
+
+function getUniqueViewsByWindow(row: SeoPageItem, viewsWindow: ViewsWindow): number {
+  return viewsWindow === "7d" ? row.uniqueVisitors7d : row.uniqueVisitors30d;
+}
+
+function compareRows(a: SeoPageItem, b: SeoPageItem, sortField: SortField, viewsWindow: ViewsWindow): number {
+  if (sortField === "url") return String(a.url || "").localeCompare(String(b.url || ""), "ro");
+  if (sortField === "title") return a.title.localeCompare(b.title, "ro");
+  if (sortField === "views") return getViewsByWindow(a, viewsWindow) - getViewsByWindow(b, viewsWindow);
+  if (sortField === "indexable") return Number(a.indexable) - Number(b.indexable);
+  if (sortField === "listings") return a.totalListings - b.totalListings;
+  return (a.lastModifiedMs || 0) - (b.lastModifiedMs || 0);
+}
+
 export default function SeoAdminClient({ pages }: Props) {
   const [rows, setRows] = useState(pages);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [indexFilter, setIndexFilter] = useState<"all" | "index" | "noindex">("all");
-  const [sortField, setSortField] = useState<SortField>("lastModified");
+  const [indexFilter, setIndexFilter] = useState<IndexFilter>("all");
+  const [kindFilter, setKindFilter] = useState<PageKindFilter>("all");
+  const [sortField, setSortField] = useState<SortField>("views");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [viewsWindow, setViewsWindow] = useState<"7d" | "30d">("30d");
+  const [viewsWindow, setViewsWindow] = useState<ViewsWindow>("7d");
   const [pageNo, setPageNo] = useState(1);
   const perPage = 25;
 
-  const getViews = (row: SeoPageItem) => (viewsWindow === "7d" ? row.pageviews7d : row.pageviews30d);
-  const getUniqueViews = (row: SeoPageItem) =>
-    viewsWindow === "7d" ? row.uniqueVisitors7d : row.uniqueVisitors30d;
-
-  const summary = useMemo(() => {
-    const total = rows.length;
-    const published = rows.filter((row) => row.status === "publicata").length;
-    const noindex = rows.filter((row) => !row.indexable).length;
-    const totalViews30d = rows.reduce((sum, row) => sum + row.pageviews30d, 0);
-    const totalViews7d = rows.reduce((sum, row) => sum + row.pageviews7d, 0);
-    return { total, published, noindex, totalViews30d, totalViews7d };
-  }, [rows]);
+  const getViews = (row: SeoPageItem) => getViewsByWindow(row, viewsWindow);
+  const getUniqueViews = (row: SeoPageItem) => getUniqueViewsByWindow(row, viewsWindow);
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -73,22 +137,25 @@ export default function SeoAdminClient({ pages }: Props) {
       }
       if (indexFilter === "index" && !row.indexable) return false;
       if (indexFilter === "noindex" && row.indexable) return false;
+      if (kindFilter !== "all" && row.pageKind !== kindFilter) return false;
       return true;
     });
 
     next.sort((a, b) => {
-      let cmp = 0;
-      if (sortField === "url") cmp = String(a.url || "").localeCompare(String(b.url || ""), "ro");
-      else if (sortField === "title") cmp = a.title.localeCompare(b.title, "ro");
-      else if (sortField === "views") cmp = getViews(a) - getViews(b);
-      else if (sortField === "indexable") cmp = Number(a.indexable) - Number(b.indexable);
-      else if (sortField === "listings") cmp = a.totalListings - b.totalListings;
-      else cmp = (a.lastModifiedMs || 0) - (b.lastModifiedMs || 0);
+      const cmp = compareRows(a, b, sortField, viewsWindow);
       return sortDir === "asc" ? cmp : -cmp;
     });
 
     return next;
-  }, [rows, search, indexFilter, sortField, sortDir, viewsWindow]);
+  }, [rows, search, indexFilter, kindFilter, sortField, sortDir, viewsWindow]);
+
+  const summary = useMemo(() => {
+    const total = filteredRows.length;
+    const noindex = filteredRows.filter((row) => !row.indexable).length;
+    const totalViews30d = filteredRows.reduce((sum, row) => sum + row.pageviews30d, 0);
+    const totalViews7d = filteredRows.reduce((sum, row) => sum + row.pageviews7d, 0);
+    return { total, noindex, totalViews30d, totalViews7d };
+  }, [filteredRows]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / perPage));
   const pagedRows = useMemo(() => {
@@ -103,7 +170,7 @@ export default function SeoAdminClient({ pages }: Props) {
 
   useEffect(() => {
     setPageNo(1);
-  }, [search, indexFilter, sortField, sortDir, viewsWindow]);
+  }, [search, indexFilter, kindFilter, sortField, sortDir, viewsWindow]);
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -111,15 +178,14 @@ export default function SeoAdminClient({ pages }: Props) {
       return;
     }
     setSortField(field);
-    if (field === "views" || field === "listings" || field === "lastModified") setSortDir("desc");
-    else setSortDir("asc");
+    setSortDir(SORT_DEFAULT_DIR[field]);
   };
 
   const sortIndicator = (field: SortField) => {
-    if (sortField !== field) return <span className="inline-block w-3 text-center text-gray-400">·</span>;
+    if (sortField !== field) return <span className="inline-block w-3 text-center text-gray-400">.</span>;
     return (
       <span className="inline-block w-3 text-center text-emerald-600 dark:text-emerald-300">
-        {sortDir === "asc" ? "↑" : "↓"}
+        {sortDir === "asc" ? "^" : "v"}
       </span>
     );
   };
@@ -179,14 +245,10 @@ export default function SeoAdminClient({ pages }: Props) {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 mb-4">
         <div className="rounded-xl border border-emerald-100 dark:border-emerald-900/40 bg-emerald-50/70 dark:bg-emerald-950/20 px-4 py-3">
           <div className="text-xs text-emerald-800/80 dark:text-emerald-200/80">Total pagini</div>
           <div className="text-2xl font-semibold">{summary.total}</div>
-        </div>
-        <div className="rounded-xl border border-emerald-100 dark:border-emerald-900/40 bg-emerald-50/70 dark:bg-emerald-950/20 px-4 py-3">
-          <div className="text-xs text-emerald-800/80 dark:text-emerald-200/80">Publicate</div>
-          <div className="text-2xl font-semibold">{summary.published}</div>
         </div>
         <div className="rounded-xl border border-emerald-100 dark:border-emerald-900/40 bg-emerald-50/70 dark:bg-emerald-950/20 px-4 py-3">
           <div className="text-xs text-emerald-800/80 dark:text-emerald-200/80">Noindex</div>
@@ -202,7 +264,7 @@ export default function SeoAdminClient({ pages }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
         <SimpleTopSearchInput
           value={search}
           onChange={setSearch}
@@ -211,12 +273,25 @@ export default function SeoAdminClient({ pages }: Props) {
         />
         <select
           value={indexFilter}
-          onChange={(event) => setIndexFilter(event.target.value as "all" | "index" | "noindex")}
+          onChange={(event) => setIndexFilter(event.target.value as IndexFilter)}
           className="rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm"
         >
-          <option value="all">Indexare: toate</option>
-          <option value="index">Index</option>
-          <option value="noindex">Noindex</option>
+          {INDEX_FILTER_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <select
+          value={kindFilter}
+          onChange={(event) => setKindFilter(event.target.value as PageKindFilter)}
+          className="rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm"
+        >
+          {PAGE_KIND_FILTER_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -311,9 +386,9 @@ export default function SeoAdminClient({ pages }: Props) {
                   <td className="px-2 py-2 align-top whitespace-nowrap">{formatDate(row.lastModifiedMs)}</td>
                   <td className="px-2 py-2 align-top">
                     <div className="flex flex-wrap gap-1">
-                      {row.url ? (
+                      {row.openUrl || row.url ? (
                         <Link
-                          href={row.url}
+                          href={row.openUrl || row.url || "#"}
                           target="_blank"
                           className="px-2 py-1 rounded-md border border-gray-200 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-800"
                         >
@@ -368,7 +443,7 @@ export default function SeoAdminClient({ pages }: Props) {
       </div>
       <div className="mt-3 flex items-center justify-between text-xs text-gray-600 dark:text-gray-300">
         <span>
-          Pagina {pageNo} / {totalPages} · {filteredRows.length} rezultate
+          Pagina {pageNo} / {totalPages} | {filteredRows.length} rezultate
         </span>
         <div className="flex items-center gap-2">
           <button
@@ -392,3 +467,4 @@ export default function SeoAdminClient({ pages }: Props) {
     </div>
   );
 }
+

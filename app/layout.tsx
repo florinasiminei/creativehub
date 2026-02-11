@@ -89,13 +89,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Footer />
         </ThemeProvider>
 
-        <Script async src="https://www.googletagmanager.com/gtag/js?id=G-LSJTRY32B5" strategy="afterInteractive" />
         <Script id="google-analytics" strategy="afterInteractive">
           {`window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
+window.gtag = function gtag(){window.dataLayer.push(arguments);};
+window.gtag('js', new Date());
+window.gtag('config', 'G-LSJTRY32B5');
 
-gtag('config', 'G-LSJTRY32B5');`}
+const gaScript = document.createElement('script');
+gaScript.src = 'https://www.googletagmanager.com/gtag/js?id=G-LSJTRY32B5';
+gaScript.async = true;
+document.head.appendChild(gaScript);`}
         </Script>
 
         <Analytics />

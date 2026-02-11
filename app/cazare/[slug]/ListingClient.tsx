@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import LoadingLogo from "@/components/LoadingLogo";
+import SubtleBackLink from "@/components/SubtleBackLink";
 import PropertyImageGrid from "@/components/listing/PropertyImageGrid";
 import { resolveFacilityIcon } from "@/lib/facilityIcons";
 import { resolveListingTypeIcon } from "@/lib/listingTypeIcons";
@@ -77,7 +78,7 @@ export default function ListingClient({ data }: Props) {
 
   return (
     <div className="min-h-screen bg-white dark:bg-transparent text-black dark:text-white">
-      <main className="max-w-6xl mx-auto px-4 py-10">
+      <main className="max-w-6xl mx-auto px-4 pt-3 pb-10">
         {!data && (
           <div className="flex items-center justify-center py-12 min-h-[60vh]">
             <LoadingLogo />
@@ -87,6 +88,9 @@ export default function ListingClient({ data }: Props) {
         {data && (
           <div className="space-y-12">
             <div>
+              <div className="mb-2">
+                <SubtleBackLink href="/" label="Inapoi la listari" />
+              </div>
               <h1 className="text-4xl font-extrabold mb-2 tracking-tight">{data.title}</h1>
 
               <div className="text-gray-600 dark:text-gray-400 mb-6 flex flex-wrap items-center gap-x-4 gap-y-1 text-base">

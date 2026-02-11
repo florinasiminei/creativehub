@@ -161,8 +161,8 @@ export default async function AtractiePage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-white text-zinc-900 dark:bg-transparent dark:text-white">
-      <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mb-4">
+      <main className="mx-auto max-w-6xl px-4 pt-3 pb-10 sm:px-6 lg:px-8">
+        <div className="mb-2">
           <SubtleBackLink href="/atractii" label="Inapoi la atractii" />
         </div>
 

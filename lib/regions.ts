@@ -29,7 +29,7 @@ export const metroRegions: RegionDefinition[] = [
   { name: "Zona metropolitană București", slug: "bucuresti", type: "metro", counties: ["București", "Ilfov"], coreCities: ["București"] },
   { name: "Zona metropolitană Cluj-Napoca", slug: "cluj-napoca", type: "metro", counties: ["Cluj"], coreCities: ["Cluj-Napoca"] },
   { name: "Zona metropolitană Constanța", slug: "constanta", type: "metro", counties: ["Constanța"], coreCities: ["Constanța"] },
-  { name: "Zona metropolitană Deva–Hunedoara", slug: "deva-hunedoara", type: "metro", counties: ["Hunedoara"], coreCities: ["Deva", "Hunedoara"] },
+  { name: "Zona metropolitană Deva-Hunedoara", slug: "deva-hunedoara", type: "metro", counties: ["Hunedoara"], coreCities: ["Deva", "Hunedoara"] },
   { name: "Zona metropolitană Craiova", slug: "craiova", type: "metro", counties: ["Dolj"], coreCities: ["Craiova"] },
   { name: "Zona metropolitană Drobeta-Turnu Severin", slug: "drobeta-turnu-severin", type: "metro", counties: ["Mehedinți"], coreCities: ["Drobeta-Turnu Severin"] },
   { name: "Zona metropolitană Iași", slug: "iasi", type: "metro", counties: ["Iași"], coreCities: ["Iași"] },
@@ -58,6 +58,12 @@ export const touristRegions: RegionDefinition[] = [
   { name: "Apuseni", slug: "apuseni", type: "touristic", counties: ["Alba", "Arad", "Bihor", "Cluj", "Hunedoara"], priority: 80 },
   { name: "Maramureș", slug: "maramures", type: "touristic", counties: ["Maramureș", "Satu Mare"], priority: 80 },
   { name: "Bucovina", slug: "bucovina", type: "touristic", counties: ["Suceava", "Botoșani"], priority: 80 },
+  { name: "Banat", slug: "banat", type: "touristic", counties: ["Timiș", "Caraș-Severin", "Arad"], priority: 70 },
+  { name: "Crișana", slug: "crisana", type: "touristic", counties: ["Bihor", "Arad", "Sălaj", "Satu Mare"], priority: 70 },
+  { name: "Dobrogea", slug: "dobrogea", type: "touristic", counties: ["Constanța", "Tulcea"], priority: 70 },
+  { name: "Muntenia", slug: "muntenia", type: "touristic", counties: ["Argeș", "Buzău", "Călărași", "Dâmbovița", "Giurgiu", "Ialomița", "Ilfov", "Prahova", "Teleorman", "București"], priority: 70 },
+  { name: "Oltenia", slug: "oltenia", type: "touristic", counties: ["Dolj", "Gorj", "Mehedinți", "Olt", "Vâlcea"], priority: 70 },
+  { name: "Moldova", slug: "moldova", type: "touristic", counties: ["Bacău", "Botoșani", "Galați", "Iași", "Neamț", "Suceava", "Vaslui", "Vrancea"], priority: 70 },
   { name: "Transilvania rurală", slug: "transilvania-rurala", type: "touristic", counties: ["Alba", "Brașov", "Cluj", "Hunedoara", "Mureș", "Sibiu"], priority: 10 },
 ];
 
