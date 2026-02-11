@@ -85,7 +85,7 @@ export async function generateMetadata({ params }: PageProps) {
 
   if (!listingType || !region) return {};
 
-  const title = `Cazare ${listingType.label.toLowerCase()} in ${region.name}`;
+  const title = `${listingType.label} in ${region.name}`;
   const description = `Descopera ${listingType.label.toLowerCase()} in ${region.name}, atent selectate, cu rezervare direct la gazda.`;
   const canonical = new URL(`/cazari/${listingType.slug}/${region.slug}`, siteUrl).toString();
   const publishedListingsCount = await getPublishedListingsCountForLocation(listingType.value, region);
@@ -226,7 +226,7 @@ export default async function CazariLocationPage({ params }: PageProps) {
             {region.name}
           </p>
           <h1 className="text-3xl sm:text-4xl font-semibold mt-3">
-            Cazare {listingType.label.toLowerCase()} in {region.name}
+            {listingType.label} in {region.name}
           </h1>
           <p className="text-gray-600 mt-4 max-w-2xl mx-auto">
             {description}

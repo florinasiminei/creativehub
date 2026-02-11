@@ -1,9 +1,8 @@
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
-import HomeClient from "@/app/home-client";
+import Link from "next/link";
+import ListingsGrid from "@/components/listing/ListingGrid";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { mapListingSummary } from "@/lib/transformers";
-import { sortFacilitiesByPriority } from "@/lib/facilitiesCatalog";
 import { getCanonicalSiteUrl } from "@/lib/siteUrl";
 import { hasMinimumPublishedListings } from "@/lib/seoIndexing";
 import { findCountyBySlug, getCounties } from "@/lib/counties";
@@ -12,7 +11,6 @@ import { allRegions, findRegionBySlug, normalizeRegionText } from "@/lib/regions
 import { buildBreadcrumbJsonLd, buildListingPageJsonLd } from "@/lib/jsonLd";
 import type { ListingRaw } from "@/lib/types";
 import type { Cazare } from "@/lib/utils";
-import type { FacilityOption } from "@/lib/types";
 
 export const revalidate = 60 * 60 * 6;
 
@@ -157,9 +155,6 @@ export default async function RegionPage({ params }: PageProps) {
   if (!region) return notFound();
 
   const listings = await getRegionListings(region);
-  const supabaseAdmin = getSupabaseAdmin();
-  const { data: facilities } = await supabaseAdmin.from("facilities").select("id, name");
-  const sortedFacilities = sortFacilitiesByPriority((facilities || []) as FacilityOption[]);
   const pageUrl = `${siteUrl}/regiune/${region.slug}`;
   const description = `Descopera cele mai frumoase cazari din ${region.name}. Listari curate, verificate, cu contact direct la gazda.`;
 
@@ -198,16 +193,53 @@ export default async function RegionPage({ params }: PageProps) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(obj) }}
         />
       ))}
-      <Suspense
-        fallback={<div className="flex min-h-[60vh] items-center justify-center">Se incarca...</div>}
-      >
-        <HomeClient
-          initialCazari={listings}
-          initialFacilities={sortedFacilities}
-          pageTitle={`Cazare in ${region.name}`}
-          allowClientBootstrapFetch={false}
-        />
-      </Suspense>
+      <main className="min-h-screen px-4 py-10 lg:px-6">
+        <header className="mx-auto max-w-4xl text-center">
+          <nav aria-label="Breadcrumb" className="text-sm text-emerald-800/80">
+            <Link href="/" className="hover:underline">
+              Acasa
+            </Link>
+            <span className="mx-2">/</span>
+            <span>{region.name}</span>
+          </nav>
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700">
+            {region.type === "metro" ? "Localitate" : "Regiune"}
+          </p>
+          <h1 className="mt-3 text-3xl font-semibold sm:text-4xl">Cazare in {region.name}</h1>
+          <p className="mx-auto mt-4 max-w-2xl text-gray-600">{description}</p>
+          <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Link
+              href="/add-property"
+              className="rounded-full bg-emerald-700 px-6 py-2.5 text-white transition hover:bg-emerald-800"
+            >
+              Inscrie proprietatea ta
+            </Link>
+            <Link
+              href="/contact"
+              className="rounded-full border border-emerald-300 px-6 py-2.5 text-emerald-900 transition hover:bg-emerald-100"
+            >
+              Contacteaza-ne
+            </Link>
+          </div>
+        </header>
+
+        <section className="mt-12">
+          {listings.length === 0 ? (
+            <div className="rounded-3xl border border-emerald-100 bg-emerald-50/60 px-6 py-10 text-center">
+              <h2 className="mb-2 text-2xl font-semibold text-emerald-900">
+                Momentan nu avem cazari publicate in {region.name}
+              </h2>
+              <p className="mx-auto max-w-2xl text-emerald-800/80">
+                Publicam treptat locatii reale, atent verificate. Revino in curand sau inscrie o proprietate.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-x-2 gap-y-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+              <ListingsGrid cazari={listings} />
+            </div>
+          )}
+        </section>
+      </main>
     </>
   );
 }
