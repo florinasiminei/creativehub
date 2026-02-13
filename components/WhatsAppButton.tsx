@@ -3,11 +3,30 @@
 import Link from "next/link";
 import { WhatsAppButtonProps } from "@/lib/types";
 
+function normalizeWhatsAppNumber(raw: string) {
+  let value = String(raw || "").trim();
+  if (!value) return "";
+
+  if (value.startsWith("+")) value = value.slice(1);
+  if (value.startsWith("00")) value = value.slice(2);
+
+  let digits = value.replace(/\D/g, "");
+  if (!digits) return "";
+
+  if (digits.startsWith("0")) digits = `40${digits.slice(1)}`;
+  else if (digits.length === 9 && digits.startsWith("7")) digits = `40${digits}`;
+
+  return /^\d{8,15}$/.test(digits) ? digits : "";
+}
+
 export default function WhatsAppButton({
   phone,
   message = "Bună! Sunt interesat de proprietate.",
 }: WhatsAppButtonProps) {
-  const href = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+  const whatsappNumber = normalizeWhatsAppNumber(phone);
+  if (!whatsappNumber) return null;
+
+  const href = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
   return (
     <Link
       href={href}

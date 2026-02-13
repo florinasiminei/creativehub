@@ -37,6 +37,23 @@ type Props = {
   data: Listing;
 };
 
+function normalizeWhatsAppNumber(raw: string) {
+  let value = String(raw || "").trim();
+  if (!value) return "";
+
+  if (value.startsWith("+")) value = value.slice(1);
+  if (value.startsWith("00")) value = value.slice(2);
+
+  let digits = value.replace(/\D/g, "");
+  if (!digits) return "";
+
+  // Romanian local formats: 07xxxxxxxx or 7xxxxxxxx -> 407xxxxxxxx.
+  if (digits.startsWith("0")) digits = `40${digits.slice(1)}`;
+  else if (digits.length === 9 && digits.startsWith("7")) digits = `40${digits}`;
+
+  return /^\d{8,15}$/.test(digits) ? digits : "";
+}
+
 export default function ListingClient({ data }: Props) {
   const [showAllFacilities, setShowAllFacilities] = useState(false);
   const [facilityLimit, setFacilityLimit] = useState(8);
@@ -61,10 +78,10 @@ export default function ListingClient({ data }: Props) {
   const fallbackWhatsappNumber = String(process.env.NEXT_PUBLIC_WHATSAPP_PHONE || "");
   const sanitizedPhone = data?.phone ? data.phone.replace(/[^\d+]/g, "") : "";
   const telHref = sanitizedPhone || data?.phone?.trim() || "";
-  const whatsappNumber = (sanitizedPhone || fallbackWhatsappNumber).replace(/\D/g, "");
-  const whatsappHref = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+  const whatsappNumber = normalizeWhatsAppNumber(sanitizedPhone || fallbackWhatsappNumber);
+  const whatsappHref = whatsappNumber ? `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
     data ? `Bună! Sunt interesat de ${data.title}.` : "Bună! Sunt interesat de proprietate."
-  )}`;
+  )}` : null;
 
   const listingSlug = String(data?.slug || data?.id || "").trim();
   const listingUrl = `${getCanonicalSiteUrl()}/cazare/${encodeURIComponent(listingSlug)}`;
@@ -320,25 +337,27 @@ export default function ListingClient({ data }: Props) {
                             <span>Sună acum</span>
                           </a>
                         )}
-                        <a
-                          href={whatsappHref}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="group inline-flex w-full items-center justify-center gap-3 rounded-xl border border-[#25D366] bg-white/40 px-5 py-4 text-base font-semibold text-[#0c4a2f] shadow-sm transition-all duration-300 hover:-translate-y-[2px] hover:bg-[#25D366]/10 hover:shadow-md focus-visible:-translate-y-[1px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#25D366] dark:bg-transparent dark:text-[#25D366]"
-                        >
-                          <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#25D366] text-white">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              viewBox="0 0 32 32"
-                              className="h-4 w-4"
-                              fill="currentColor"
-                              aria-hidden="true"
-                            >
-                              <path d="M16 3c-7.18 0-13 5.82-13 13 0 2.24.59 4.44 1.72 6.37L3 29l6.79-1.77C11.62 28.1 13.79 29 16 29c7.18 0 13-5.82 13-13S23.18 3 16 3zm0 23c-2.1 0-4.11-.56-5.87-1.63l-.42-.25-4.02 1.05 1.07-3.92-.26-.43A9.92 9.92 0 0 1 6 16c0-5.51 4.49-10 10-10s10 4.49 10 10-4.49 10-10 10zm5.23-7.7c-.29-.15-1.7-.84-1.96-.94-.26-.1-.45-.15-.63.15-.18.29-.72.94-.88 1.13-.16.18-.32.2-.6.07-.29-.15-1.22-.45-2.34-1.43-.86-.75-1.38-1.66-1.55-1.95-.16-.29-.02-.45.12-.58.13-.13.29-.32.43-.48.14-.16.18-.29.27-.48.09-.18.04-.35-.02-.48-.07-.13-.63-1.57-.86-2.16-.23-.59-.47-.53-.63-.53-.16 0-.35-.02-.54-.02-.19 0-.5.08-.75.37-.25.29-1.01 1.09-1.01 2.63s1.03 3.05 1.18 3.26c.15.21 2.03 3.25 4.91 4.49 1.82.79 2.53.86 3.44.73.55-.08 1.69-.69 1.93-1.35.24-.66.24-1.21.17-1.35-.07-.14-.26-.22-.55-.36z" />
-                            </svg>
-                          </span>
-                          <span>WhatsApp</span>
-                        </a>
+                        {whatsappHref ? (
+                          <a
+                            href={whatsappHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group inline-flex w-full items-center justify-center gap-3 rounded-xl border border-[#25D366] bg-white/40 px-5 py-4 text-base font-semibold text-[#0c4a2f] shadow-sm transition-all duration-300 hover:-translate-y-[2px] hover:bg-[#25D366]/10 hover:shadow-md focus-visible:-translate-y-[1px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#25D366] dark:bg-transparent dark:text-[#25D366]"
+                          >
+                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#25D366] text-white">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 32 32"
+                                className="h-4 w-4"
+                                fill="currentColor"
+                                aria-hidden="true"
+                              >
+                                <path d="M16 3c-7.18 0-13 5.82-13 13 0 2.24.59 4.44 1.72 6.37L3 29l6.79-1.77C11.62 28.1 13.79 29 16 29c7.18 0 13-5.82 13-13S23.18 3 16 3zm0 23c-2.1 0-4.11-.56-5.87-1.63l-.42-.25-4.02 1.05 1.07-3.92-.26-.43A9.92 9.92 0 0 1 6 16c0-5.51 4.49-10 10-10s10 4.49 10 10-4.49 10-10 10zm5.23-7.7c-.29-.15-1.7-.84-1.96-.94-.26-.1-.45-.15-.63.15-.18.29-.72.94-.88 1.13-.16.18-.32.2-.6.07-.29-.15-1.22-.45-2.34-1.43-.86-.75-1.38-1.66-1.55-1.95-.16-.29-.02-.45.12-.58.13-.13.29-.32.43-.48.14-.16.18-.29.27-.48.09-.18.04-.35-.02-.48-.07-.13-.63-1.57-.86-2.16-.23-.59-.47-.53-.63-.53-.16 0-.35-.02-.54-.02-.19 0-.5.08-.75.37-.25.29-1.01 1.09-1.01 2.63s1.03 3.05 1.18 3.26c.15.21 2.03 3.25 4.91 4.49 1.82.79 2.53.86 3.44.73.55-.08 1.69-.69 1.93-1.35.24-.66.24-1.21.17-1.35-.07-.14-.26-.22-.55-.36z" />
+                              </svg>
+                            </span>
+                            <span>WhatsApp</span>
+                          </a>
+                        ) : null}
                       </div>
 
                       <div className="space-y-2">
