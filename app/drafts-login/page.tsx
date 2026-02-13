@@ -4,6 +4,10 @@ import DraftsLoginClient from "./drafts-login-client";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
+  manifest: "/drafts.webmanifest",
+  appleWebApp: {
+    title: "cabn Admin",
+  },
 };
 
 export default function DraftsLoginPage() {

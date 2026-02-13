@@ -4,7 +4,8 @@ import ListingsGrid from "@/components/listing/ListingGrid";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { mapListingSummary } from "@/lib/transformers";
 import { getCanonicalSiteUrl } from "@/lib/siteUrl";
-import { hasMinimumPublishedListings } from "@/lib/seoIndexing";
+import { resolveListingsRouteIndexability } from "@/lib/seoRouteIndexing";
+import { countPublishedListingsByCounty } from "@/lib/seoListingsCounts";
 import { buildBreadcrumbJsonLd, buildListingPageJsonLd } from "@/lib/jsonLd";
 import { findCountyBySlug, getCounties } from "@/lib/counties";
 import type { ListingRaw } from "@/lib/types";
@@ -22,26 +23,18 @@ export async function generateStaticParams() {
   return getCounties().map((county) => ({ slug: county.slug }));
 }
 
-async function getPublishedCountyListingsCount(countyName: string): Promise<number> {
-  const supabaseAdmin = getSupabaseAdmin();
-  const { count, error } = await supabaseAdmin
-    .from("listings")
-    .select("id", { count: "exact", head: true })
-    .eq("is_published", true)
-    .eq("judet", countyName);
-
-  if (error) return Number.POSITIVE_INFINITY;
-  return Number(count || 0);
-}
-
 export async function generateMetadata({ params }: PageProps) {
   const county = findCountyBySlug(params.slug);
   if (!county) return {};
   const title = `Cazare in judetul ${county.name}`;
   const description = `Descopera cazari atent selectate in judetul ${county.name}, cu verificare foto/video si rezervare direct la gazda.`;
   const canonical = new URL(`/judet/${county.slug}`, siteUrl).toString();
-  const publishedListingsCount = await getPublishedCountyListingsCount(county.name);
-  const shouldIndex = hasMinimumPublishedListings(publishedListingsCount);
+  const supabaseAdmin = getSupabaseAdmin();
+  const publishedListingsCount = await countPublishedListingsByCounty(supabaseAdmin, county.name);
+  const shouldIndex = await resolveListingsRouteIndexability(
+    `/judet/${county.slug}`,
+    publishedListingsCount
+  );
 
   return {
     title,

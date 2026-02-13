@@ -6,7 +6,7 @@ import { mapListingSummary } from "@/lib/transformers";
 import { getTypeBySlug } from "@/lib/listingTypes";
 import { findCountyBySlug } from "@/lib/counties";
 import { getCanonicalSiteUrl } from "@/lib/siteUrl";
-import { hasMinimumPublishedListings } from "@/lib/seoIndexing";
+import { resolveListingsRouteIndexability } from "@/lib/seoRouteIndexing";
 import { normalizeRegionText } from "@/lib/regions";
 import { buildListingPageJsonLd } from "@/lib/jsonLd";
 import { fetchTypeFacilityCountyCombos, findSeoFacilityBySlug, toSeoFacilities } from "@/lib/typeFacilityCountySeo";
@@ -141,7 +141,10 @@ export async function generateMetadata({ params }: PageProps) {
     county.name,
     facility.id
   );
-  const shouldIndex = hasMinimumPublishedListings(publishedListingsCount);
+  const shouldIndex = await resolveListingsRouteIndexability(
+    `/cazari/${listingType.slug}/${facility.slug}/${county.slug}`,
+    publishedListingsCount
+  );
 
   return {
     title,

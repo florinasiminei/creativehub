@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getDraftRoleFromRequest } from "@/lib/draftsAuth";
 import { rateLimit } from "@/lib/rateLimit";
+import { invalidateGeoZoneIndexCache } from "@/lib/seoRouteIndexing";
 import {
   getSeoIndexable,
   getSeoMenuVisibility,
   getSeoPageLastModifiedMs,
   getSeoPageStatus,
+  getSeoPageUrl,
   getSeoToggleMeta,
 } from "@/lib/seoPages";
 
@@ -61,13 +64,8 @@ export async function POST(request: Request) {
       if (!toggleMeta.indexField || !toggleMeta.indexMode) {
         return NextResponse.json({ error: "Index field not available on this page" }, { status: 409 });
       }
-      if (toggleMeta.indexMode === "indexable") {
-        const currentValue = Boolean(row[toggleMeta.indexField]);
-        updateData[toggleMeta.indexField] = !currentValue;
-      } else {
-        const currentValue = Boolean(row[toggleMeta.indexField]);
-        updateData[toggleMeta.indexField] = !currentValue;
-      }
+      const currentValue = Boolean(row[toggleMeta.indexField]);
+      updateData[toggleMeta.indexField] = !currentValue;
     }
 
     if (Object.keys(updateData).length === 0) {
@@ -87,6 +85,11 @@ export async function POST(request: Request) {
 
     const nextRow = updated as Record<string, unknown>;
     const nextLastModified = getSeoPageLastModifiedMs(nextRow) || Date.now();
+    invalidateGeoZoneIndexCache();
+    const nextPath = getSeoPageUrl(nextRow);
+    if (nextPath) revalidatePath(nextPath);
+    revalidatePath("/sitemap.xml");
+
     return NextResponse.json({
       ok: true,
       page: {

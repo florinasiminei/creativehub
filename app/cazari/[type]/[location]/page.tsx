@@ -5,10 +5,12 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { mapListingSummary } from '@/lib/transformers';
 import { getTypeBySlug, LISTING_TYPES } from '@/lib/listingTypes';
 import { getCanonicalSiteUrl } from '@/lib/siteUrl';
-import { hasMinimumPublishedListings } from '@/lib/seoIndexing';
-import { findCountyBySlug, getCounties } from '@/lib/counties';
+import { resolveListingsRouteIndexability } from '@/lib/seoRouteIndexing';
+import {
+  countPublishedListingsByTypeAndRegion,
+  resolveRegionCountyNames,
+} from '@/lib/seoListingsCounts';
 import { allRegions, findRegionBySlug, normalizeRegionText } from '@/lib/regions';
-import { slugify } from '@/lib/utils';
 import { buildFaqJsonLd, buildListingPageJsonLd } from '@/lib/jsonLd';
 import { getFaqs } from '@/lib/faqData';
 import type { ListingRaw } from '@/lib/types';
@@ -25,20 +27,6 @@ type PageProps = {
   };
 };
 
-function resolveRegionCountyNames(regionCounties: string[]): string[] {
-  const counties = getCounties();
-  const byKey = new Map(counties.map((county) => [normalizeRegionText(county.name), county.name] as const));
-  const resolved = regionCounties
-    .map((county) => {
-      const byNormalized = byKey.get(normalizeRegionText(county));
-      if (byNormalized) return byNormalized;
-      const fuzzy = findCountyBySlug(slugify(String(county || '')));
-      return fuzzy?.name || county;
-    })
-    .filter(Boolean);
-  return Array.from(new Set(resolved));
-}
-
 export async function generateStaticParams() {
   const params: Array<{ type: string; location: string }> = [];
   for (const type of LISTING_TYPES) {
@@ -47,36 +35,6 @@ export async function generateStaticParams() {
     }
   }
   return params;
-}
-
-async function getPublishedListingsCountForLocation(
-  typeValue: string,
-  region: { counties: string[]; type: string; coreCities?: string[] }
-): Promise<number> {
-  const countyNames = resolveRegionCountyNames(region.counties);
-  const supabaseAdmin = getSupabaseAdmin();
-  const { data, error } = await supabaseAdmin
-    .from('listings')
-    .select('city')
-    .eq('is_published', true)
-    .eq('type', typeValue)
-    .in('judet', countyNames);
-
-  if (error) return Number.POSITIVE_INFINITY;
-
-  const rows = (data || []) as Array<{ city?: string | null }>;
-  const normalizedMetroCities = region.coreCities
-    ? new Set(region.coreCities.map((c) => normalizeRegionText(c)))
-    : null;
-
-  if (region.type !== "metro") return rows.length;
-
-  let count = 0;
-  for (const row of rows) {
-    const cityNorm = normalizeRegionText(String(row?.city || ""));
-    if (normalizedMetroCities && normalizedMetroCities.has(cityNorm)) count += 1;
-  }
-  return count;
 }
 
 export async function generateMetadata({ params }: PageProps) {
@@ -88,8 +46,16 @@ export async function generateMetadata({ params }: PageProps) {
   const title = `${listingType.label} in ${region.name}`;
   const description = `Descopera ${listingType.label.toLowerCase()} in ${region.name}, atent selectate, cu rezervare direct la gazda.`;
   const canonical = new URL(`/cazari/${listingType.slug}/${region.slug}`, siteUrl).toString();
-  const publishedListingsCount = await getPublishedListingsCountForLocation(listingType.value, region);
-  const shouldIndex = hasMinimumPublishedListings(publishedListingsCount);
+  const supabaseAdmin = getSupabaseAdmin();
+  const publishedListingsCount = await countPublishedListingsByTypeAndRegion(
+    supabaseAdmin,
+    listingType.value,
+    region
+  );
+  const shouldIndex = await resolveListingsRouteIndexability(
+    `/cazari/${listingType.slug}/${region.slug}`,
+    publishedListingsCount
+  );
 
   return {
     title,

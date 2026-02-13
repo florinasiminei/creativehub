@@ -5,7 +5,8 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { mapListingSummary } from '@/lib/transformers';
 import { getTypeBySlug, LISTING_TYPES } from '@/lib/listingTypes';
 import { getCanonicalSiteUrl } from '@/lib/siteUrl';
-import { hasMinimumPublishedListings } from '@/lib/seoIndexing';
+import { resolveListingsRouteIndexability } from '@/lib/seoRouteIndexing';
+import { countPublishedListingsByType } from '@/lib/seoListingsCounts';
 import { buildBreadcrumbJsonLd, buildListingPageJsonLd } from '@/lib/jsonLd';
 import type { ListingRaw } from '@/lib/types';
 import type { Cazare } from '@/lib/utils';
@@ -20,18 +21,6 @@ type PageProps = {
 
 export async function generateStaticParams() {
   return LISTING_TYPES.map((type) => ({ type: type.slug }));
-}
-
-async function getPublishedTypeListingsCount(typeValue: string): Promise<number> {
-  const supabaseAdmin = getSupabaseAdmin();
-  const { count, error } = await supabaseAdmin
-    .from('listings')
-    .select('id', { count: 'exact', head: true })
-    .eq('is_published', true)
-    .eq('type', typeValue);
-
-  if (error) return Number.POSITIVE_INFINITY;
-  return Number(count || 0);
 }
 
 export async function generateMetadata({ params }: PageProps) {
@@ -57,8 +46,12 @@ export async function generateMetadata({ params }: PageProps) {
     curated?.description ??
     `Descopera ${listingType.label.toLowerCase()} atent selectate, cu verificare foto/video si rezervare direct la gazda.`;
   const canonical = new URL(`/cazari/${listingType.slug}`, siteUrl).toString();
-  const publishedListingsCount = await getPublishedTypeListingsCount(listingType.value);
-  const shouldIndex = hasMinimumPublishedListings(publishedListingsCount);
+  const supabaseAdmin = getSupabaseAdmin();
+  const publishedListingsCount = await countPublishedListingsByType(supabaseAdmin, listingType.value);
+  const shouldIndex = await resolveListingsRouteIndexability(
+    `/cazari/${listingType.slug}`,
+    publishedListingsCount
+  );
   return {
     title,
     description,

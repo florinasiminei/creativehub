@@ -3,28 +3,18 @@ import Link from "next/link";
 import { LISTING_TYPES } from "@/lib/listingTypes";
 import { getCanonicalSiteUrl, toCanonicalUrl } from "@/lib/siteUrl";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { hasMinimumPublishedListings } from "@/lib/seoIndexing";
+import { resolveListingsRouteIndexability } from "@/lib/seoRouteIndexing";
+import { countPublishedListings } from "@/lib/seoListingsCounts";
 
 export const revalidate = 60 * 60 * 6;
 
 const siteUrl = getCanonicalSiteUrl();
 
 export async function generateMetadata(): Promise<Metadata> {
-  let shouldIndex = true;
+  const supabaseAdmin = getSupabaseAdmin();
+  const publishedListingsCount = await countPublishedListings(supabaseAdmin);
 
-  try {
-    const supabaseAdmin = getSupabaseAdmin();
-    const { count, error } = await supabaseAdmin
-      .from("listings")
-      .select("id", { count: "exact", head: true })
-      .eq("is_published", true);
-
-    if (!error) {
-      shouldIndex = hasMinimumPublishedListings(Number(count || 0));
-    }
-  } catch {
-    shouldIndex = true;
-  }
+  const shouldIndex = await resolveListingsRouteIndexability("/cazari", publishedListingsCount);
 
   return {
     title: "Cazari verificate pe tipuri",
