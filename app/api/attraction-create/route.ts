@@ -53,15 +53,17 @@ export async function POST(req: Request) {
     const body = await req.json();
 
     const title = String(body?.title || '').trim();
-    const locationName = String(body?.location_name || '').trim();
+    const providedLocationName = String(body?.location_name || '').trim();
     const description = typeof body?.description === 'string' ? body.description.trim() : null;
     const judet = typeof body?.judet === 'string' && body.judet.trim() ? body.judet.trim() : null;
     const city = typeof body?.city === 'string' && body.city.trim() ? body.city.trim() : null;
     const sat = typeof body?.sat === 'string' && body.sat.trim() ? body.sat.trim() : null;
 
-    if (!title || !locationName) {
-      return NextResponse.json({ error: 'Numele si locatia sunt obligatorii.' }, { status: 400 });
+    if (!title) {
+      return NextResponse.json({ error: 'Numele atractiei este obligatoriu.' }, { status: 400 });
     }
+
+    const locationName = providedLocationName || [sat, city, judet].filter(Boolean).join(', ') || null;
 
     const toNumber = (value: unknown) => {
       if (value === null || value === undefined || value === '') return null;

@@ -725,7 +725,7 @@ export default function DraftsClient({
                 onClick={(event) => {
                   const target = event.target as HTMLElement;
                   if (target.closest("button") || target.closest("a")) return;
-                  router.push(`/edit-attraction/${a.id}`);
+                  router.push(`/add-attraction?editId=${a.id}`);
                 }}
                 className="border rounded-2xl shadow-sm bg-white dark:bg-zinc-900 dark:border-zinc-800 transition cursor-pointer"
               >
@@ -772,7 +772,7 @@ export default function DraftsClient({
                   <div className="pt-3 border-t border-gray-100 dark:border-zinc-800">
                     <div className="grid grid-cols-3 gap-2 mt-3">
                       <a
-                        href={`/edit-attraction/${a.id}`}
+                        href={`/add-attraction?editId=${a.id}`}
                         className="px-3 py-2 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg text-center hover:bg-gray-200"
                       >
                         Editeaza

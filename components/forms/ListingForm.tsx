@@ -8,6 +8,7 @@ import ImageUploader from './ImageUploader';
 import FormMessage from './FormMessage';
 import LocationPicker from '@/components/LocationPicker';
 import { validateCapacity, validateDescriptionLength, validatePhone } from '@/lib/validation/listing';
+import useFocusFirstInvalid from '@/hooks/useFocusFirstInvalid';
 
 type FacilityOption = { id: string; name: string };
 
@@ -207,20 +208,11 @@ export default function ListingForm({
   const showCountyError = showCountyMatchError || showCountyRequiredError;
 
   const localityHasMatch = !formData.localitate || Boolean(resolvedLocality);
-  const showLocalityMatchError = showValidation && resolvedCounty && !localityHasMatch;
-  const showLocalityRequiredError = isInvalid('localitate');
+  const showLocalityMatchError = showValidation && Boolean(resolvedCounty) && !localityHasMatch;
+  const localityDisabled = !resolvedCounty;
+  const showLocalityRequiredError = Boolean(resolvedCounty) && isInvalid('localitate');
   const showLocalityError = showLocalityMatchError || showLocalityRequiredError;
-
-  useEffect(() => {
-    if (!showValidation || validationAttempt < 1) return;
-    if (typeof document === 'undefined') return;
-    const target = document.querySelector<HTMLElement>('[aria-invalid="true"]');
-    if (!target) return;
-    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    if (typeof target.focus === 'function') {
-      target.focus({ preventScroll: true });
-    }
-  }, [showValidation, validationAttempt]);
+  useFocusFirstInvalid({ enabled: showValidation, attempt: validationAttempt });
 
   const descriptionLength = formData.descriere ? formData.descriere.length : 0;
   const hasDescriptionLimits = typeof descriptionMin === 'number' || typeof descriptionMax === 'number';
@@ -251,7 +243,7 @@ export default function ListingForm({
 
   return (
     <>
-      <ListingFormSection step="pas 1" label="Detalii principale" title="Identitate și contact">
+      <ListingFormSection step="pas 1" label="Detalii principale" title="Identitate și contact" mobileFlat>
         <label className={labelClass(isInvalid('titlu'))}>
           <span className="text-sm font-medium">Titlu</span>
           <input
@@ -263,6 +255,11 @@ export default function ListingForm({
             className={inputClass(isInvalid('titlu'))}
             aria-invalid={isInvalid('titlu')}
           />
+          {isInvalid('titlu') && (
+            <FormMessage inline variant="error">
+              Camp obligatoriu.
+            </FormMessage>
+          )}
         </label>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -340,6 +337,11 @@ export default function ListingForm({
                 Selectează un județ din listă.
               </FormMessage>
             )}
+            {showCountyRequiredError && (
+              <FormMessage inline variant="error">
+                Camp obligatoriu.
+              </FormMessage>
+            )}
             {locationsError && (
               <FormMessage inline variant="error">
                 {locationsError}
@@ -357,10 +359,15 @@ export default function ListingForm({
                 onChange('sat', '');
                 setCityQuery('');
               }}
+              disabled={localityDisabled}
             >
               <div className="relative mt-1 w-full">
                 <Combobox.Input
-                  className={`${inputClass(showLocalityError)} w-full`}
+                  className={`${inputClass(showLocalityError)} w-full text-base sm:text-sm ${
+                    localityDisabled
+                      ? 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-500 dark:border-zinc-800 dark:bg-zinc-950/60 dark:text-gray-500'
+                      : ''
+                  }`}
                   displayValue={(value: string) => value}
                   onChange={(event) => {
                     const next = event.target.value;
@@ -374,12 +381,13 @@ export default function ListingForm({
                     }
                   }}
                   autoComplete="off"
-                  placeholder={resolvedCounty ? 'Caută localitate' : 'Selectează județ mai întâi'}
+                  placeholder={resolvedCounty ? 'Caută localitate' : 'Selectati mai intai judetul'}
                   aria-invalid={showLocalityError}
-                  disabled={!resolvedCounty}
+                  aria-disabled={localityDisabled}
+                  disabled={localityDisabled}
                 />
                 {resolvedCounty && (
-                  <Combobox.Options className="absolute left-0 right-0 z-20 mt-2 max-h-64 w-full box-border overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+                  <Combobox.Options className="absolute left-0 right-0 z-20 mt-2 max-h-56 w-full box-border overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg sm:max-h-64 dark:border-zinc-800 dark:bg-zinc-900">
                     {filteredLocalities.length === 0 && (
                       <div className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
                         Nu am găsit localități.
@@ -404,9 +412,19 @@ export default function ListingForm({
                 )}
               </div>
             </Combobox>
+            {localityDisabled && (
+              <span className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Selectati mai intai judetul.
+              </span>
+            )}
             {showLocalityMatchError && (
               <FormMessage inline variant="error">
                 Selecteaza o localitate din lista.
+              </FormMessage>
+            )}
+            {showLocalityRequiredError && (
+              <FormMessage inline variant="error">
+                Camp obligatoriu.
               </FormMessage>
             )}
           </div>
@@ -438,6 +456,11 @@ export default function ListingForm({
               className={inputClass(isInvalid('pret'))}
               aria-invalid={isInvalid('pret')}
             />
+            {isInvalid('pret') && (
+              <FormMessage inline variant="error">
+                Camp obligatoriu.
+              </FormMessage>
+            )}
           </label>
           <label className={labelClass(capacityInvalid)}>
             <span className="text-sm font-medium">Capacitate (pers.)</span>
@@ -455,6 +478,11 @@ export default function ListingForm({
             {liveCapacityError && (
               <FormMessage inline variant="error">
                 {liveCapacityError}
+              </FormMessage>
+            )}
+            {!liveCapacityError && isInvalid('capacitate') && (
+              <FormMessage inline variant="error">
+                Camp obligatoriu.
               </FormMessage>
             )}
           </label>
@@ -516,6 +544,11 @@ export default function ListingForm({
               {livePhoneError}
             </FormMessage>
           )}
+          {!livePhoneError && isInvalid('telefon') && (
+            <FormMessage inline variant="error">
+              Camp obligatoriu.
+            </FormMessage>
+          )}
           <span className="text-xs text-gray-500 mt-1 dark:text-gray-400">Ex: 07xx xxx xxx sau +40 7xx xxx xxx</span>
         </label>
 
@@ -552,6 +585,11 @@ export default function ListingForm({
               {liveDescriptionError}
             </FormMessage>
           )}
+          {!liveDescriptionError && isInvalid('descriere') && (
+            <FormMessage inline variant="error">
+              Completeaza descrierea conform limitelor cerute.
+            </FormMessage>
+          )}
           {hasDescriptionLimits && (
             <span className="text-xs text-gray-500 mt-1 dark:text-gray-400">
               {descriptionRangeLabel} caractere. {descriptionLength}
@@ -563,7 +601,7 @@ export default function ListingForm({
         <FacilitiesPicker facilities={facilities} selected={selectedFacilities} onToggle={onToggleFacility} />
       </ListingFormSection>
 
-      <ListingFormSection step="pas 2" label="Localizare" title="Locație pe hartă">
+      <ListingFormSection step="pas 2" label="Localizare" title="Locație pe hartă" mobileFlat>
         <p className="text-sm text-gray-600 dark:text-gray-400">
           Selectează poziția aproximativă. Poți da click pe hartă sau trage pinul, apoi confirmă locația.
         </p>
@@ -580,7 +618,7 @@ export default function ListingForm({
         />
       </ListingFormSection>
 
-      <ListingFormSection step="pas 3" label="Galerie" title="Ordine imagini">
+      <ListingFormSection step="pas 3" label="Galerie" title="Ordine imagini" mobileFlat>
         <ImageUploader
           dropzoneTitle={dropzoneTitle}
           dropzoneSubtitle={dropzoneSubtitle}

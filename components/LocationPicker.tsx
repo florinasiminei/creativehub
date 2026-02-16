@@ -434,7 +434,7 @@ export default function LocationPicker({
                   }}
                   placeholder="🔍 Caută o adresă, localitate..."
                   autoComplete="off"
-                  className="w-full h-9 px-4 pl-11 rounded-lg border border-gray-300 bg-white text-sm text-gray-900 shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition dark:border-zinc-700 dark:bg-zinc-950 dark:text-gray-100"
+                  className="w-full h-11 sm:h-9 px-4 pl-11 rounded-lg border border-gray-300 bg-white text-base sm:text-sm text-gray-900 shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition dark:border-zinc-700 dark:bg-zinc-950 dark:text-gray-100"
                 />
                 <MapPin className="absolute left-3.5 top-3.5 w-4 h-4 text-gray-400 dark:text-gray-500" />
 
@@ -461,19 +461,19 @@ export default function LocationPicker({
                   </div>
                 )}
               </div>
-              <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex w-full flex-col sm:w-auto sm:flex-row gap-2">
                 <button
                   type="button"
                   onClick={handleSearchSubmit}
                   disabled={isSearching || !searchValue.trim()}
-                  className="h-9 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition text-sm font-semibold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="h-11 sm:h-9 w-full sm:w-auto px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition text-sm font-semibold shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {isSearching ? 'Caută...' : 'Caută'}
                 </button>
                 <button
                   type="button"
                   onClick={handleUseMyLocation}
-                  className="h-9 px-3 rounded-lg border border-emerald-200 text-emerald-700 bg-white hover:bg-emerald-50 transition text-sm font-semibold shadow-sm dark:bg-zinc-900 dark:border-emerald-900/40 dark:text-emerald-300"
+                  className="h-11 sm:h-9 w-full sm:w-auto px-3 rounded-lg border border-emerald-200 text-emerald-700 bg-white hover:bg-emerald-50 transition text-sm font-semibold shadow-sm dark:bg-zinc-900 dark:border-emerald-900/40 dark:text-emerald-300"
                 >
                   📍 Folosește locația mea
                 </button>
@@ -485,7 +485,7 @@ export default function LocationPicker({
           </div>
         </div>
         {/* Map container */}
-        <div ref={mapContainerRef} className="w-full h-96 bg-gray-50 dark:bg-zinc-900" />
+        <div ref={mapContainerRef} className="w-full h-72 sm:h-96 bg-gray-50 dark:bg-zinc-900" />
       </div>
 
       {/* Location details panel (reserve space to avoid CLS) */}

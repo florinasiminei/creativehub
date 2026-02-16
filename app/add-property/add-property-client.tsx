@@ -183,7 +183,7 @@ export default function AddPropertyPageContent() {
     setShowValidation(true);
     if (formData.honeypot) return; // spam
     if (validationError) {
-      setMessage(validationError);
+      setMessage(invalidFields.length === 0 ? validationError : null);
       setValidationAttempt((prev) => prev + 1);
       return;
     }

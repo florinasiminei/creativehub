@@ -261,7 +261,7 @@ export default function EditPropertyPage({ params }: any) {
     setShowValidation(true);
     if (validationError) {
       setMessageTone('error');
-      setMessage(validationError);
+      setMessage(invalidFields.length === 0 ? validationError : null);
       setValidationAttempt((prev) => prev + 1);
       return;
     }
