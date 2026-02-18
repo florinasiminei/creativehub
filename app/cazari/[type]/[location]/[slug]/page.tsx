@@ -1,19 +1,31 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import ListingsGrid from "@/components/listing/ListingGrid";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { mapListingSummary } from "@/lib/transformers";
 import { getTypeBySlug } from "@/lib/listingTypes";
-import { findCountyBySlug } from "@/lib/counties";
 import { getCanonicalSiteUrl } from "@/lib/siteUrl";
 import { resolveListingsRouteIndexability } from "@/lib/seoRouteIndexing";
 import { normalizeRegionText } from "@/lib/regions";
 import { buildListingPageJsonLd } from "@/lib/jsonLd";
-import { fetchTypeFacilityCountyCombos, findSeoFacilityBySlug, toSeoFacilities } from "@/lib/typeFacilityCountySeo";
+import type { CountyDefinition } from "@/lib/counties";
+import {
+  fetchTypeFacilityCountyCombos,
+  findSeoFacilityBySlug,
+  toSeoFacilities,
+  type SeoFacility,
+} from "@/lib/typeFacilityCountySeo";
+import {
+  buildCountySegment,
+  buildFacilitySegment,
+  buildTypeFacilityCountyPath,
+  normalizeFacilitySlug,
+  parseListingLocationSegment,
+} from "@/lib/locationRoutes";
 import type { ListingRaw } from "@/lib/types";
 import type { Cazare } from "@/lib/utils";
 
-export const revalidate = 60 * 60 * 6; // 6 hours
+export const revalidate = 60 * 60 * 6;
 
 const siteUrl = getCanonicalSiteUrl();
 
@@ -36,6 +48,14 @@ type ListingFacilityRaw = {
 
 type ListingRawFlexible = Omit<ListingRaw, "listing_facilities"> & {
   listing_facilities?: ListingFacilityRaw[] | null;
+};
+
+type ResolvedTypeFacilityCountyRoute = {
+  listingType: NonNullable<ReturnType<typeof getTypeBySlug>>;
+  county: CountyDefinition;
+  facility: SeoFacility;
+  canonicalPath: string;
+  isCanonical: boolean;
 };
 
 function normalizeListingRows(rows: ListingRawFlexible[]): ListingRaw[] {
@@ -64,13 +84,67 @@ function normalizeListingRows(rows: ListingRawFlexible[]): ListingRaw[] {
   });
 }
 
-async function getSeoFacilityBySlug(slug: string) {
+async function getSeoFacilities(): Promise<SeoFacility[]> {
   const supabaseAdmin = getSupabaseAdmin();
   const { data, error } = await supabaseAdmin.from("facilities").select("id, name");
-  if (error || !data) return null;
+  if (error || !data) return [];
+  return toSeoFacilities(
+    (data as FacilityRow[]).map((item) => ({ id: String(item.id), name: String(item.name) }))
+  );
+}
 
-  const facilities = toSeoFacilities((data as FacilityRow[]).map((item) => ({ id: String(item.id), name: String(item.name) })));
-  return findSeoFacilityBySlug(facilities, slug);
+function resolveFacilityFromSegment(facilities: SeoFacility[], segment: string): SeoFacility | null {
+  const lookupSlug = normalizeFacilitySlug(segment);
+  if (!lookupSlug) return null;
+  return findSeoFacilityBySlug(facilities, lookupSlug);
+}
+
+async function resolveTypeFacilityCountyRoute(
+  params: PageProps["params"]
+): Promise<ResolvedTypeFacilityCountyRoute | null> {
+  const listingType = getTypeBySlug(params.type);
+  if (!listingType) return null;
+
+  const facilities = await getSeoFacilities();
+  if (facilities.length === 0) return null;
+
+  const countyFromLocation = parseListingLocationSegment(params.location);
+  if (countyFromLocation?.kind === "judet" && countyFromLocation.county) {
+    const facility = resolveFacilityFromSegment(facilities, params.slug);
+    if (facility) {
+      const canonicalLocation = buildCountySegment(countyFromLocation.county.slug);
+      const canonicalFacility = buildFacilitySegment(facility.slug);
+      return {
+        listingType,
+        county: countyFromLocation.county,
+        facility,
+        canonicalPath: buildTypeFacilityCountyPath(
+          listingType.slug,
+          countyFromLocation.county.slug,
+          facility.slug
+        ),
+        isCanonical: params.location === canonicalLocation && params.slug === canonicalFacility,
+      };
+    }
+  }
+
+  const countyFromSlug = parseListingLocationSegment(params.slug);
+  if (countyFromSlug?.kind !== "judet" || !countyFromSlug.county) return null;
+
+  const legacyFacility = resolveFacilityFromSegment(facilities, params.location);
+  if (!legacyFacility) return null;
+
+  return {
+    listingType,
+    county: countyFromSlug.county,
+    facility: legacyFacility,
+    canonicalPath: buildTypeFacilityCountyPath(
+      listingType.slug,
+      countyFromSlug.county.slug,
+      legacyFacility.slug
+    ),
+    isCanonical: false,
+  };
 }
 
 export async function generateStaticParams() {
@@ -78,8 +152,8 @@ export async function generateStaticParams() {
   const combos = await fetchTypeFacilityCountyCombos(supabaseAdmin, { publishedOnly: true });
   return combos.map((combo) => ({
     type: combo.typeSlug,
-    location: combo.facilitySlug,
-    slug: combo.countySlug,
+    location: buildCountySegment(combo.countySlug),
+    slug: buildFacilitySegment(combo.facilitySlug),
   }));
 }
 
@@ -97,8 +171,8 @@ async function getMatchingListingIds(typeValue: string, countyName: string, faci
 
   for (const row of data as Array<Record<string, unknown>>) {
     const listing = Array.isArray(row["listings"])
-      ? (row["listings"][0] as Record<string, unknown> | undefined)
-      : ((row["listings"] as Record<string, unknown> | null) || undefined);
+      ? ((row["listings"][0] as Record<string, unknown> | undefined) || null)
+      : ((row["listings"] as Record<string, unknown> | null) || null);
     if (!listing) continue;
 
     const isPublished = Boolean(listing["is_published"]);
@@ -128,23 +202,19 @@ async function getPublishedListingsCountForCombination(
 }
 
 export async function generateMetadata({ params }: PageProps) {
-  const listingType = getTypeBySlug(params.type);
-  const county = findCountyBySlug(params.slug);
-  const facility = await getSeoFacilityBySlug(params.location);
-  if (!listingType || !county || !facility) return {};
+  const resolved = await resolveTypeFacilityCountyRoute(params);
+  if (!resolved) return {};
 
+  const { listingType, county, facility, canonicalPath } = resolved;
   const title = `${listingType.label} cu ${facility.name} in judetul ${county.name}`;
   const description = `Descopera ${listingType.label.toLowerCase()} cu ${facility.name} in judetul ${county.name}, cu contact direct la gazda.`;
-  const canonical = new URL(`/cazari/${listingType.slug}/${facility.slug}/${county.slug}`, siteUrl).toString();
+  const canonical = new URL(canonicalPath, siteUrl).toString();
   const publishedListingsCount = await getPublishedListingsCountForCombination(
     listingType.value,
     county.name,
     facility.id
   );
-  const shouldIndex = await resolveListingsRouteIndexability(
-    `/cazari/${listingType.slug}/${facility.slug}/${county.slug}`,
-    publishedListingsCount
-  );
+  const shouldIndex = await resolveListingsRouteIndexability(canonicalPath, publishedListingsCount);
 
   return {
     title,
@@ -209,15 +279,17 @@ async function getFacilityCountyTypeListings(
 }
 
 export default async function TypeFacilityCountyPage({ params }: PageProps) {
-  const listingType = getTypeBySlug(params.type);
-  const county = findCountyBySlug(params.slug);
-  const facility = await getSeoFacilityBySlug(params.location);
+  const resolved = await resolveTypeFacilityCountyRoute(params);
+  if (!resolved || !resolved.county) return notFound();
 
-  if (!listingType || !county || !facility) return notFound();
+  const { listingType, county, facility, canonicalPath, isCanonical } = resolved;
+  if (!isCanonical) {
+    permanentRedirect(canonicalPath);
+  }
 
   const listings = await getFacilityCountyTypeListings(listingType.value, county.name, facility.id);
-  const pageUrl = `${siteUrl}/cazari/${listingType.slug}/${facility.slug}/${county.slug}`;
-  const description = `Descopera ${listingType.label.toLowerCase()} cu ${facility.name} in judetul ${county.name}, listari verificate si rezervare direct la proprietar.`;
+  const pageUrl = `${siteUrl}${canonicalPath}`;
+  const description = `Pagina filtrata pentru ${listingType.label.toLowerCase()} cu ${facility.name} in judetul ${county.name}, cu listari verificate si rezervare direct la proprietar.`;
 
   const listingJsonLd = buildListingPageJsonLd({
     siteUrl,
@@ -246,8 +318,8 @@ export default async function TypeFacilityCountyPage({ params }: PageProps) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(obj) }}
         />
       ))}
-      <main className="min-h-screen px-4 lg:px-6 py-10">
-        <header className="max-w-4xl mx-auto text-center">
+      <main className="min-h-screen px-4 py-10 lg:px-6">
+        <header className="mx-auto max-w-4xl text-center">
           <nav aria-label="Breadcrumb" className="text-sm text-emerald-800/80">
             <Link href="/" className="hover:underline">
               Acasa
@@ -263,24 +335,27 @@ export default async function TypeFacilityCountyPage({ params }: PageProps) {
             <span className="mx-2">/</span>
             <span>{facility.name}</span>
           </nav>
-          <h1 className="text-3xl sm:text-4xl font-semibold mt-3">
+          <h1 className="mt-3 text-3xl font-semibold sm:text-4xl">
             {listingType.label} cu {facility.name} in judetul {county.name}
           </h1>
-          <p className="text-gray-600 mt-4 max-w-2xl mx-auto">{description}</p>
+          <p className="mx-auto mt-4 max-w-2xl text-gray-600">{description}</p>
+          <p className="mx-auto mt-2 max-w-2xl text-sm text-emerald-900/80">
+            Ruta este standardizata pe formatul tip - judet - facilitate pentru indexare clara si filtrare scalabila.
+          </p>
         </header>
 
         <section className="mt-12">
           {listings.length === 0 ? (
             <div className="rounded-3xl border border-emerald-100 bg-emerald-50/60 px-6 py-10 text-center">
-              <h2 className="text-2xl font-semibold text-emerald-900 mb-2">
+              <h2 className="mb-2 text-2xl font-semibold text-emerald-900">
                 Momentan nu avem {listingType.label.toLowerCase()} cu {facility.name} in {county.name}
               </h2>
-              <p className="text-emerald-800/80 max-w-2xl mx-auto">
+              <p className="mx-auto max-w-2xl text-emerald-800/80">
                 Publicam treptat proprietati reale, atent verificate. Revino in curand.
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-x-2 gap-y-8">
+            <div className="grid grid-cols-1 gap-x-2 gap-y-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
               <ListingsGrid cazari={listings} />
             </div>
           )}

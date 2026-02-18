@@ -1,12 +1,14 @@
 import type { MetadataRoute } from "next";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { LISTING_TYPES } from "@/lib/listingTypes";
-import { allRegions, normalizeRegionText, touristRegions } from "@/lib/regions";
+import { allRegions, normalizeRegionText } from "@/lib/regions";
 import { getCounties } from "@/lib/counties";
 import { getCanonicalSiteUrl } from "@/lib/siteUrl";
 import { fetchTypeFacilityCountyCombos } from "@/lib/typeFacilityCountySeo";
 import { resolveListingsRouteIndexability } from "@/lib/seoRouteIndexing";
 import { resolveRegionCountyNames } from "@/lib/seoListingsCounts";
+import { buildTypeCountyPath } from "@/lib/typeCountyRoutes";
+import { buildRegionPagePath, buildTypeFacilityCountyPath, buildTypeRegionPath } from "@/lib/locationRoutes";
 
 export const revalidate = 60 * 60 * 12;
 
@@ -88,6 +90,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const countyCountsBySlug = new Map<string, number>();
   const regionCountsBySlug = new Map<string, number>();
   const typeRegionCountsByKey = new Map<string, number>();
+  const typeCountyCountsByKey = new Map<string, number>();
 
   for (const row of listingRows) {
     const typeKey = String(row.type || "").trim().toLowerCase();
@@ -97,6 +100,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const countyKey = normalizeRegionText(String(row.judet || ""));
     const county = countyByNormalizedName.get(countyKey);
     if (county) increment(countyCountsBySlug, county.slug);
+    if (typeSlug && county) increment(typeCountyCountsByKey, `${typeSlug}|${county.slug}`);
 
     const cityKey = normalizeRegionText(String(row.city || ""));
     for (const matcher of regionMatchers) {
@@ -104,7 +108,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       if (matcher.region.type === "metro" && !(matcher.coreCities && matcher.coreCities.has(cityKey))) continue;
 
       increment(regionCountsBySlug, matcher.region.slug);
-      if (typeSlug && matcher.region.type === "touristic") {
+      if (typeSlug) {
         increment(typeRegionCountsByKey, `${typeSlug}|${matcher.region.slug}`);
       }
     }
@@ -126,7 +130,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const regionEntries: MetadataRoute.Sitemap = [];
   for (const region of allRegions) {
-    const routePath = `/regiune/${region.slug}`;
+    const routePath = buildRegionPagePath(region);
     const publishedCount = hasListingsData ? (regionCountsBySlug.get(region.slug) || 0) : unknownCount;
     if (!(await resolveListingsRouteIndexability(routePath, publishedCount))) continue;
 
@@ -154,8 +158,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const typeRegionEntries: MetadataRoute.Sitemap = [];
   for (const type of LISTING_TYPES) {
-    for (const region of touristRegions) {
-      const routePath = `/cazari/${type.slug}/${region.slug}`;
+    for (const region of allRegions) {
+      const routePath = buildTypeRegionPath(type.slug, region);
       const publishedCount = hasListingsData
         ? (typeRegionCountsByKey.get(`${type.slug}|${region.slug}`) || 0)
         : unknownCount;
@@ -170,12 +174,34 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   }
 
+  const typeCountyEntries: MetadataRoute.Sitemap = [];
+  for (const type of LISTING_TYPES) {
+    for (const county of getCounties()) {
+      const routePath = buildTypeCountyPath(type.slug, county.slug);
+      const publishedCount = hasListingsData
+        ? (typeCountyCountsByKey.get(`${type.slug}|${county.slug}`) || 0)
+        : unknownCount;
+      if (!(await resolveListingsRouteIndexability(routePath, publishedCount))) continue;
+
+      typeCountyEntries.push({
+        url: `${siteUrl}${routePath}`,
+        lastModified,
+        changeFrequency: "weekly",
+        priority: 0.58,
+      });
+    }
+  }
+
   let typeFacilityCountyEntries: MetadataRoute.Sitemap = [];
   try {
     const combos = await fetchTypeFacilityCountyCombos(supabaseAdmin, { publishedOnly: true });
     const filtered: MetadataRoute.Sitemap = [];
     for (const combo of combos) {
-      const routePath = `/cazari/${combo.typeSlug}/${combo.facilitySlug}/${combo.countySlug}`;
+      const routePath = buildTypeFacilityCountyPath(
+        combo.typeSlug,
+        combo.countySlug,
+        combo.facilitySlug
+      );
       if (!(await resolveListingsRouteIndexability(routePath, combo.listingIds.length))) continue;
       filtered.push({
         url: `${siteUrl}${routePath}`,
@@ -224,9 +250,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly",
       priority: 0.7,
     },
+    {
+      url: `${siteUrl}/contact`,
+      lastModified,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    {
+      url: `${siteUrl}/atractii`,
+      lastModified,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
     ...regionEntries,
     ...countyEntries,
     ...typeRegionEntries,
+    ...typeCountyEntries,
     ...typeFacilityCountyEntries,
     ...listingEntries,
   ];

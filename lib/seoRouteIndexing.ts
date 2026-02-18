@@ -23,10 +23,14 @@ function canonicalizeRegionUrl(path: string): string {
   return REGION_URL_ALIASES.get(normalized) || normalized;
 }
 
+function canonicalizeSeoRoutePath(path: string): string {
+  return canonicalizeRegionUrl(path);
+}
+
 export function normalizeSeoRoutePath(path: string): string | null {
   const normalized = getSeoPageUrl({ path });
   if (!normalized) return null;
-  return canonicalizeRegionUrl(normalized);
+  return canonicalizeSeoRoutePath(normalized);
 }
 
 async function loadGeoZoneIndexMap(): Promise<Record<string, boolean>> {
@@ -45,7 +49,7 @@ async function loadGeoZoneIndexMap(): Promise<Record<string, boolean>> {
         for (const row of data as Array<Record<string, unknown>>) {
           const routePath = getSeoPageUrl(row);
           if (!routePath) continue;
-          next[canonicalizeRegionUrl(routePath)] = getSeoIndexable(row);
+          next[canonicalizeSeoRoutePath(routePath)] = getSeoIndexable(row);
         }
         geoZoneIndexCache = next;
       }

@@ -1,4 +1,13 @@
 import { findCountyBySlug } from "@/lib/counties";
+import { getTypeBySlug } from "@/lib/listingTypes";
+import {
+  buildRegionPagePath,
+  buildTypeFacilityCountyPath,
+  buildTypeLocationPath,
+  normalizeFacilitySlug,
+  parseListingLocationSegment,
+} from "@/lib/locationRoutes";
+import { findRegionBySlug } from "@/lib/regions";
 type AnyRow = Record<string, unknown>;
 
 export type SeoPageStatus = "publicata" | "nepublicata" | "draft";
@@ -81,6 +90,65 @@ function normalizeSeoPath(path: string): string {
     if (county) pathname = `/judet/${county.slug}`;
   }
 
+  const localitateMatch = pathname.match(/^\/localitate\/([^/]+)$/);
+  if (localitateMatch?.[1]) {
+    const region = findRegionBySlug(decodeSafe(localitateMatch[1]));
+    if (region) pathname = buildRegionPagePath(region);
+  }
+
+  const regionMatch = pathname.match(/^\/regiune\/([^/]+)$/);
+  if (regionMatch?.[1]) {
+    const region = findRegionBySlug(decodeSafe(regionMatch[1]));
+    if (region) pathname = buildRegionPagePath(region);
+  }
+
+  const legacyFacilityPath = pathname.match(/^\/cazari\/([^/]+)\/facilitate\/([^/]+)\/judet\/([^/]+)$/);
+  if (legacyFacilityPath?.[1] && legacyFacilityPath?.[2] && legacyFacilityPath?.[3]) {
+    const listingType = getTypeBySlug(decodeSafe(legacyFacilityPath[1]));
+    const county = findCountyBySlug(decodeSafe(legacyFacilityPath[3]));
+    if (listingType && county) {
+      pathname = buildTypeFacilityCountyPath(
+        listingType.slug,
+        county.slug,
+        normalizeFacilitySlug(decodeSafe(legacyFacilityPath[2]))
+      );
+    }
+  }
+
+  const typeFacilityCountyMatch = pathname.match(/^\/cazari\/([^/]+)\/([^/]+)\/([^/]+)$/);
+  if (typeFacilityCountyMatch?.[1] && typeFacilityCountyMatch?.[2] && typeFacilityCountyMatch?.[3]) {
+    const listingType = getTypeBySlug(decodeSafe(typeFacilityCountyMatch[1]));
+    if (listingType) {
+      const secondSegment = decodeSafe(typeFacilityCountyMatch[2]);
+      const thirdSegment = decodeSafe(typeFacilityCountyMatch[3]);
+      const locationFromSecond = parseListingLocationSegment(secondSegment);
+      const locationFromThird = parseListingLocationSegment(thirdSegment);
+
+      if (locationFromSecond?.kind === "judet" && locationFromSecond.county) {
+        pathname = buildTypeFacilityCountyPath(
+          listingType.slug,
+          locationFromSecond.county.slug,
+          normalizeFacilitySlug(thirdSegment)
+        );
+      } else if (locationFromThird?.kind === "judet" && locationFromThird.county) {
+        pathname = buildTypeFacilityCountyPath(
+          listingType.slug,
+          locationFromThird.county.slug,
+          normalizeFacilitySlug(secondSegment)
+        );
+      }
+    }
+  }
+
+  const typeLocationMatch = pathname.match(/^\/cazari\/([^/]+)\/([^/]+)$/);
+  if (typeLocationMatch?.[1] && typeLocationMatch?.[2]) {
+    const listingType = getTypeBySlug(decodeSafe(typeLocationMatch[1]));
+    const location = parseListingLocationSegment(decodeSafe(typeLocationMatch[2]));
+    if (listingType && location) {
+      pathname = buildTypeLocationPath(listingType.slug, location.canonicalSegment);
+    }
+  }
+
   return pathname || "/";
 }
 
@@ -94,7 +162,23 @@ function inferPathFromType(row: AnyRow, type: string | null, slug: string | null
     return `/judet/${resolvedSlug}`;
   }
   if (!slug) return null;
-  if (normalizedType === "regiune" || normalizedType === "region") return `/regiune/${slug}`;
+  if (
+    normalizedType === "localitate" ||
+    normalizedType === "city" ||
+    normalizedType === "oras" ||
+    normalizedType === "municipiu" ||
+    normalizedType === "comuna"
+  ) {
+    const region = findRegionBySlug(slug);
+    if (region) return buildRegionPagePath(region);
+    return `/localitate/${slug}`;
+  }
+  if (normalizedType === "regiune" || normalizedType === "region") {
+    const region = findRegionBySlug(slug);
+    if (region) return buildRegionPagePath(region);
+    return `/regiune/${slug}`;
+  }
+  if (normalizedType === "type_judet") return null;
   if (normalizedType === "tip" || normalizedType === "type") return `/cazari/${slug}`;
   return `/${slug}`;
 }

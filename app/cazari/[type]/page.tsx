@@ -4,10 +4,13 @@ import ListingsGrid from '@/components/listing/ListingGrid';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { mapListingSummary } from '@/lib/transformers';
 import { getTypeBySlug, LISTING_TYPES } from '@/lib/listingTypes';
+import { getCounties } from '@/lib/counties';
+import { normalizeRegionText } from '@/lib/regions';
 import { getCanonicalSiteUrl } from '@/lib/siteUrl';
 import { resolveListingsRouteIndexability } from '@/lib/seoRouteIndexing';
 import { countPublishedListingsByType } from '@/lib/seoListingsCounts';
 import { buildBreadcrumbJsonLd, buildListingPageJsonLd } from '@/lib/jsonLd';
+import { buildTypeCountyPath } from '@/lib/typeCountyRoutes';
 import type { ListingRaw } from '@/lib/types';
 import type { Cazare } from '@/lib/utils';
 
@@ -107,11 +110,58 @@ async function getTypeListings(typeValue: string): Promise<Cazare[]> {
   return (data as unknown as ListingRaw[]).map((row) => mapListingSummary(row));
 }
 
+type CountyLinkItem = {
+  countyName: string;
+  countySlug: string;
+  href: string;
+  countyHref: string;
+  count: number;
+};
+
+async function getTypeCountyLinks(typeSlug: string, typeValue: string): Promise<CountyLinkItem[]> {
+  const supabaseAdmin = getSupabaseAdmin();
+  const { data, error } = await supabaseAdmin
+    .from("listings")
+    .select("judet")
+    .eq("is_published", true)
+    .eq("type", typeValue);
+
+  if (error || !data) return [];
+
+  const counties = getCounties();
+  const countyByKey = new Map(
+    counties.map((county) => [normalizeRegionText(county.name), county] as const)
+  );
+  const countsBySlug = new Map<string, number>();
+
+  for (const row of data as Array<Record<string, unknown>>) {
+    const key = normalizeRegionText(String(row["judet"] || ""));
+    const county = countyByKey.get(key);
+    if (!county) continue;
+    countsBySlug.set(county.slug, (countsBySlug.get(county.slug) || 0) + 1);
+  }
+
+  return counties
+    .map((county) => ({
+      countyName: county.name,
+      countySlug: county.slug,
+      href: buildTypeCountyPath(typeSlug, county.slug),
+      countyHref: `/judet/${county.slug}`,
+      count: countsBySlug.get(county.slug) || 0,
+    }))
+    .filter((item) => item.count > 0)
+    .sort((a, b) => (b.count - a.count) || a.countyName.localeCompare(b.countyName, "ro"))
+    .slice(0, 12);
+}
+
 export default async function TypePage({ params }: PageProps) {
   const listingType = getTypeBySlug(params.type);
   if (!listingType) return notFound();
 
-  const listings = await getTypeListings(listingType.value);
+  const [listings, countyLinks] = await Promise.all([
+    getTypeListings(listingType.value),
+    getTypeCountyLinks(listingType.slug, listingType.value),
+  ]);
   const pageUrl = `${siteUrl}/cazari/${listingType.slug}`;
   const description = `Listari curate, cu verificare vizuala si contact direct la gazda. Gaseste cele mai frumoase ${listingType.label.toLowerCase()} din Romania.`;
 
@@ -198,6 +248,46 @@ export default async function TypePage({ params }: PageProps) {
             </div>
           )}
         </section>
+
+        {countyLinks.length > 0 && (
+          <section className="mt-12 rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-6 sm:p-8">
+            <h2 className="text-xl font-semibold text-emerald-900">
+              Cazari populare pe judete
+            </h2>
+            <p className="mt-2 text-sm text-emerald-800/80">
+              Selecteaza un judet ca sa vezi rapid cele mai potrivite rezultate pentru {listingType.label.toLowerCase()}.
+            </p>
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {countyLinks.map((item) => (
+                <article
+                  key={item.countySlug}
+                  className="rounded-2xl border border-emerald-200/70 bg-white/90 p-4 shadow-sm"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-base font-semibold text-emerald-950">{item.countyName}</h3>
+                    <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">
+                      {item.count}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex items-center gap-2">
+                    <Link
+                      href={item.href}
+                      className="inline-flex items-center justify-center rounded-full bg-emerald-700 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800"
+                    >
+                      Vezi in judet
+                    </Link>
+                    <Link
+                      href={item.countyHref}
+                      className="inline-flex items-center justify-center rounded-full border border-emerald-200 px-3.5 py-1.5 text-xs font-semibold text-emerald-900 hover:bg-emerald-100"
+                    >
+                      Pagina judetului
+                    </Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
     </>
   );

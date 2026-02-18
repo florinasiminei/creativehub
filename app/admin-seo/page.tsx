@@ -27,6 +27,13 @@ import {
   getSeoToggleMeta,
   type SeoPageStatus,
 } from "@/lib/seoPages";
+import { buildTypeCountyPath } from "@/lib/typeCountyRoutes";
+import {
+  buildRegionPagePath,
+  buildTypeFacilityCountyPath,
+  buildTypeRegionPath,
+  parseListingLocationSegment,
+} from "@/lib/locationRoutes";
 import SeoAdminClient from "./seo-admin-client";
 
 type ListingMeta = {
@@ -60,7 +67,7 @@ function canonicalizeRegionUrl(url: string | null): string | null {
 
 function slugFromRegionUrl(url: string | null, fallback: string): string {
   if (!url) return fallback;
-  const match = String(url).trim().toLowerCase().match(/^\/regiune\/([^/?#]+)/);
+  const match = String(url).trim().toLowerCase().match(/^\/(?:regiune|localitate)\/([^/?#]+)/);
   return match?.[1] || fallback;
 }
 
@@ -75,6 +82,7 @@ type SeoPageItem = {
     | "atractii_index"
     | "type"
     | "judet"
+    | "type_judet"
     | "regiune"
     | "localitate"
     | "type_region"
@@ -434,13 +442,34 @@ function buildRoutePages(
       createRoutePage({
         id: `route:regiune:${region.slug}`,
         slug: region.slug,
-        url: `/regiune/${region.slug}`,
+        url: buildRegionPagePath(region),
         pageKind: region.type === "touristic" ? "regiune" : "localitate",
         title: `Cazare in ${region.name}`,
         indexable: hasMinimumPublishedListings(stats.published),
         stats,
       })
     );
+  }
+
+  for (const type of LISTING_TYPES) {
+    for (const county of getCounties()) {
+      const countyKey = normalizeRegionText(county.name);
+      const stats = buildStats(
+        listings,
+        (listing) => listing.typeKey === type.value && listing.judetKey === countyKey
+      );
+      routePages.push(
+        createRoutePage({
+          id: `route:type-judet:${type.slug}:${county.slug}`,
+          slug: `${type.slug}-${county.slug}`,
+          url: buildTypeCountyPath(type.slug, county.slug),
+          pageKind: "type_judet",
+          title: `${type.label} in judetul ${county.name}`,
+          indexable: hasMinimumPublishedListings(stats.published),
+          stats,
+        })
+      );
+    }
   }
 
   for (const type of LISTING_TYPES) {
@@ -453,8 +482,8 @@ function buildRoutePages(
       routePages.push(
         createRoutePage({
           id: `route:type-region:${type.slug}:${region.slug}`,
-          slug: `${type.slug}/${region.slug}`,
-          url: `/cazari/${type.slug}/${region.slug}`,
+          slug: `${type.slug}/${region.type === "metro" ? "localitate" : "regiune"}-${region.slug}`,
+          url: buildTypeRegionPath(type.slug, region),
           pageKind: region.type === "metro" ? "type_localitate" : "type_region",
           title: `${type.label} in ${region.name}`,
           indexable: hasMinimumPublishedListings(stats.published),
@@ -482,8 +511,8 @@ function buildRoutePages(
     routePages.push(
       createRoutePage({
         id: `route:type-facility-judet:${combo.typeSlug}:${combo.facilitySlug}:${combo.countySlug}`,
-        slug: `${combo.typeSlug}/${combo.facilitySlug}/${combo.countySlug}`,
-        url: `/cazari/${combo.typeSlug}/${combo.facilitySlug}/${combo.countySlug}`,
+        slug: `${combo.typeSlug}/judet-${combo.countySlug}/cu-${combo.facilitySlug}`,
+        url: buildTypeFacilityCountyPath(combo.typeSlug, combo.countySlug, combo.facilitySlug),
         pageKind: "type_facility_judet",
         title: `${combo.typeLabel} cu ${combo.facilityName} in judetul ${combo.countyName}`,
         indexable: hasMinimumPublishedListings(published),
@@ -590,6 +619,7 @@ function requiresListingsThreshold(pageKind: SeoPageItem["pageKind"]): boolean {
     pageKind === "cazari_index" ||
     pageKind === "type" ||
     pageKind === "judet" ||
+    pageKind === "type_judet" ||
     pageKind === "regiune" ||
     pageKind === "localitate" ||
     pageKind === "type_region" ||
@@ -763,6 +793,12 @@ function inferGeoPageKind(
     return county ? "judet" : "geo_zone";
   }
 
+  const localityMatch = normalizedUrl.match(/^\/localitate\/([^/]+)$/);
+  if (localityMatch?.[1]) {
+    const region = findRegionBySlug(localityMatch[1]);
+    return region?.type === "metro" ? "localitate" : "geo_zone";
+  }
+
   const regionMatch = normalizedUrl.match(/^\/regiune\/([^/]+)$/);
   if (regionMatch?.[1]) {
     const regionKind = regionKindBySlug.get(regionMatch[1]);
@@ -771,14 +807,27 @@ function inferGeoPageKind(
     return "regiune";
   }
 
-  const typeRegionMatch = normalizedUrl.match(/^\/cazari\/([^/]+)\/([^/]+)$/);
-  if (typeRegionMatch?.[1] && typeRegionMatch?.[2]) {
-    const typeSlug = typeRegionMatch[1];
-    const regionSlug = typeRegionMatch[2];
+  const typeFacilityCountyMatch = normalizedUrl.match(/^\/cazari\/([^/]+)\/([^/]+)\/([^/]+)$/);
+  if (typeFacilityCountyMatch?.[1] && typeFacilityCountyMatch?.[2] && typeFacilityCountyMatch?.[3]) {
+    const typeSlug = typeFacilityCountyMatch[1];
+    const locationSegment = typeFacilityCountyMatch[2];
+    const facilitySegment = typeFacilityCountyMatch[3];
     const listingType = getTypeBySlug(typeSlug);
-    const region = findRegionBySlug(regionSlug);
-    if (!listingType || !region) return "geo_zone";
-    return region.type === "metro" ? "type_localitate" : "type_region";
+    const location = parseListingLocationSegment(locationSegment);
+    if (!listingType || !location || location.kind !== "judet") return "geo_zone";
+    if (!facilitySegment.startsWith("cu-")) return "geo_zone";
+    return "type_facility_judet";
+  }
+
+  const typeLocationMatch = normalizedUrl.match(/^\/cazari\/([^/]+)\/([^/]+)$/);
+  if (typeLocationMatch?.[1] && typeLocationMatch?.[2]) {
+    const typeSlug = typeLocationMatch[1];
+    const locationSegment = typeLocationMatch[2];
+    const listingType = getTypeBySlug(typeSlug);
+    const location = parseListingLocationSegment(locationSegment);
+    if (!listingType || !location) return "geo_zone";
+    if (location.kind === "judet") return "type_judet";
+    return location.kind === "localitate" ? "type_localitate" : "type_region";
   }
 
   const typeMatch = normalizedUrl.match(/^\/cazari\/([^/]+)$/);

@@ -84,6 +84,22 @@ export async function countPublishedListingsByCounty(
   return Number(count || 0);
 }
 
+export async function countPublishedListingsByTypeAndCounty(
+  supabaseAdmin: SupabaseAdminLike,
+  typeValue: string,
+  countyName: string
+): Promise<number> {
+  const { count, error } = await supabaseAdmin
+    .from("listings")
+    .select("id", { count: "exact", head: true })
+    .eq("is_published", true)
+    .eq("type", typeValue)
+    .eq("judet", countyName);
+
+  if (error) return Number.POSITIVE_INFINITY;
+  return Number(count || 0);
+}
+
 export async function countPublishedListingsByRegion(
   supabaseAdmin: SupabaseAdminLike,
   region: RegionCountInput

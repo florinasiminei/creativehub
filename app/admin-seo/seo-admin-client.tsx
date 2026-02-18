@@ -17,6 +17,7 @@ type SeoPageItem = {
     | "atractii_index"
     | "type"
     | "judet"
+    | "type_judet"
     | "regiune"
     | "localitate"
     | "type_region"
@@ -65,6 +66,7 @@ type PageKindFilter =
   | "atractii_index"
   | "type"
   | "judet"
+  | "type_judet"
   | "regiune"
   | "localitate"
   | "type_region"
@@ -75,28 +77,42 @@ type PageKindFilter =
   | "static"
   | "geo_zone";
 
+type PageKindGroup = "hub" | "geo" | "type" | "detail" | "content";
+
 const INDEX_FILTER_OPTIONS: Array<{ value: IndexFilter; label: string }> = [
   { value: "all", label: "Indexare: toate" },
   { value: "index", label: "Index" },
   { value: "noindex", label: "Noindex" },
 ];
 
-const PAGE_KIND_FILTER_OPTIONS: Array<{ value: PageKindFilter; label: string }> = [
-  { value: "all", label: "Tip pagina: toate" },
-  { value: "home", label: "Homepage" },
-  { value: "listing", label: "Pagina individuala cazare" },
-  { value: "atractii_index", label: "Hub /atractii" },
-  { value: "atractie", label: "Pagina individuala atractie" },
-  { value: "judet", label: "Pagina judet" },
-  { value: "regiune", label: "Pagina regiune" },
-  { value: "localitate", label: "Pagina localitate" },
-  { value: "type", label: "Pagina tip cazare" },
-  { value: "type_region", label: "Pagina tip + regiune" },
-  { value: "type_localitate", label: "Pagina tip + localitate" },
-  { value: "type_facility_judet", label: "Pagina tip + facilitate + judet" },
-  { value: "static", label: "Pagina statica" },
-  { value: "cazari_index", label: "Hub /cazari" },
-  { value: "geo_zone", label: "Alte pagini geo" },
+const PAGE_KIND_GROUP_LABELS: Record<PageKindGroup, string> = {
+  hub: "Hub-uri principale",
+  geo: "Pagini geografice",
+  type: "Pagini pe tipuri",
+  detail: "Pagini individuale",
+  content: "Alte pagini",
+};
+
+const PAGE_KIND_FILTER_META: Array<{
+  value: Exclude<PageKindFilter, "all">;
+  label: string;
+  group: PageKindGroup;
+}> = [
+  { value: "home", label: "Homepage", group: "hub" },
+  { value: "cazari_index", label: "Hub /cazari", group: "hub" },
+  { value: "atractii_index", label: "Hub /atractii", group: "hub" },
+  { value: "judet", label: "Pagina judet", group: "geo" },
+  { value: "localitate", label: "Pagina localitate", group: "geo" },
+  { value: "regiune", label: "Pagina regiune", group: "geo" },
+  { value: "geo_zone", label: "Alte pagini geo", group: "geo" },
+  { value: "type", label: "Pagina tip cazare", group: "type" },
+  { value: "type_judet", label: "Pagina tip + judet", group: "type" },
+  { value: "type_localitate", label: "Pagina tip + localitate", group: "type" },
+  { value: "type_region", label: "Pagina tip + regiune", group: "type" },
+  { value: "type_facility_judet", label: "Pagina tip + facilitate + judet", group: "type" },
+  { value: "listing", label: "Pagina individuala cazare", group: "detail" },
+  { value: "atractie", label: "Pagina individuala atractie", group: "detail" },
+  { value: "static", label: "Pagina statica", group: "content" },
 ];
 
 const SORT_DEFAULT_DIR: Record<SortField, SortDir> = {
@@ -179,6 +195,25 @@ export default function SeoAdminClient({ pages }: Props) {
 
   const getViews = (row: SeoPageItem) => getViewsByWindow(row, viewsWindow);
   const getUniqueViews = (row: SeoPageItem) => getUniqueViewsByWindow(row, viewsWindow);
+
+  const pageKindOptionsByGroup = useMemo(() => {
+    const counts = new Map<Exclude<PageKindFilter, "all">, number>();
+    for (const row of rows) {
+      counts.set(row.pageKind, (counts.get(row.pageKind) || 0) + 1);
+    }
+
+    const orderedGroups: PageKindGroup[] = ["hub", "geo", "type", "detail", "content"];
+    return orderedGroups
+      .map((group) => ({
+        group,
+        label: PAGE_KIND_GROUP_LABELS[group],
+        options: PAGE_KIND_FILTER_META.filter((meta) => meta.group === group).map((meta) => ({
+          value: meta.value,
+          label: `${meta.label} (${counts.get(meta.value) || 0})`,
+        })),
+      }))
+      .filter((group) => group.options.length > 0);
+  }, [rows]);
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -338,10 +373,15 @@ export default function SeoAdminClient({ pages }: Props) {
           onChange={(event) => setKindFilter(event.target.value as PageKindFilter)}
           className="rounded-lg border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-2 text-sm"
         >
-          {PAGE_KIND_FILTER_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
+          <option value="all">Tip pagina: toate ({rows.length})</option>
+          {pageKindOptionsByGroup.map((group) => (
+            <optgroup key={group.group} label={group.label}>
+              {group.options.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
       </div>
