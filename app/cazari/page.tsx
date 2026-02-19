@@ -5,6 +5,8 @@ import { getCanonicalSiteUrl, toCanonicalUrl } from "@/lib/siteUrl";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { resolveListingsRouteIndexability } from "@/lib/seoRouteIndexing";
 import { countPublishedListings } from "@/lib/seoListingsCounts";
+import { buildSeoCollectionDescription, buildSeoCollectionTitle } from "@/lib/seoCopy";
+import { buildSocialMetadata } from "@/lib/seoMetadata";
 
 export const revalidate = 60 * 60 * 6;
 
@@ -13,22 +15,22 @@ const siteUrl = getCanonicalSiteUrl();
 export async function generateMetadata(): Promise<Metadata> {
   const supabaseAdmin = getSupabaseAdmin();
   const publishedListingsCount = await countPublishedListings(supabaseAdmin);
+  const title = buildSeoCollectionTitle("pe tipuri în România");
+  const description = buildSeoCollectionDescription("pe tipuri în România");
 
   const shouldIndex = await resolveListingsRouteIndexability("/cazari", publishedListingsCount);
 
   return {
-    title: "Cazari verificate pe tipuri",
-    description:
-      "Alege tipul de cazare potrivit pentru planul tau si intra direct in liste curate, cu detalii utile si contact la gazda.",
+    title,
+    description,
     alternates: {
       canonical: toCanonicalUrl("/cazari"),
     },
-    openGraph: {
-      title: "Cazari verificate pe tipuri",
-      description:
-        "Selecteaza rapid categoria dorita si compara proprietati reale, publicate cu informatii clare.",
-      url: `${siteUrl}/cazari`,
-    },
+    ...buildSocialMetadata({
+      title,
+      description,
+      canonicalUrl: `${siteUrl}/cazari`,
+    }),
     robots: shouldIndex ? undefined : { index: false, follow: true },
   };
 }

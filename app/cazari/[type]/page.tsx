@@ -9,6 +9,8 @@ import { normalizeRegionText } from '@/lib/regions';
 import { getCanonicalSiteUrl } from '@/lib/siteUrl';
 import { resolveListingsRouteIndexability } from '@/lib/seoRouteIndexing';
 import { countPublishedListingsByType } from '@/lib/seoListingsCounts';
+import { buildSeoTypeDescription, buildSeoTypeTitle, getSeoTypeLabel } from '@/lib/seoCopy';
+import { buildSocialMetadata } from '@/lib/seoMetadata';
 import { buildBreadcrumbJsonLd, buildListingPageJsonLd } from '@/lib/jsonLd';
 import { buildTypeCountyPath } from '@/lib/typeCountyRoutes';
 import type { ListingRaw } from '@/lib/types';
@@ -29,25 +31,9 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: PageProps) {
   const listingType = getTypeBySlug(params.type);
   if (!listingType) return {};
-
-  const curatedMetadata: Record<string, { title: string; description: string }> = {
-    cabane: {
-      title: "Cabane de inchiriat in Romania",
-      description:
-        "Gaseste cabane potrivite pentru weekend sau vacanta, cu informatii clare despre capacitate, pret si locatie, plus contact direct la gazda.",
-    },
-    pensiuni: {
-      title: "Pensiuni in Romania pentru sejururi relaxate",
-      description:
-        "Descopera pensiuni verificate unde poti compara rapid facilitatile, zona si pretul, apoi rezervi direct cu proprietarul.",
-    },
-  };
-
-  const curated = curatedMetadata[listingType.slug];
-  const title = curated?.title ?? `${listingType.label} in Romania`;
-  const description =
-    curated?.description ??
-    `Descopera ${listingType.label.toLowerCase()} atent selectate, cu verificare foto/video si rezervare direct la gazda.`;
+  const seoTypeLabel = getSeoTypeLabel(listingType.slug, listingType.label);
+  const title = buildSeoTypeTitle(seoTypeLabel, "în România");
+  const description = buildSeoTypeDescription(seoTypeLabel, "în România");
   const canonical = new URL(`/cazari/${listingType.slug}`, siteUrl).toString();
   const supabaseAdmin = getSupabaseAdmin();
   const publishedListingsCount = await countPublishedListingsByType(supabaseAdmin, listingType.value);
@@ -61,11 +47,11 @@ export async function generateMetadata({ params }: PageProps) {
     alternates: {
       canonical,
     },
-    openGraph: {
+    ...buildSocialMetadata({
       title,
       description,
-      url: canonical,
-    },
+      canonicalUrl: canonical,
+    }),
     robots: shouldIndex ? undefined : { index: false, follow: true },
   };
 }

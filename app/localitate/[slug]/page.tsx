@@ -9,6 +9,8 @@ import {
   countPublishedListingsByRegion,
   resolveRegionCountyNames,
 } from "@/lib/seoListingsCounts";
+import { buildSeoCollectionDescription, buildSeoCollectionTitle } from "@/lib/seoCopy";
+import { buildSocialMetadata } from "@/lib/seoMetadata";
 import { findRegionBySlug, metroRegions, normalizeRegionText } from "@/lib/regions";
 import { buildBreadcrumbJsonLd, buildListingPageJsonLd } from "@/lib/jsonLd";
 import type { ListingRaw } from "@/lib/types";
@@ -31,15 +33,23 @@ export async function generateMetadata({ params }: PageProps) {
   if (!region) return {};
   if (region.type !== "metro") {
     const canonicalRegion = new URL(`/regiune/${region.slug}`, siteUrl).toString();
+    const title = buildSeoCollectionTitle(`în ${region.name}`);
+    const description = buildSeoCollectionDescription(`în ${region.name}`);
     return {
-      title: `Cazare in ${region.name}`,
+      title,
+      description,
       alternates: { canonical: canonicalRegion },
+      ...buildSocialMetadata({
+        title,
+        description,
+        canonicalUrl: canonicalRegion,
+      }),
       robots: { index: false, follow: true },
     };
   }
 
-  const title = `Cazare in ${region.name}`;
-  const description = `Descopera cazari in ${region.name}, cu verificare foto/video si rezervare direct la gazda.`;
+  const title = buildSeoCollectionTitle(`în ${region.name}`);
+  const description = buildSeoCollectionDescription(`în ${region.name}`);
   const canonicalPath = `/localitate/${region.slug}`;
   const canonical = new URL(canonicalPath, siteUrl).toString();
   const supabaseAdmin = getSupabaseAdmin();
@@ -52,11 +62,11 @@ export async function generateMetadata({ params }: PageProps) {
     alternates: {
       canonical,
     },
-    openGraph: {
+    ...buildSocialMetadata({
       title,
       description,
-      url: canonical,
-    },
+      canonicalUrl: canonical,
+    }),
     robots: shouldIndex ? undefined : { index: false, follow: true },
   };
 }

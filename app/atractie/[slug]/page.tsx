@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getCanonicalSiteUrl, toCanonicalUrl } from "@/lib/siteUrl";
+import { buildSocialMetadata } from "@/lib/seoMetadata";
 import PropertyImageGrid from "@/components/listing/PropertyImageGrid";
 import SubtleBackLink from "@/components/SubtleBackLink";
 
@@ -133,19 +134,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title,
     description,
     alternates: { canonical },
-    openGraph: {
+    ...buildSocialMetadata({
       title,
       description,
-      type: "website",
-      url: `${siteUrl}/atractie/${attraction.slug}`,
-      images: [{ url: image }],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: [image],
-    },
+      canonicalUrl: `${siteUrl}/atractie/${attraction.slug}`,
+      imageUrl: image,
+      imageAlt: title,
+    }),
   };
 }
 

@@ -7,6 +7,8 @@ import { LISTING_TYPES, type ListingTypeValue } from "@/lib/listingTypes";
 import { getCanonicalSiteUrl } from "@/lib/siteUrl";
 import { resolveListingsRouteIndexability } from "@/lib/seoRouteIndexing";
 import { countPublishedListingsByCounty } from "@/lib/seoListingsCounts";
+import { buildSeoCollectionDescription, buildSeoCollectionTitle } from "@/lib/seoCopy";
+import { buildSocialMetadata } from "@/lib/seoMetadata";
 import { buildBreadcrumbJsonLd, buildListingPageJsonLd } from "@/lib/jsonLd";
 import { findCountyBySlug, getCounties } from "@/lib/counties";
 import { buildTypeCountyPath } from "@/lib/typeCountyRoutes";
@@ -29,8 +31,8 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: PageProps) {
   const county = findCountyBySlug(params.slug);
   if (!county) return {};
-  const title = `Cazare in judetul ${county.name}`;
-  const description = `Descopera cazari atent selectate in judetul ${county.name}, cu verificare foto/video si rezervare direct la gazda.`;
+  const title = buildSeoCollectionTitle(`în județul ${county.name}`);
+  const description = buildSeoCollectionDescription(`în județul ${county.name}`);
   const canonical = new URL(`/judet/${county.slug}`, siteUrl).toString();
   const supabaseAdmin = getSupabaseAdmin();
   const publishedListingsCount = await countPublishedListingsByCounty(supabaseAdmin, county.name);
@@ -45,11 +47,11 @@ export async function generateMetadata({ params }: PageProps) {
     alternates: {
       canonical,
     },
-    openGraph: {
+    ...buildSocialMetadata({
       title,
       description,
-      url: canonical,
-    },
+      canonicalUrl: canonical,
+    }),
     robots: shouldIndex ? undefined : { index: false, follow: true },
   };
 }

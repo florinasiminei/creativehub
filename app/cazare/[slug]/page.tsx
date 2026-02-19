@@ -277,7 +277,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       description,
       type: 'website',
       url: canonical,
-      siteName: 'cabn.ro',
+      siteName: 'cabn',
       locale: 'ro_RO',
       images: [
         {

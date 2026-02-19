@@ -199,3 +199,88 @@ export function buildFaqJsonLd(pageUrl: string, faqs: Array<{ q: string; a: stri
     url: pageUrl,
   };
 }
+
+export function buildOrganizationJsonLd({
+  siteUrl,
+  logoPath = "/icon-512.png",
+}: {
+  siteUrl: string;
+  logoPath?: string;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": `${siteUrl}#organization`,
+    name: "CABN S.R.L.",
+    legalName: "CABN S.R.L.",
+    url: siteUrl,
+    logo: new URL(logoPath, siteUrl).toString(),
+    email: "marketing@cabn.ro",
+    telephone: "+40-745-298-008",
+    taxID: "RO52174972",
+    sameAs: [
+      "https://www.facebook.com/cabn.ro",
+      "https://www.instagram.com/cabn.ro/",
+      "https://www.tiktok.com/@cabn.ro",
+    ],
+    contactPoint: [
+      {
+        "@type": "ContactPoint",
+        contactType: "customer support",
+        email: "marketing@cabn.ro",
+        telephone: "+40-745-298-008",
+        areaServed: "RO",
+        availableLanguage: ["ro", "en"],
+      },
+    ],
+  };
+}
+
+export function buildWebSiteJsonLd({
+  siteUrl,
+  description,
+}: {
+  siteUrl: string;
+  description: string;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": `${siteUrl}#website`,
+    url: siteUrl,
+    name: "cabn.ro",
+    description,
+    inLanguage: "ro-RO",
+    publisher: {
+      "@id": `${siteUrl}#organization`,
+    },
+  };
+}
+
+export function buildCollectionPageJsonLd({
+  siteUrl,
+  pageUrl,
+  name,
+  description,
+}: {
+  siteUrl: string;
+  pageUrl: string;
+  name: string;
+  description: string;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "@id": `${pageUrl}#webpage`,
+    url: pageUrl,
+    name,
+    description,
+    inLanguage: "ro-RO",
+    isPartOf: {
+      "@id": `${siteUrl}#website`,
+    },
+    about: {
+      "@id": `${siteUrl}#organization`,
+    },
+  };
+}

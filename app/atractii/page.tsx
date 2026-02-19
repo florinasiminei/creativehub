@@ -30,6 +30,7 @@ type AttractionCard = {
 };
 
 const siteUrl = getCanonicalSiteUrl();
+const defaultSocialImage = "/images/og-default.png";
 
 export const metadata: Metadata = {
   title: "Atractii",
@@ -42,14 +43,23 @@ export const metadata: Metadata = {
     title: "Atractii",
     description: "Atractii si experiente locale langa cabane si pensiuni.",
     url: `${siteUrl}/atractii`,
-    siteName: "cabn.ro",
+    siteName: "cabn",
     locale: "ro_RO",
     type: "website",
+    images: [
+      {
+        url: defaultSocialImage,
+        width: 1200,
+        height: 630,
+        alt: "Atractii cabn.ro",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Atractii",
     description: "Atractii si experiente locale langa cabane si pensiuni.",
+    images: [defaultSocialImage],
   },
 };
 

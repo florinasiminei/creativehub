@@ -18,6 +18,7 @@ import {
 import { getCanonicalSiteUrl, toCanonicalUrl } from "@/lib/siteUrl";
 
 const siteUrl = getCanonicalSiteUrl();
+const defaultSocialImage = "/images/og-default.png";
 
 export const metadata: Metadata = {
   title: "Despre noi",
@@ -31,17 +32,24 @@ export const metadata: Metadata = {
     description:
       "Pagina oficiala despre echipa cabn, activitate, istoric, misiune si contact.",
     url: `${siteUrl}/about-us`,
-    siteName: "cabn.ro",
+    siteName: "cabn",
     locale: "ro_RO",
     type: "website",
     images: [
       {
-        url: "/images/logo.svg",
+        url: defaultSocialImage,
         width: 1200,
         height: 630,
-        alt: "cabn.ro",
+        alt: "Despre cabn.ro",
       },
     ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Despre noi",
+    description:
+      "Pagina oficiala despre echipa cabn, activitate, istoric, misiune si contact.",
+    images: [defaultSocialImage],
   },
 };
 

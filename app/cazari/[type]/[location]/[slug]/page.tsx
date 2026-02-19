@@ -6,6 +6,8 @@ import { mapListingSummary } from "@/lib/transformers";
 import { getTypeBySlug } from "@/lib/listingTypes";
 import { getCanonicalSiteUrl } from "@/lib/siteUrl";
 import { resolveListingsRouteIndexability } from "@/lib/seoRouteIndexing";
+import { buildSeoTypeDescription, buildSeoTypeTitle, getSeoTypeLabel } from "@/lib/seoCopy";
+import { buildSocialMetadata } from "@/lib/seoMetadata";
 import { normalizeRegionText } from "@/lib/regions";
 import { buildListingPageJsonLd } from "@/lib/jsonLd";
 import type { CountyDefinition } from "@/lib/counties";
@@ -206,8 +208,12 @@ export async function generateMetadata({ params }: PageProps) {
   if (!resolved) return {};
 
   const { listingType, county, facility, canonicalPath } = resolved;
-  const title = `${listingType.label} cu ${facility.name} in judetul ${county.name}`;
-  const description = `Descopera ${listingType.label.toLowerCase()} cu ${facility.name} in judetul ${county.name}, cu contact direct la gazda.`;
+  const seoTypeLabel = getSeoTypeLabel(listingType.slug, listingType.label);
+  const title = buildSeoTypeTitle(seoTypeLabel, `cu ${facility.name} în județul ${county.name}`);
+  const description = buildSeoTypeDescription(
+    seoTypeLabel,
+    `cu ${facility.name} în județul ${county.name}`
+  );
   const canonical = new URL(canonicalPath, siteUrl).toString();
   const publishedListingsCount = await getPublishedListingsCountForCombination(
     listingType.value,
@@ -220,11 +226,11 @@ export async function generateMetadata({ params }: PageProps) {
     title,
     description,
     alternates: { canonical },
-    openGraph: {
+    ...buildSocialMetadata({
       title,
       description,
-      url: canonical,
-    },
+      canonicalUrl: canonical,
+    }),
     robots: shouldIndex ? undefined : { index: false, follow: true },
   };
 }

@@ -9,6 +9,8 @@ import {
   countPublishedListingsByRegion,
   resolveRegionCountyNames,
 } from "@/lib/seoListingsCounts";
+import { buildSeoCollectionDescription, buildSeoCollectionTitle } from "@/lib/seoCopy";
+import { buildSocialMetadata } from "@/lib/seoMetadata";
 import { findRegionBySlug, normalizeRegionText, touristRegions } from "@/lib/regions";
 import { buildBreadcrumbJsonLd, buildListingPageJsonLd } from "@/lib/jsonLd";
 import { buildRegionPagePath } from "@/lib/locationRoutes";
@@ -32,16 +34,22 @@ export async function generateMetadata({ params }: PageProps) {
   if (!region) return {};
   if (region.type === "metro") {
     const canonicalLocality = new URL(`/localitate/${region.slug}`, siteUrl).toString();
+    const title = buildSeoCollectionTitle(`în ${region.name}`);
+    const description = buildSeoCollectionDescription(`în ${region.name}`);
     return {
-      title: `Cazare in ${region.name}`,
-      description: `Descopera cazari in ${region.name}, cu verificare foto/video si rezervare direct la gazda.`,
+      title,
+      description,
       alternates: { canonical: canonicalLocality },
+      ...buildSocialMetadata({
+        title,
+        description,
+        canonicalUrl: canonicalLocality,
+      }),
       robots: { index: false, follow: true },
     };
   }
-  const title = `Cazare in ${region.name}`;
-  const description =
-    `Descopera cazare atent selectata in ${region.name}, cu verificare foto/video si rezervare direct la gazda.`;
+  const title = buildSeoCollectionTitle(`în ${region.name}`);
+  const description = buildSeoCollectionDescription(`în ${region.name}`);
   const canonicalPath = buildRegionPagePath(region);
   const canonical = new URL(canonicalPath, siteUrl).toString();
   const supabaseAdmin = getSupabaseAdmin();
@@ -57,11 +65,11 @@ export async function generateMetadata({ params }: PageProps) {
     alternates: {
       canonical,
     },
-    openGraph: {
+    ...buildSocialMetadata({
       title,
       description,
-      url: canonical,
-    },
+      canonicalUrl: canonical,
+    }),
     robots: shouldIndex ? undefined : { index: false, follow: true },
   };
 }

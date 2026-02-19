@@ -8,20 +8,63 @@ import { Analytics } from "@vercel/analytics/next";
 import Script from "next/script";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { getCanonicalSiteUrl } from "@/lib/siteUrl";
+import { buildOrganizationJsonLd, buildWebSiteJsonLd } from "@/lib/jsonLd";
+import {
+  SEO_COLLECTION_DESCRIPTION,
+  SEO_COLLECTION_HEADLINE,
+  SEO_COLLECTION_META_TITLE,
+} from "@/lib/seoCopy";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
 const inter = Inter({ variable: "--font-geist-sans", subsets: ["latin"], display: "swap" });
 const jetbrainsMono = JetBrains_Mono({ variable: "--font-geist-mono", subsets: ["latin"], display: "swap" });
 const siteUrl = getCanonicalSiteUrl();
+const defaultSocialImage = "/images/og-default.png";
+const twitterSiteHandle = process.env.NEXT_PUBLIC_TWITTER_SITE;
+const twitterCreatorHandle = process.env.NEXT_PUBLIC_TWITTER_CREATOR;
+const organizationJsonLd = buildOrganizationJsonLd({ siteUrl });
+const webSiteJsonLd = buildWebSiteJsonLd({
+  siteUrl,
+  description: SEO_COLLECTION_DESCRIPTION,
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
+  applicationName: "cabn.ro",
   title: {
-    default: "Cazare in natura Romania - Cabane si cazari autentice | cabn.ro",
+    default: SEO_COLLECTION_META_TITLE,
     template: "%s | cabn.ro",
   },
-  description: "Descopera cazare in natura in Romania: cabane de inchiriat, pensiuni traditionale si case de vacanta pentru weekend sau vacante in zone naturale.",
+  description: SEO_COLLECTION_DESCRIPTION,
+  referrer: "origin-when-cross-origin",
+  category: "travel",
+  keywords: [
+    "cabane Romania",
+    "tiny house Romania",
+    "retreat Romania",
+    "cazari premium",
+    "cabn.ro",
+  ],
+  authors: [{ name: "CABN" }],
+  creator: "CABN",
+  publisher: "CABN S.R.L.",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-snippet": -1,
+      "max-image-preview": "large",
+      "max-video-preview": -1,
+    },
+  },
   verification: {
     other: {
       "facebook-domain-verification": "hcd2j15izye7czt4zwxbqwfiuqiydw",
@@ -31,23 +74,25 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ro_RO",
     url: siteUrl,
-    siteName: "cabn.ro",
-    title: "Cazare in natura Romania - Cabane si cazari autentice | cabn.ro",
-    description: "Descopera cazare in natura in Romania: cabane de inchiriat, pensiuni traditionale si case de vacanta pentru weekend sau vacante in zone naturale.",
+    siteName: "cabn",
+    title: SEO_COLLECTION_HEADLINE,
+    description: SEO_COLLECTION_DESCRIPTION,
     images: [
       {
-        url: "/images/logo.svg",
+        url: defaultSocialImage,
         width: 1200,
         height: 630,
-        alt: "cabn.ro",
+        alt: "CABN",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Cazare in natura Romania - Cabane si cazari autentice | cabn.ro",
-    description: "Descopera cazare in natura in Romania: cabane de inchiriat, pensiuni traditionale si case de vacanta pentru weekend sau vacante in zone naturale.",
-    images: ["/images/logo.svg"],
+    title: SEO_COLLECTION_HEADLINE,
+    description: SEO_COLLECTION_DESCRIPTION,
+    images: [defaultSocialImage],
+    ...(twitterSiteHandle ? { site: twitterSiteHandle } : {}),
+    ...(twitterCreatorHandle ? { creator: twitterCreatorHandle } : {}),
   },
   icons: {
     icon: [
@@ -88,6 +133,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {/* Footer full-bleed on purpose */}
           <Footer />
         </ThemeProvider>
+        <script
+          id="schema-org-organization"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+        />
+        <script
+          id="schema-org-website"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(webSiteJsonLd) }}
+        />
 
         <Script id="google-analytics" strategy="afterInteractive">
           {`window.dataLayer = window.dataLayer || [];

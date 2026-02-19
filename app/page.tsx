@@ -5,23 +5,55 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { mapListingSummary } from "@/lib/transformers";
 import { sortFacilitiesByPriority } from "@/lib/facilitiesCatalog";
 import { getCanonicalSiteUrl, toCanonicalUrl } from "@/lib/siteUrl";
+import { buildCollectionPageJsonLd } from "@/lib/jsonLd";
+import {
+  SEO_COLLECTION_DESCRIPTION,
+  SEO_COLLECTION_HEADLINE,
+  SEO_COLLECTION_META_TITLE,
+} from "@/lib/seoCopy";
 import type { FacilityOption, ListingRaw } from "@/lib/types";
 
 export const revalidate = 60 * 60 * 12;
 const siteUrl = getCanonicalSiteUrl();
+const defaultSocialImage = "/images/og-default.png";
+const homePageUrl = toCanonicalUrl("/");
+const homeHeadline = SEO_COLLECTION_HEADLINE;
+const homeMetaTitle = SEO_COLLECTION_META_TITLE;
+const homeDescription = SEO_COLLECTION_DESCRIPTION;
+const homeCollectionJsonLd = buildCollectionPageJsonLd({
+  siteUrl,
+  pageUrl: homePageUrl,
+  name: homeHeadline,
+  description: homeDescription,
+});
 
 export const metadata: Metadata = {
-  title: "Cazari in natura, direct la gazda",
-  description:
-    "Gasesti rapid cabane, A-Frame-uri si pensiuni verificate in Romania, cu filtre clare si contact direct cu proprietarul.",
+  title: homeMetaTitle,
+  description: homeDescription,
   alternates: {
-    canonical: toCanonicalUrl("/"),
+    canonical: homePageUrl,
   },
   openGraph: {
-    title: "Cazari in natura, direct la gazda",
-    description:
-      "Gasesti rapid cabane, A-Frame-uri si pensiuni verificate in Romania, cu filtre clare si contact direct cu proprietarul.",
+    type: "website",
+    siteName: "cabn",
+    locale: "ro_RO",
+    title: homeHeadline,
+    description: homeDescription,
     url: siteUrl,
+    images: [
+      {
+        url: defaultSocialImage,
+        width: 1200,
+        height: 630,
+        alt: "CABN",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: homeHeadline,
+    description: homeDescription,
+    images: [defaultSocialImage],
   },
 };
 
@@ -88,8 +120,13 @@ export default async function HomePage() {
   const { listings, facilities } = await getHomeData();
   return (
     <>
+      <script
+        id="schema-org-home-collection-page"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(homeCollectionJsonLd) }}
+      />
       <section className="sr-only">
-        <h1>Cabane si cazari in natura, direct de la proprietari</h1>
+        <h1>{homeHeadline}</h1>
         <p>
           Descopera cazari selectate din Romania si filtreaza rapid dupa locatie, tip, pret si
           facilitati.

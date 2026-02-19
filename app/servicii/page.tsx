@@ -15,6 +15,7 @@ import ContactForm from "@/components/forms/ContactForm";
 import { getCanonicalSiteUrl, toCanonicalUrl } from "@/lib/siteUrl";
 
 const siteUrl = getCanonicalSiteUrl();
+const defaultSocialImage = "/images/og-default.png";
 
 export const metadata: Metadata = {
   title: "Servicii",
@@ -28,17 +29,24 @@ export const metadata: Metadata = {
     description:
       "Vezi ce oferim concret: pachete, servicii specifice, proces de lucru și modalități de colaborare.",
     url: `${siteUrl}/servicii`,
-    siteName: "cabn.ro",
+    siteName: "cabn",
     locale: "ro_RO",
     type: "website",
     images: [
       {
-        url: "/images/logo.svg",
+        url: defaultSocialImage,
         width: 1200,
         height: 630,
-        alt: "cabn.ro",
+        alt: "Servicii cabn.ro",
       },
     ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Servicii",
+    description:
+      "Vezi ce oferim concret: pachete, servicii specifice, proces de lucru si modalitati de colaborare.",
+    images: [defaultSocialImage],
   },
 };
 

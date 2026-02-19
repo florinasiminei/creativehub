@@ -12,6 +12,8 @@ import {
   countPublishedListingsByTypeAndRegion,
   resolveRegionCountyNames,
 } from "@/lib/seoListingsCounts";
+import { buildSeoTypeDescription, buildSeoTypeTitle, getSeoTypeLabel } from "@/lib/seoCopy";
+import { buildSocialMetadata } from "@/lib/seoMetadata";
 import { allRegions, normalizeRegionText } from "@/lib/regions";
 import { buildListingPageJsonLd } from "@/lib/jsonLd";
 import {
@@ -50,33 +52,36 @@ const baseSelect = `
 `;
 
 function getLocationLabel(location: NonNullable<ReturnType<typeof parseListingLocationSegment>>): string {
-  if (location.kind === "judet" && location.county) return `judetul ${location.county.name}`;
+  if (location.kind === "judet" && location.county) return `județul ${location.county.name}`;
   if (location.region) return location.region.name;
   return "";
 }
 
 function getLocationTitle(
+  typeSlug: string,
   typeLabel: string,
   location: NonNullable<ReturnType<typeof parseListingLocationSegment>>
 ): string {
-  return `${typeLabel} in ${getLocationLabel(location)}`;
+  const seoTypeLabel = getSeoTypeLabel(typeSlug, typeLabel);
+  return buildSeoTypeTitle(seoTypeLabel, `în ${getLocationLabel(location)}`);
 }
 
 function getLocationDescription(
+  typeSlug: string,
   typeLabel: string,
   location: NonNullable<ReturnType<typeof parseListingLocationSegment>>
 ): string {
-  const lowerType = typeLabel.toLowerCase();
+  const seoTypeLabel = getSeoTypeLabel(typeSlug, typeLabel);
   if (location.kind === "judet" && location.county) {
-    return `Descopera ${lowerType} in judetul ${location.county.name}, atent selectate, cu rezervare direct la gazda.`;
+    return buildSeoTypeDescription(seoTypeLabel, `în județul ${location.county.name}`);
   }
   if (location.kind === "localitate" && location.region) {
-    return `Descopera ${lowerType} in ${location.region.name}, cu filtre clare pe facilitatile cele mai cautate.`;
+    return buildSeoTypeDescription(seoTypeLabel, `în ${location.region.name}`);
   }
   if (location.region) {
-    return `Descopera ${lowerType} in ${location.region.name}, in zone turistice relevante pentru vacante in natura.`;
+    return buildSeoTypeDescription(seoTypeLabel, `în ${location.region.name}`);
   }
-  return `Descopera ${lowerType} atent selectate, cu rezervare direct la gazda.`;
+  return buildSeoTypeDescription(seoTypeLabel, "în România");
 }
 
 function getLocationBadge(location: NonNullable<ReturnType<typeof parseListingLocationSegment>>): string {
@@ -86,7 +91,7 @@ function getLocationBadge(location: NonNullable<ReturnType<typeof parseListingLo
 }
 
 function getLocationMetaLabel(location: NonNullable<ReturnType<typeof parseListingLocationSegment>>): string {
-  if (location.kind === "judet" && location.county) return `Judetul ${location.county.name}`;
+  if (location.kind === "judet" && location.county) return `Județul ${location.county.name}`;
   if (location.region) return location.region.name;
   return "Romania";
 }
@@ -111,8 +116,8 @@ export async function generateMetadata({ params }: PageProps) {
 
   const canonicalPath = buildTypeLocationPath(listingType.slug, location.canonicalSegment);
   const canonical = new URL(canonicalPath, siteUrl).toString();
-  const title = getLocationTitle(listingType.label, location);
-  const description = getLocationDescription(listingType.label, location);
+  const title = getLocationTitle(listingType.slug, listingType.label, location);
+  const description = getLocationDescription(listingType.slug, listingType.label, location);
 
   const supabaseAdmin = getSupabaseAdmin();
   const publishedListingsCount =
@@ -129,11 +134,11 @@ export async function generateMetadata({ params }: PageProps) {
     alternates: {
       canonical,
     },
-    openGraph: {
+    ...buildSocialMetadata({
       title,
       description,
-      url: canonical,
-    },
+      canonicalUrl: canonical,
+    }),
     robots: shouldIndex ? undefined : { index: false, follow: true },
   };
 }
@@ -239,8 +244,8 @@ export default async function CazariLocationPage({ params }: PageProps) {
 
   const pageUrl = `${siteUrl}${canonicalPath}`;
   const locationName = getLocationMetaLabel(location);
-  const title = getLocationTitle(listingType.label, location);
-  const description = `Pagina dedicata pentru ${listingType.label.toLowerCase()} in ${locationName.toLowerCase()}, cu rezultate actualizate si contact direct la proprietari.`;
+  const title = getLocationTitle(listingType.slug, listingType.label, location);
+  const description = getLocationDescription(listingType.slug, listingType.label, location);
 
   const listingJsonLd = buildListingPageJsonLd({
     siteUrl,

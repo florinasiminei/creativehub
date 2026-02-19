@@ -4,6 +4,7 @@ import ContactForm from "@/components/forms/ContactForm";
 import { getCanonicalSiteUrl, toCanonicalUrl } from "@/lib/siteUrl";
 
 const siteUrl = getCanonicalSiteUrl();
+const defaultSocialImage = "/images/og-default.png";
 
 export const metadata: Metadata = {
   title: "Contact",
@@ -17,14 +18,23 @@ export const metadata: Metadata = {
     description:
       "Contactează echipa cabn pentru marketing, foto-video și listări de cabane și pensiuni.",
     url: `${siteUrl}/contact`,
-    siteName: "cabn.ro",
+    siteName: "cabn",
     locale: "ro_RO",
     type: "website",
+    images: [
+      {
+        url: defaultSocialImage,
+        width: 1200,
+        height: 630,
+        alt: "Contact cabn.ro",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Contact",
     description: "Contactează echipa cabn pentru marketing și listări turistice.",
+    images: [defaultSocialImage],
   },
 };
 
