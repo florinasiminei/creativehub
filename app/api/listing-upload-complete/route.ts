@@ -6,7 +6,7 @@ import { rateLimit } from '@/lib/rateLimit';
 import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
 import { isListingTokenValid } from '@/lib/listingTokens';
 
-const MAX_LISTING_IMAGES = 12;
+const MAX_LISTING_IMAGES = 20;
 
 export async function POST(req: Request) {
   try {

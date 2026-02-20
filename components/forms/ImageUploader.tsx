@@ -35,6 +35,7 @@ type ImageUploaderProps = {
   onExistingDragEnd?: () => void;
   onExistingMove?: (from: number, to: number) => void;
   onExistingDelete?: (img: ExistingImage) => void;
+  maxAllowed?: number;
 };
 
 export default function ImageUploader({
@@ -66,9 +67,9 @@ export default function ImageUploader({
   onExistingDragEnd,
   onExistingMove,
   onExistingDelete,
+  maxAllowed = 12,
 }: ImageUploaderProps) {
   const totalSelected = files.length + (existingImages?.length ?? 0);
-  const maxAllowed = 12;
   const overLimit = totalSelected > maxAllowed;
 
   return (

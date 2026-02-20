@@ -7,7 +7,7 @@ import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
 import { isListingTokenValid } from '@/lib/listingTokens';
 
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
-const MAX_LISTING_IMAGES = 12;
+const MAX_LISTING_IMAGES = 20;
 
 const MIME_EXT: Record<string, string> = {
   'image/jpeg': 'jpg',

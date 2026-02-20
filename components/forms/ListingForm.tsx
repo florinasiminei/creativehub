@@ -77,6 +77,7 @@ type ListingFormProps = {
   onExistingDragEnd?: () => void;
   onExistingMove?: (from: number, to: number) => void;
   onExistingDelete?: (img: { id: string; image_url: string; alt?: string | null }) => void;
+  maxImagesWarning?: number;
   descriptionMin?: number;
   descriptionMax?: number;
   descriptionRequired?: boolean;
@@ -125,6 +126,7 @@ export default function ListingForm({
   onExistingDragEnd,
   onExistingMove,
   onExistingDelete,
+  maxImagesWarning,
   descriptionMin,
   descriptionMax,
   descriptionRequired = false,
@@ -623,6 +625,7 @@ export default function ListingForm({
           dropzoneTitle={dropzoneTitle}
           dropzoneSubtitle={dropzoneSubtitle}
           dropzoneHelper={dropzoneHelper}
+          maxAllowed={maxImagesWarning}
           accept="image/jpeg,image/jpg,image/png,image/webp,image/avif,image/heic,image/heif,image/*"
           isActive={isDropActive}
           isInvalid={showValidation && imagesInvalid}

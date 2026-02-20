@@ -11,7 +11,7 @@ const MAX_IMAGE_WIDTH = 2400;
 const WEBP_QUALITY = 82;
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 const MAX_OUTPUT_BYTES = 6 * 1024 * 1024;
-const MAX_LISTING_IMAGES = 12;
+const MAX_LISTING_IMAGES = 20;
 
 export async function POST(request: Request) {
   try {

@@ -230,11 +230,11 @@ export default function EditPropertyPage({ params }: any) {
     phoneKey: 'telefon',
     imagesCount: images.length + files.length,
     minImages: isClient ? 5 : 0,
-    maxImages: 12,
+    maxImages: 20,
     description: formData.descriere,
     descriptionKey: 'descriere',
     descriptionMin: 200,
-    descriptionMax: 520,
+    descriptionMax: 1000,
     enforceDescription: isClient,
   });
 
@@ -377,8 +377,8 @@ export default function EditPropertyPage({ params }: any) {
           initialLng={locationData?.longitude ?? null}
           dropzoneTitle={
             isClient
-              ? "Încarcă imagini noi (minim 5, maxim 12 total)"
-              : "Încarcă imagini noi (maxim 12 total)"
+              ? "Încarcă imagini noi (minim 5, maxim 20 total)"
+              : "Încarcă imagini noi (maxim 20 total)"
           }
           dropzoneSubtitle={
             isClient
@@ -404,9 +404,10 @@ export default function EditPropertyPage({ params }: any) {
           selectedImagesTitle="Ordinea imaginilor noi"
           selectedImagesSubtitle={
             isClient
-              ? "Stabilește ordinea de afișare pentru încărcare (5-12 imagini total)"
-              : "Stabilește ordinea de afișare pentru încărcare (maxim 12 imagini total)"
+              ? "Stabilește ordinea de afișare pentru încărcare (5-20 imagini total)"
+              : "Stabilește ordinea de afișare pentru încărcare (maxim 20 imagini total)"
           }
+          maxImagesWarning={20}
           existingImages={images}
           existingTitle="Galerie publicată"
           existingSubtitle="Reordonează sau șterge imaginile curente"
@@ -425,7 +426,7 @@ export default function EditPropertyPage({ params }: any) {
             }
           }}
           descriptionMin={200}
-          descriptionMax={520}
+          descriptionMax={1000}
           descriptionRequired={isClient}
         />
 

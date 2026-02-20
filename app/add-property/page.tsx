@@ -165,11 +165,11 @@ function AddPropertyPageContent() {
     phoneKey: 'telefon',
     imagesCount: files.length,
     minImages: isClient ? 5 : 0,
-    maxImages: 12,
+    maxImages: 20,
     description: formData.descriere,
     descriptionKey: 'descriere',
     descriptionMin: 200,
-    descriptionMax: 520,
+    descriptionMax: 1000,
     enforceDescription: isClient,
   });
 
@@ -330,7 +330,7 @@ function AddPropertyPageContent() {
           }}
           initialCounty={formData.judet}
           initialCity={formData.localitate}
-          dropzoneTitle="Incarca imagini (minim 5, maxim 12)"
+          dropzoneTitle="Incarca imagini (minim 5, maxim 20)"
           dropzoneSubtitle="Accepta .jpg, .png, .webp, .avif, .heic"
           dropzoneHelper="Click sau trage imaginile aici"
           showValidation={showValidation}
@@ -349,10 +349,11 @@ function AddPropertyPageContent() {
           onMove={moveFile}
           onRemove={removeFile}
           selectedImagesTitle="Ordinea galeriei foto"
-          selectedImagesSubtitle="Trage sau foloseste sagetile pentru ordinea de afisare (5-12 imagini)"
+          selectedImagesSubtitle="Trage sau foloseste sagetile pentru ordinea de afisare (5-20 imagini)"
           selectedFailedNames={failedUploads.map((f) => f.name)}
+          maxImagesWarning={20}
           descriptionMin={200}
-          descriptionMax={520}
+          descriptionMax={1000}
           descriptionRequired={isClient}
         />
 
