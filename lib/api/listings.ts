@@ -25,59 +25,6 @@ export async function updateListing(payload: any, listingToken?: string | null) 
   return body;
 }
 
-export async function uploadListingImages(
-  listingId: string,
-  files: File[],
-  startIndex = 0,
-  listingToken?: string | null
-) {
-  const fd = new FormData();
-  fd.append('listingId', listingId);
-  if (startIndex > 0) fd.append('startIndex', String(startIndex));
-  files.forEach((f) => fd.append('files', f));
-
-  const resp = await fetch('/api/listing-upload', {
-    method: 'POST',
-    headers: listingToken ? { 'x-listing-token': listingToken } : undefined,
-    body: fd,
-  });
-  const contentType = resp.headers.get('content-type') || '';
-  let body: any = null;
-  if (contentType.includes('application/json')) {
-    try {
-      body = await resp.json();
-    } catch {
-      body = null;
-    }
-  } else {
-    try {
-      body = await resp.text();
-    } catch {
-      body = null;
-    }
-  }
-  if (!resp.ok) {
-    const failedCount = Array.isArray(body?.failed) ? body.failed.length : 0;
-    const serverMsg =
-      typeof body === 'string'
-        ? body
-        : body?.error || body?.message || null;
-    const msg =
-      failedCount > 0
-        ? `Nu s-au incarcat toate imaginile (${failedCount} esuate).`
-        : resp.status === 413
-          ? serverMsg || 'Fisierul este prea mare. Incearca imagini mai mici sau mai putine simultan.'
-          : serverMsg || 'Eroare la incarcarea imaginilor';
-    const err = new Error(msg) as Error & { failed?: Array<{ name: string; reason: string }> };
-    if (Array.isArray(body?.failed)) err.failed = body.failed;
-    throw err;
-  }
-  return body as {
-    uploaded?: Array<{ id: string; url: string; display_order: number }>;
-    failed?: Array<{ name: string; reason: string }>;
-  };
-}
-
 export async function requestListingUploadUrls(
   listingId: string,
   files: Array<{ index: number; name: string; type?: string; size?: number }>,
