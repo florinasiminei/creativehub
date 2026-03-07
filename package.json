@@ -11,6 +11,8 @@
     "postinstall": "node postinstall.cjs",
     "r2:variants:cards": "node scripts/generate-r2-card-variants.mjs",
     "r2:variants:cards:dry": "node scripts/generate-r2-card-variants.mjs --dry-run",
+    "r2:variants:cards:overwrite": "node scripts/generate-r2-card-variants.mjs --overwrite",
+    "r2:variants:cards:dry:overwrite": "node scripts/generate-r2-card-variants.mjs --dry-run --overwrite",
     "r2:cache-control:fix": "node scripts/fix-r2-cache-control.mjs",
     "r2:cache-control:fix:dry": "node scripts/fix-r2-cache-control.mjs --dry-run"
   },

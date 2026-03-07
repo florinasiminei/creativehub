@@ -8,9 +8,10 @@ import { Cazare } from "@/lib/utils";
 type CazareCardProps = {
   cazare: Cazare;
   eager?: boolean;
+  priority?: boolean;
 };
 
-export default function CazareCard({ cazare, eager = false }: CazareCardProps) {
+export default function CazareCard({ cazare, eager = false, priority = false }: CazareCardProps) {
   const preferredImage = cazare.image || "/fallback.svg";
   const fallbackImage = cazare.imageOriginal || preferredImage;
   const canFallback = fallbackImage !== preferredImage;
@@ -44,7 +45,8 @@ export default function CazareCard({ cazare, eager = false }: CazareCardProps) {
             fill
             alt={`Imagine ${cazare.title}`}
             loading={eager ? "eager" : "lazy"}
-            priority={eager}
+            priority={priority}
+            fetchPriority={priority ? "high" : "auto"}
             onError={handleImageError}
             className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
             sizes="(max-width: 640px) 90vw, (max-width: 768px) 45vw, (max-width: 1024px) 33vw, (max-width: 1536px) 20vw, 240px"

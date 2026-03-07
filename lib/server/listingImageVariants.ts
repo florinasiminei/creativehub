@@ -1,8 +1,8 @@
 import sharp from "sharp";
 import { toListingCardVariantPath } from "@/lib/listingImagePaths";
 
-export const LISTING_CARD_WIDTH = 960;
-export const LISTING_CARD_QUALITY = 78;
+export const LISTING_CARD_WIDTH = 720;
+export const LISTING_CARD_QUALITY = 72;
 
 export async function buildListingCardVariantBuffer(sourceBuffer: Buffer): Promise<Buffer> {
   return sharp(sourceBuffer)

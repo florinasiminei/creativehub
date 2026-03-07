@@ -81,6 +81,13 @@ function getHomepageEagerCount(viewportWidth: number) {
   return 8; // mobile: preload a few cards for fast initial scroll
 }
 
+function getHomepagePriorityCount(viewportWidth: number) {
+  if (viewportWidth >= 1024) return 18; // 3 rows * 6 columns
+  if (viewportWidth >= 768) return 9; // 3 rows * 3 columns
+  if (viewportWidth >= 640) return 6; // 3 rows * 2 columns
+  return 8; // mobile: a few cards for fast initial scroll
+}
+
 type HomeClientProps = {
   initialCazari?: Cazare[];
   initialFacilities?: FacilityOption[];
@@ -146,6 +153,7 @@ export default function HomeClient({
   const [showSubmittedNotice, setShowSubmittedNotice] = useState(false);
   const [submittedMessage, setSubmittedMessage] = useState("");
   const [eagerCount, setEagerCount] = useState(8);
+  const [priorityCount, setPriorityCount] = useState(3);
 
   // Refresh page when returning from drafts/edit-property
   useRefreshOnNavigation('home');
@@ -173,7 +181,9 @@ export default function HomeClient({
 
   useEffect(() => {
     const updateEagerCount = () => {
-      setEagerCount(getHomepageEagerCount(window.innerWidth));
+      const viewportWidth = window.innerWidth;
+      setEagerCount(getHomepageEagerCount(viewportWidth));
+      setPriorityCount(getHomepagePriorityCount(viewportWidth));
     };
 
     updateEagerCount();
@@ -897,6 +907,7 @@ export default function HomeClient({
                     currentPage * ITEMS_PER_PAGE
                   )}
                   eagerCount={eagerCount}
+                  priorityCount={priorityCount}
                 />
               </div>
               <div className="text-center">

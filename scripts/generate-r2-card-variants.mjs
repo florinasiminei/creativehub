@@ -11,8 +11,8 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 
-const CARD_IMAGE_WIDTH = 960;
-const CARD_IMAGE_QUALITY = 78;
+const CARD_IMAGE_WIDTH = 720;
+const CARD_IMAGE_QUALITY = 72;
 const TARGET_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
 function loadDotEnv() {
@@ -36,11 +36,13 @@ function loadDotEnv() {
 function parseArgs(argv) {
   const args = {
     dryRun: false,
+    overwrite: false,
     limit: null,
     concurrency: 4,
   };
   for (const arg of argv) {
     if (arg === '--dry-run') args.dryRun = true;
+    else if (arg === '--overwrite') args.overwrite = true;
     else if (arg.startsWith('--limit=')) args.limit = Number(arg.slice('--limit='.length));
     else if (arg.startsWith('--concurrency=')) args.concurrency = Number(arg.slice('--concurrency='.length));
   }
@@ -159,9 +161,10 @@ async function main() {
   const rows = await fetchListingImages(supabase);
   const selected = args.limit ? rows.slice(0, args.limit) : rows;
   console.log(`[r2-variants] Listing rows scanned: ${selected.length}`);
-  console.log(`[r2-variants] Mode: ${args.dryRun ? 'DRY RUN' : 'LIVE'} | concurrency=${args.concurrency}`);
+  console.log(`[r2-variants] Mode: ${args.dryRun ? 'DRY RUN' : 'LIVE'} | overwrite=${args.overwrite} | concurrency=${args.concurrency}`);
 
   let created = 0;
+  let overwritten = 0;
   let exists = 0;
   let skipped = 0;
   let failed = 0;
@@ -186,13 +189,17 @@ async function main() {
     const cardKey = toCardVariantKey(sourceKey);
     try {
       const alreadyExists = await objectExists(r2, bucket, cardKey);
-      if (alreadyExists) {
+      if (alreadyExists && !args.overwrite) {
         exists += 1;
         return;
       }
 
       if (args.dryRun) {
-        created += 1;
+        if (alreadyExists) {
+          overwritten += 1;
+        } else {
+          created += 1;
+        }
         return;
       }
 
@@ -212,7 +219,11 @@ async function main() {
         ContentType: 'image/webp',
         CacheControl: TARGET_CACHE_CONTROL,
       }));
-      created += 1;
+      if (alreadyExists) {
+        overwritten += 1;
+      } else {
+        created += 1;
+      }
     } catch (err) {
       failed += 1;
       if (failed <= 10) {
@@ -227,6 +238,7 @@ async function main() {
 
   console.log('\n[r2-variants] Finished');
   console.log(`- created/would_create: ${created}`);
+  console.log(`- overwritten/would_overwrite: ${overwritten}`);
   console.log(`- already_exists: ${exists}`);
   console.log(`- skipped: ${skipped}`);
   console.log(`- failed: ${failed}`);
