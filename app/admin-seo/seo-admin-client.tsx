@@ -238,9 +238,10 @@ export default function SeoAdminClient({ pages }: Props) {
 
   const summary = useMemo(() => {
     const total = filteredRows.length;
+    const index = filteredRows.filter((row) => row.indexable).length;
     const noindex = filteredRows.filter((row) => !row.indexable).length;
     const totalViews = filteredRows.reduce((sum, row) => sum + getViewsByWindow(row, viewsWindow), 0);
-    return { total, noindex, totalViews };
+    return { total, index, noindex, totalViews };
   }, [filteredRows, viewsWindow]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / perPage));
@@ -333,10 +334,17 @@ export default function SeoAdminClient({ pages }: Props) {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 mb-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
         <div className="rounded-xl border border-emerald-100 dark:border-emerald-900/40 bg-emerald-50/70 dark:bg-emerald-950/20 px-4 py-3">
           <div className="text-xs text-emerald-800/80 dark:text-emerald-200/80">Total pagini</div>
           <div className="text-2xl font-semibold">{summary.total}</div>
+        </div>
+        <div className="rounded-xl border border-emerald-100 dark:border-emerald-900/40 bg-emerald-50/70 dark:bg-emerald-950/20 px-4 py-3">
+          <div className="text-xs text-emerald-800/80 dark:text-emerald-200/80">Index</div>
+          <div className="text-2xl font-semibold">{summary.index}</div>
+          <div className="text-xs text-emerald-800/80 dark:text-emerald-200/80">
+            {summary.total > 0 ? `${Math.round((summary.index / summary.total) * 100)}%` : "0%"}
+          </div>
         </div>
         <div className="rounded-xl border border-emerald-100 dark:border-emerald-900/40 bg-emerald-50/70 dark:bg-emerald-950/20 px-4 py-3">
           <div className="text-xs text-emerald-800/80 dark:text-emerald-200/80">Noindex</div>
