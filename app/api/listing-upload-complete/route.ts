@@ -5,8 +5,39 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
 import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
 import { isListingTokenValid } from '@/lib/listingTokens';
+import {
+  buildListingCardVariantBuffer,
+  toListingCardVariantPath,
+} from '@/lib/server/listingImageVariants';
 
 const MAX_LISTING_IMAGES = 20;
+
+async function createCardVariant(path: string, supabaseAdmin: ReturnType<typeof getSupabaseAdmin>) {
+  try {
+    const cardPath = toListingCardVariantPath(path);
+    const { data: source, error: downloadError } = await supabaseAdmin.storage.from('listing-images').download(path);
+    if (downloadError || !source) {
+      console.warn('[listing-upload-complete] card variant download failed:', downloadError?.message || 'unknown');
+      return;
+    }
+
+    const sourceBuffer = Buffer.from(await source.arrayBuffer());
+    const cardBuffer = await buildListingCardVariantBuffer(sourceBuffer);
+
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from('listing-images')
+      .upload(cardPath, cardBuffer, {
+        cacheControl: '31536000',
+        upsert: true,
+        contentType: 'image/webp',
+      });
+    if (uploadError) {
+      console.warn('[listing-upload-complete] card variant upload failed:', uploadError.message);
+    }
+  } catch (error) {
+    console.warn('[listing-upload-complete] card variant processing failed:', (error as Error)?.message || error);
+  }
+}
 
 export async function POST(req: Request) {
   try {
@@ -61,6 +92,8 @@ export async function POST(req: Request) {
       console.warn('Could not insert listing_images', imgErr?.message);
       return NextResponse.json({ error: imgErr?.message || 'insert_failed' }, { status: 500 });
     }
+
+    await createCardVariant(path, supabaseAdmin);
 
     return NextResponse.json({ id: String(inserted.id), url, display_order: inserted.display_order });
   } catch (err: any) {

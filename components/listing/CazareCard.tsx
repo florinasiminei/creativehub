@@ -1,8 +1,31 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Cazare } from "@/lib/utils";
 
-export default function CazareCard({ cazare }: { cazare: Cazare }) {
+type CazareCardProps = {
+  cazare: Cazare;
+  eager?: boolean;
+};
+
+export default function CazareCard({ cazare, eager = false }: CazareCardProps) {
+  const preferredImage = cazare.image || "/fallback.svg";
+  const fallbackImage = cazare.imageOriginal || preferredImage;
+  const canFallback = fallbackImage !== preferredImage;
+  const [imageSrc, setImageSrc] = useState(preferredImage);
+
+  useEffect(() => {
+    setImageSrc(preferredImage);
+  }, [preferredImage]);
+
+  const handleImageError = useCallback(() => {
+    if (canFallback && imageSrc !== fallbackImage) {
+      setImageSrc(fallbackImage);
+    }
+  }, [canFallback, fallbackImage, imageSrc]);
+
   const locationParts = (cazare.locatie || "")
     .split(",")
     .map((part) => part.trim())
@@ -17,10 +40,12 @@ export default function CazareCard({ cazare }: { cazare: Cazare }) {
       <article className="group transition bg-transparent dark:bg-transparent">
         <div className="relative aspect-[2.7/2] overflow-hidden rounded-xl">
           <Image
-            src={cazare.image}
+            src={imageSrc}
             fill
             alt={`Imagine ${cazare.title}`}
-            loading="lazy"
+            loading={eager ? "eager" : "lazy"}
+            priority={eager}
+            onError={handleImageError}
             className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
             sizes="(max-width: 640px) 90vw, (max-width: 768px) 45vw, (max-width: 1024px) 33vw, (max-width: 1536px) 20vw, 240px"
           />

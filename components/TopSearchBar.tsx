@@ -217,10 +217,10 @@ const TopSearchBar = ({
 
   return (
     <>
-      <div className="relative flex w-full justify-center bg-transparent py-4 shadow-sm after:pointer-events-none after:absolute after:bottom-0 after:left-1/2 after:h-px after:w-screen after:-translate-x-1/2 after:bg-gray-200 after:content-[''] dark:after:bg-zinc-800">
-        <div className="relative mx-auto flex w-full max-w-3xl gap-4 px-4">
+      <div className="relative flex w-full justify-center bg-transparent py-4 shadow-sm after:pointer-events-none after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-gray-200 after:content-[''] dark:after:bg-zinc-800">
+        <div className="relative mx-auto flex w-full max-w-3xl flex-wrap gap-3 px-4 sm:flex-nowrap sm:gap-4">
           {/* Destination Search */}
-          <div className="relative flex-1">
+          <div className="relative min-w-0 flex-1">
             <div className="relative">
               <AiOutlineSearch className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 transform text-xl text-gray-400" />
               <input
@@ -324,7 +324,7 @@ const TopSearchBar = ({
             )}
           </div>
 
-          <div className="flex flex-shrink-0 items-center gap-2">
+          <div className="flex w-full flex-shrink-0 items-center justify-end gap-2 sm:w-auto">
             <button
               type="button"
               onClick={() => setIsModalOpen(true)}

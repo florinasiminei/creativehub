@@ -1,11 +1,16 @@
 import CazareCard from "./CazareCard";
 import { Cazare } from "@/lib/utils";
 
-export default function ListingsGrid({ cazari }: { cazari: Cazare[] }) {
+type ListingsGridProps = {
+  cazari: Cazare[];
+  eagerCount?: number;
+};
+
+export default function ListingsGrid({ cazari, eagerCount = 0 }: ListingsGridProps) {
   return (
     <>
-      {cazari.map((cazare) => (
-        <CazareCard key={cazare.id} cazare={cazare} />
+      {cazari.map((cazare, index) => (
+        <CazareCard key={cazare.id} cazare={cazare} eager={index < eagerCount} />
       ))}
     </>
   );

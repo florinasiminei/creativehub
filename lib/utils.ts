@@ -33,5 +33,6 @@ export type Cazare = {
   facilities: string[];
   facilitiesNames: string[];
   image: string;
+  imageOriginal?: string;
   phone?: string;
 };

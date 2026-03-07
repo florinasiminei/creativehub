@@ -23,10 +23,9 @@ type GalleryItemCustom = {
   description?: string;
 };
 
-const buildBlurUrl = (url: string, width = 48, quality = 20) => {
+const buildBlurUrl = (url: string) => {
   if (!url || url.startsWith("data:") || url.startsWith("blob:")) return url;
-  if (url.startsWith("/_next/image")) return url;
-  return `/_next/image?url=${encodeURIComponent(url)}&w=${width}&q=${quality}`;
+  return url;
 };
 
 const GallerySlide: React.FC<{ src: string; alt: string; eager?: boolean }> = ({

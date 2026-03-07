@@ -8,9 +8,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "postinstall": "node postinstall.cjs"
+    "postinstall": "node postinstall.cjs",
+    "r2:variants:cards": "node scripts/generate-r2-card-variants.mjs",
+    "r2:variants:cards:dry": "node scripts/generate-r2-card-variants.mjs --dry-run",
+    "r2:cache-control:fix": "node scripts/fix-r2-cache-control.mjs",
+    "r2:cache-control:fix:dry": "node scripts/fix-r2-cache-control.mjs --dry-run"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1002.0",
     "@headlessui/react": "^2.2.9",
     "@supabase/supabase-js": "^2.49.4",
     "@vercel/analytics": "^1.5.0",

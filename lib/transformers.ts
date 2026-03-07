@@ -1,5 +1,6 @@
 import { slugify, type Cazare } from "./utils";
 import type { ListingRaw } from "./types";
+import { toListingCardVariantUrl } from "@/lib/listingImagePaths";
 
 function safeNumber(value: unknown, fallback: number) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -46,7 +47,7 @@ export function mapListingSummary(row: ListingRaw, fallbackImage = "/fallback.sv
     Array.isArray(row.listing_images) && row.listing_images.length > 0
       ? String(row.listing_images[0]?.image_url ?? "").trim()
       : "";
-  const image = coverCandidate || fallbackImage;
+  const image = coverCandidate ? toListingCardVariantUrl(coverCandidate) : fallbackImage;
   const city = typeof row.city === "string" ? row.city.trim() : "";
   const village = typeof row.sat === "string" ? row.sat.trim() : "";
   const county = row.judet ?? "";
@@ -73,6 +74,7 @@ export function mapListingSummary(row: ListingRaw, fallbackImage = "/fallback.sv
     facilities: ids,
     facilitiesNames: names,
     image,
+    imageOriginal: coverCandidate || fallbackImage,
     phone: row.phone ? String(row.phone) : undefined,
   };
 }

@@ -72,7 +72,14 @@ function getInitialFilters(cazari: Cazare[]): Filters {
   };
 }
 
-const ITEMS_PER_PAGE = 50;
+const ITEMS_PER_PAGE = 48;
+
+function getHomepageEagerCount(viewportWidth: number) {
+  if (viewportWidth >= 1024) return 18; // 3 rows * 6 columns
+  if (viewportWidth >= 768) return 9; // 3 rows * 3 columns
+  if (viewportWidth >= 640) return 6; // 3 rows * 2 columns
+  return 8; // mobile: preload a few cards for fast initial scroll
+}
 
 type HomeClientProps = {
   initialCazari?: Cazare[];
@@ -81,7 +88,7 @@ type HomeClientProps = {
   allowClientBootstrapFetch?: boolean;
 };
 
-export default function Home({
+export default function HomeClient({
   initialCazari = [],
   initialFacilities = [],
   pageTitle,
@@ -138,6 +145,7 @@ export default function Home({
   const [error, setError] = useState<string | null>(null);
   const [showSubmittedNotice, setShowSubmittedNotice] = useState(false);
   const [submittedMessage, setSubmittedMessage] = useState("");
+  const [eagerCount, setEagerCount] = useState(8);
 
   // Refresh page when returning from drafts/edit-property
   useRefreshOnNavigation('home');
@@ -162,6 +170,19 @@ export default function Home({
     }, 10_000);
     return () => window.clearTimeout(timer);
   }, [showSubmittedNotice]);
+
+  useEffect(() => {
+    const updateEagerCount = () => {
+      setEagerCount(getHomepageEagerCount(window.innerWidth));
+    };
+
+    updateEagerCount();
+    window.addEventListener("resize", updateEagerCount);
+
+    return () => {
+      window.removeEventListener("resize", updateEagerCount);
+    };
+  }, []);
 
   useEffect(() => {
     if (initialCazari.length === 0) return;
@@ -875,6 +896,7 @@ export default function Home({
                     (currentPage - 1) * ITEMS_PER_PAGE,
                     currentPage * ITEMS_PER_PAGE
                   )}
+                  eagerCount={eagerCount}
                 />
               </div>
               <div className="text-center">
