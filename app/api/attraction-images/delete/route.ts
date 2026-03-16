@@ -1,7 +1,8 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
 import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
+import { deleteStoredImageUrls } from '@/lib/server/r2';
 
 export async function POST(request: Request) {
   try {
@@ -35,17 +36,7 @@ export async function POST(request: Request) {
 
     if (!row) return NextResponse.json({ error: 'Imagine inexistenta' }, { status: 404 });
 
-    try {
-      const url = new URL(row.image_url);
-      const matched = url.pathname.match(/\/storage\/v1\/object\/public\/([^\/]+)\/(.*)$/);
-      if (matched) {
-        const bucket = matched[1];
-        const path = decodeURIComponent(matched[2]);
-        await supabaseAdmin.storage.from(bucket).remove([path]);
-      }
-    } catch {
-      // ignore
-    }
+    await deleteStoredImageUrls([row.image_url], { supabaseAdmin });
 
     const { error } = await supabaseAdmin.from('attraction_images').delete().eq('id', id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

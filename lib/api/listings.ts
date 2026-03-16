@@ -25,45 +25,26 @@ export async function updateListing(payload: any, listingToken?: string | null) 
   return body;
 }
 
-export async function requestListingUploadUrls(
+export async function uploadListingFile(
   listingId: string,
-  files: Array<{ index: number; name: string; type?: string; size?: number }>,
-  startIndex = 0,
-  listingToken?: string | null
-) {
-  const resp = await fetch('/api/listing-upload-sign', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(listingToken ? { 'x-listing-token': listingToken } : {}),
-    },
-    body: JSON.stringify({ listingId, files, startIndex }),
-  });
-  const body = await resp.json();
-  if (!resp.ok) throw new Error(body?.error || 'Eroare la semnarea upload-ului');
-  return body as {
-    uploads?: Array<{ index: number; path: string; token: string; display_order: number }>;
-    failed?: Array<{ index: number; name: string; reason: string }>;
-  };
-}
-
-export async function completeListingUpload(
-  listingId: string,
-  path: string,
+  file: File,
   displayOrder: number,
   listingToken?: string | null,
   alt?: string | null
 ) {
-  const resp = await fetch('/api/listing-upload-complete', {
+  const form = new FormData();
+  form.append('listingId', listingId);
+  form.append('displayOrder', String(displayOrder));
+  if (alt) form.append('alt', alt);
+  form.append('file', file);
+
+  const resp = await fetch('/api/listing-upload-file', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(listingToken ? { 'x-listing-token': listingToken } : {}),
-    },
-    body: JSON.stringify({ listingId, path, displayOrder, alt }),
+    headers: listingToken ? { 'x-listing-token': listingToken } : undefined,
+    body: form,
   });
   const body = await resp.json();
-  if (!resp.ok) throw new Error(body?.error || 'Eroare la finalizarea upload-ului');
+  if (!resp.ok) throw new Error(body?.error || 'Eroare la incarcarea imaginii');
   return body as { id: string; url: string; display_order: number };
 }
 

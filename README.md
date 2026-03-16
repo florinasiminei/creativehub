@@ -26,6 +26,11 @@ npm run r2:variants:cards
 npm run r2:variants:cards:dry
 npm run r2:cache-control:fix
 npm run r2:cache-control:fix:dry
+npm run storage:supabase:audit
+npm run storage:supabase:migrate:dry
+npm run storage:supabase:migrate
+npm run storage:supabase:cleanup:dry
+npm run storage:supabase:cleanup
 ```
 
 ## Environment variables
@@ -47,4 +52,5 @@ Set values in `.env`:
 
 - SQL migrations are in `db/`.
 - Local migration reports are ignored via `migration-reports/`.
-- Image uploads use signed URL flow (`/api/listing-upload-sign` + `/api/listing-upload-complete`).
+- Image uploads go through same-origin API routes and store files in Cloudflare R2.
+- Supabase storage cleanup/migration uses `scripts/sync-supabase-storage-to-r2.mjs`; default mode is audit/dry-run.

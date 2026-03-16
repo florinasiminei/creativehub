@@ -131,8 +131,14 @@
 
 body {
   color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
 
-  font-family: Arial, Helvetica, sans-serif;
+code,
+pre,
+kbd,
+samp {
+  font-family: var(--font-geist-mono), monospace;
 }
 html {
   scroll-behavior: smooth;

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
 import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
+import { deleteStoredImageUrls } from '@/lib/server/r2';
 
 export async function POST(request: Request) {
   try {
@@ -23,21 +24,11 @@ export async function POST(request: Request) {
     const { id } = await request.json();
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
-    // remove images from storage
     const { data: imgs } = await supabaseAdmin.from('listing_images').select('id, image_url').eq('listing_id', id);
-    for (const img of imgs || []) {
-      try {
-        const url = new URL(img.image_url);
-        const matched = url.pathname.match(/\/storage\/v1\/object\/public\/([^\/]+)\/(.*)$/);
-        if (matched) {
-          const bucket = matched[1];
-          const path = decodeURIComponent(matched[2]);
-          await supabaseAdmin.storage.from(bucket).remove([path]);
-        }
-      } catch (err) {
-        // ignore
-      }
-    }
+    await deleteStoredImageUrls((imgs || []).map((img) => img.image_url), {
+      supabaseAdmin,
+      includeListingCardVariant: true,
+    });
 
     // delete listing_images and listing
     await supabaseAdmin.from('listing_images').delete().eq('listing_id', id);

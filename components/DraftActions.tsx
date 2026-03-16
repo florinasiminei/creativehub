@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { copyTextToClipboard } from "@/lib/copyToClipboard";
 
 type Props = {
   id: string;
@@ -12,7 +14,14 @@ type Props = {
   onStatusChange?: (newStatus: "publicat" | "draft") => void;
 };
 
-export default function DraftActions({ id, isPublished, slug, canDelete = true, clientLink, onStatusChange }: Props) {
+export default function DraftActions({
+  id,
+  isPublished,
+  slug,
+  canDelete = true,
+  clientLink,
+  onStatusChange,
+}: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -21,25 +30,30 @@ export default function DraftActions({ id, isPublished, slug, canDelete = true, 
     const nextIsPublished = !isPublished;
     const nextStatus = nextIsPublished ? "publicat" : "draft";
     const previousStatus = isPublished ? "publicat" : "draft";
-    if (onStatusChange) onStatusChange(nextStatus);
+
+    onStatusChange?.(nextStatus);
     setLoading(true);
+
     try {
       const response = await fetch("/api/listing-update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, is_published: nextIsPublished }),
       });
-      if (response.status == 401) {
-        if (onStatusChange) onStatusChange(previousStatus);
+
+      if (response.status === 401) {
+        onStatusChange?.(previousStatus);
         router.push("/drafts-login?error=1");
         return;
       }
+
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
         throw new Error(body?.error || "Nu am putut actualiza statusul.");
       }
+
       if (!onStatusChange) router.refresh();
-    } catch (error) {
+    } catch {
       if (onStatusChange) onStatusChange(previousStatus);
       else router.refresh();
     } finally {
@@ -49,6 +63,7 @@ export default function DraftActions({ id, isPublished, slug, canDelete = true, 
 
   const remove = async () => {
     if (!confirm("Sigur vrei sa stergi aceasta cazare?")) return;
+
     setLoading(true);
     try {
       const response = await fetch("/api/listing-delete", {
@@ -56,10 +71,12 @@ export default function DraftActions({ id, isPublished, slug, canDelete = true, 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
-      if (response.status == 401) {
+
+      if (response.status === 401) {
         router.push("/drafts-login?error=1");
         return;
       }
+
       router.refresh();
     } finally {
       setLoading(false);
@@ -68,69 +85,63 @@ export default function DraftActions({ id, isPublished, slug, canDelete = true, 
 
   const copyClientLink = async () => {
     if (!clientLink) return;
-    try {
-      if (navigator?.clipboard?.writeText) {
-        await navigator.clipboard.writeText(clientLink);
-      } else {
-        const input = document.createElement("textarea");
-        input.value = clientLink;
-        input.style.position = "fixed";
-        input.style.opacity = "0";
-        document.body.appendChild(input);
-        input.focus();
-        input.select();
-        document.execCommand("copy");
-        document.body.removeChild(input);
-      }
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // ignore
-    }
+
+    const copiedOk = await copyTextToClipboard(clientLink);
+    if (!copiedOk) return;
+
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
   };
 
   const viewHref = slug ? (isPublished ? `/cazare/${slug}` : `/cazare/${slug}?preview=1&id=${id}`) : "";
 
   return (
-    <div className="grid grid-cols-2 gap-2 mt-3">
-      <a
+    <div className="mt-3 grid grid-cols-2 gap-2">
+      <Link
         href={`/edit-property/${id}`}
-        className="px-3 py-2 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg text-center hover:bg-gray-200"
+        className="rounded-xl bg-gray-100 px-3 py-2 text-center text-xs font-medium text-gray-700 transition hover:bg-gray-200"
       >
-        Editează
-      </a>
+        Editeaza
+      </Link>
+
       <button
+        type="button"
         onClick={togglePublish}
-        className="px-3 py-2 text-xs font-medium bg-blue-600 text-white rounded-lg disabled:opacity-60"
+        className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
         disabled={loading}
       >
-        {isPublished ? "Retrage (draft)" : "Publică"}
+        {isPublished ? "Retrage (draft)" : "Publica"}
       </button>
+
       {canDelete && (
         <button
+          type="button"
           onClick={remove}
-          className="px-3 py-2 text-xs font-medium bg-red-100 text-red-700 rounded-lg disabled:opacity-60"
+          className="rounded-xl bg-red-100 px-3 py-2 text-xs font-medium text-red-700 transition hover:bg-red-200 disabled:opacity-60"
           disabled={loading}
         >
-          Șterge
+          Sterge
         </button>
       )}
+
       {clientLink && (
         <button
+          type="button"
           onClick={copyClientLink}
-          className="px-3 py-2 text-xs font-medium bg-emerald-600 text-white rounded-lg disabled:opacity-60"
+          className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-emerald-700 disabled:opacity-60"
           disabled={loading}
         >
           {copied ? "Copiat" : "Link edit"}
         </button>
       )}
+
       {slug && (
-        <a
+        <Link
           href={viewHref}
-          className="px-3 py-2 text-xs font-medium bg-emerald-50 text-emerald-700 rounded-lg text-center hover:bg-emerald-100"
+          className="rounded-xl bg-emerald-50 px-3 py-2 text-center text-xs font-medium text-emerald-700 transition hover:bg-emerald-100"
         >
           Vezi
-        </a>
+        </Link>
       )}
     </div>
   );

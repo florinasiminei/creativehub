@@ -1,82 +1,68 @@
 'use client';
 
-import { useState, useEffect, FormEvent, Suspense } from 'react';
+import { FormEvent, Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import ClientListingConsentPanel from '@/components/forms/ClientListingConsentPanel';
 import ListingForm from '@/components/forms/ListingForm';
-import FormMessage from '@/components/forms/FormMessage';
+import FormPageShell, { FormPageState } from '@/components/forms/FormPageShell';
+import FormSubmitBar from '@/components/forms/FormSubmitBar';
+import ListingSubmitFeedback from '@/components/forms/ListingSubmitFeedback';
+import { supabase } from '@/lib/supabaseClient';
 import useImageSelection from '@/hooks/useImageSelection';
 import useImageUploads from '@/hooks/useImageUploads';
 import useListingForm from '@/hooks/useListingForm';
+import useSubmissionFeedback from '@/hooks/useSubmissionFeedback';
+import useStoredAccessToken from '@/hooks/useStoredAccessToken';
 import { markPageModified } from '@/hooks/useRefreshOnNavigation';
 import { createListing, deleteListing } from '@/lib/api/listings';
 import { sortFacilitiesByPriority } from '@/lib/facilitiesCatalog';
+import {
+  buildListingPayloadBase,
+  createEmptyListingFormFields,
+  type FacilityOption,
+  type ListingFormFields,
+  type LocationData,
+  withClientListingMeta,
+} from '@/lib/listings/listingForm';
 import { slugify } from '@/lib/utils';
 
-type FacilityOption = { id: string; name: string };
+type SimpleForm = ReturnType<typeof createInitialAddPropertyForm>;
 
-type SimpleForm = {
-  titlu: string;
-  judet: string;
-  localitate: string;
-  sat: string;
-  pret: string; // keep as string for easy input
-  capacitate: string;
-  camere: string;
-  paturi: string;
-  bai: string;
-  descriere: string;
-  telefon: string;
-  tip: string;
-  // file uploads handled through server endpoint; no thumbnail_url or image_urls field
-  honeypot: string;
-};
-
-type LocationData = {
-  latitude: number;
-  longitude: number;
-  county: string;
-  city: string;
-};
+function createInitialAddPropertyForm() {
+  return {
+    ...createEmptyListingFormFields(),
+    honeypot: '',
+  };
+}
 
 function AddPropertyPageContent() {
   const searchParams = useSearchParams();
   const tokenParam = searchParams.get('token');
   const isClient = searchParams.get('client') === '1' || searchParams.get('role') === 'client';
-  const [inviteToken, setInviteToken] = useState<string | null>(tokenParam);
-  const [tokenReady, setTokenReady] = useState(false);
-  const [formData, setFormData] = useState<SimpleForm>({
-    titlu: '',
-    judet: '',
-    localitate: '',
-    sat: '',
-    pret: '',
-    capacitate: '2',
-    camere: '1',
-    paturi: '1',
-    bai: '1',
-    descriere: '',
-    telefon: '',
-    tip: 'cabana',
-    // no thumbnail/image_urls
-    honeypot: '',
+  const router = useRouter();
+  const { token: inviteToken, tokenReady } = useStoredAccessToken({
+    queryToken: tokenParam,
+    storageKey: 'invite_token',
+    cleanupPath: '/add-property',
+    stripQueryToken: true,
   });
-
+  const [formData, setFormData] = useState<SimpleForm>(createInitialAddPropertyForm);
   const [facilitiesList, setFacilitiesList] = useState<FacilityOption[]>([]);
   const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [failedUploads, setFailedUploads] = useState<Array<{ name: string; reason: string }>>([]);
   const [showValidation, setShowValidation] = useState(false);
   const [validationAttempt, setValidationAttempt] = useState(0);
   const [acceptedTerms, setAcceptedTerms] = useState(!isClient);
   const [newsletterOptIn, setNewsletterOptIn] = useState(false);
   const [isLocationConfirmed, setIsLocationConfirmed] = useState(false);
-  const router = useRouter();
-  const { uploading, uploadedCount, upload } = useImageUploads({
-    onError: (msg) => setMessage(msg),
-  });
   const [locationData, setLocationData] = useState<LocationData | null>(null);
+  const { message, failedUploads, failedUploadNames, clearFeedback, setError, setErrorFromUnknown, setUploadError } =
+    useSubmissionFeedback('error');
+
+  const { uploading, uploadedCount, upload } = useImageUploads({
+    onError: (nextMessage) => setError(nextMessage),
+  });
+
   const {
     files,
     filePreviews,
@@ -92,19 +78,23 @@ function AddPropertyPageContent() {
     resetFiles,
   } = useImageSelection({
     maxFiles: Number.POSITIVE_INFINITY,
-    onLimit: (msg) => setMessage(msg),
+    onLimit: (nextMessage) => setError(nextMessage),
   });
 
   useEffect(() => {
     let mounted = true;
+
     async function fetchFacilities() {
       try {
         const { data } = await supabase.from('facilities').select('id, name');
-        if (mounted && data) setFacilitiesList(sortFacilitiesByPriority(data as FacilityOption[]));
-      } catch (e) {
-        // ignore
+        if (mounted && data) {
+          setFacilitiesList(sortFacilitiesByPriority(data as FacilityOption[]));
+        }
+      } catch {
+        // Ignore facilities fetch errors here; validation and submit still work.
       }
     }
+
     fetchFacilities();
     return () => {
       mounted = false;
@@ -112,44 +102,22 @@ function AddPropertyPageContent() {
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (tokenParam) {
-      setInviteToken(tokenParam);
-      try {
-        sessionStorage.setItem('invite_token', tokenParam);
-      } catch {
-        // ignore storage issues
-      }
-      const nextParams = new URLSearchParams(searchParams.toString());
-      nextParams.delete('token');
-      const nextQuery = nextParams.toString();
-      router.replace(nextQuery ? `/add-property?${nextQuery}` : '/add-property');
-      setTokenReady(true);
-      return;
-    }
-
-    if (!inviteToken) {
-      try {
-        const stored = sessionStorage.getItem('invite_token');
-        if (stored) setInviteToken(stored);
-      } catch {
-        // ignore storage issues
-      }
-    }
-    setTokenReady(true);
-  }, [tokenParam, searchParams, router, inviteToken]);
-
-  useEffect(() => {
     setAcceptedTerms(!isClient);
   }, [isClient]);
 
-  const handleChange = (k: keyof SimpleForm, v: string) => setFormData(prev => ({ ...prev, [k]: v }));
+  const handleChange = (key: keyof ListingFormFields, value: string) => {
+    setFormData((prev) => ({ ...prev, [key]: value }));
+  };
+
   const handleLocationSelect = (location: LocationData) => {
     setLocationData(location);
   };
 
-  const toggleFacility = (id: string) =>
-    setSelectedFacilities((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  const toggleFacility = (facilityId: string) => {
+    setSelectedFacilities((prev) =>
+      prev.includes(facilityId) ? prev.filter((item) => item !== facilityId) : [...prev, facilityId]
+    );
+  };
 
   const { error: validationError, invalidFields, imagesInvalid } = useListingForm({
     requiredFields: [
@@ -173,118 +141,69 @@ function AddPropertyPageContent() {
     enforceDescription: isClient,
   });
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setMessage(null);
-    setFailedUploads([]);
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    clearFeedback();
     setShowValidation(true);
-    if (formData.honeypot) return; // spam
+
+    if (formData.honeypot) return;
+
     if (validationError) {
-      setMessage(invalidFields.length === 0 ? validationError : null);
+      setError(invalidFields.length === 0 ? validationError : null);
       setValidationAttempt((prev) => prev + 1);
       return;
     }
-    if (isClient && !acceptedTerms) {
-      setMessage('Te rugam sa accepti termenii si conditiile.');
-      return;
-    }
-    if (!isLocationConfirmed || !locationData) {
-      setMessage('Te rugam sa confirmi locatia.');
-      return;
-    }
-    const hasCoords =
-      locationData !== null &&
-      Number.isFinite(locationData.latitude) &&
-      Number.isFinite(locationData.longitude) &&
-      (locationData.latitude !== 0 || locationData.longitude !== 0);
 
-    // no external image URLs or thumbnail
+    if (isClient && !acceptedTerms) {
+      setError('Te rugam sa accepti termenii si conditiile.');
+      return;
+    }
+
+    if (!isLocationConfirmed || !locationData) {
+      setError('Te rugam sa confirmi locatia.');
+      return;
+    }
 
     setLoading(true);
+
     try {
-      const baseSlug = slugify(formData.titlu || '') || 'cazare';
-      const judet = locationData?.county || formData.judet;
-      const city = locationData?.city || formData.localitate || null;
-      const payload = {
-        title: formData.titlu,
-        slug: baseSlug,
-        judet,
-        city,
-        sat: formData.sat || null,
-        price: Number(formData.pret) || 0,
-        capacity: formData.capacitate || '1',
-        camere: Number(formData.camere) || 0,
-        paturi: Number(formData.paturi) || 0,
-        bai: Number(formData.bai) || 0,
-        phone: formData.telefon || null,
-        type: formData.tip,
-        description: formData.descriere || null,
-        // Location data from Google Maps
-        lat: hasCoords ? Number(locationData?.latitude ?? null) : null,
-        lng: hasCoords ? Number(locationData?.longitude ?? null) : null,
-        // images uploaded separately
-        is_published: false,
-      };
-      if (isClient) {
-        (payload as any).newsletter_opt_in = newsletterOptIn;
-        (payload as any).terms_accepted = acceptedTerms;
-      }
-      // create listing via server endpoint to avoid RLS errors
+      const payload = withClientListingMeta(
+        {
+          title: formData.titlu,
+          slug: slugify(formData.titlu || '') || 'cazare',
+          ...buildListingPayloadBase(formData, locationData),
+          is_published: false,
+        },
+        { isClient, newsletterOptIn, acceptedTerms }
+      );
+
       const created = await createListing(payload, selectedFacilities, inviteToken);
       const listingId = created.id;
       const listingToken = created.editToken || null;
 
-      // upload selected files to server endpoint which will use server-side supabase Admin
       if (files.length > 0) {
         try {
           await upload(listingId, files, 0, listingToken);
-        } catch (err: any) {
+        } catch (error: any) {
           try {
             await deleteListing(listingId, inviteToken);
           } catch {
-            // ignore rollback errors
+            // Ignore rollback errors.
           }
-          const failed = Array.isArray(err?.failed) ? err.failed : [];
-          setFailedUploads(failed);
-      setMessage(
-            err?.message ||
-              (failed.length > 0
-                ? 'Nu s-au incarcat toate imaginile.'
-                : 'Eroare la incarcarea imaginilor')
-          );
+          setUploadError(error);
           return;
         }
       }
 
-      try {
-        markPageModified();
-        if (isClient) {
-          router.push(`/?submitted=1`);
-        } else {
-          router.push(`/drafts?created=1&id=${listingId}`);
-        }
-      } catch (err) {
-        // ignore if router unavailable
-      }
-      setFormData({
-        titlu: '',
-        judet: '',
-        localitate: '',
-        sat: '',
-        pret: '',
-        capacitate: '2',
-        camere: '1',
-        paturi: '1',
-        bai: '1',
-        descriere: '',
-        telefon: '',
-        tip: 'cabana',
-        honeypot: '',
-      });
+      markPageModified();
+      if (isClient) router.push('/?submitted=1');
+      else router.push(`/drafts?created=1&id=${listingId}`);
+
+      setFormData(createInitialAddPropertyForm());
       setSelectedFacilities([]);
       resetFiles();
-    } catch (err: any) {
-      setMessage(err.message || 'A aparut o eroare');
+    } catch (error: any) {
+      setErrorFromUnknown(error);
     } finally {
       setLoading(false);
     }
@@ -293,30 +212,46 @@ function AddPropertyPageContent() {
   if (!inviteToken) {
     if (!tokenReady) {
       return (
-        <div className="max-w-6xl 2xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-10 min-h-[60vh]">
-          <h1 className="text-2xl font-semibold mb-2">Se incarca...</h1>
-          <p className="text-gray-600">Verificam accesul.</p>
-        </div>
+        <FormPageShell
+          eyebrow="Formular de publicare pe cabn.ro"
+          title="Adauga o proprietate"
+          description="Pregatim formularul si validam linkul de acces inainte sa poti trimite proprietatea."
+        >
+          <FormPageState title="Se incarca..." description="Verificam accesul." />
+        </FormPageShell>
       );
     }
+
     return (
-      <div className="max-w-6xl 2xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-10 min-h-[60vh]">
-        <h1 className="text-2xl font-semibold mb-2">Acces restrictionat</h1>
-        <p className="text-gray-600">Ai nevoie de un link valid pentru a adauga o proprietate.</p>
-      </div>
+      <FormPageShell
+        eyebrow="Formular de publicare pe cabn.ro"
+        title="Adauga o proprietate"
+        description="Acest flux este rezervat proprietarilor care au primit un link de acces de la echipa cabn."
+      >
+        <FormPageState
+          title="Acces restrictionat"
+          description="Ai nevoie de un link valid pentru a adauga o proprietate."
+        />
+      </FormPageShell>
     );
   }
 
   return (
-    <div className="max-w-6xl 2xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-10">
-      <div className="mb-6">
-        <p className="text-sm uppercase tracking-[0.2em] text-emerald-700 font-semibold">Formular de publicare pe cabn.ro</p>
-        <h1 className="text-3xl font-semibold mt-2">Adauga o proprietate</h1>
-        <p className="text-gray-600 mt-1">Completeaza detaliile si ataseaza continutul foto-video.</p>
-      </div>
-
+    <FormPageShell
+      eyebrow="Formular de publicare pe cabn.ro"
+      title="Adauga o proprietate"
+      description="Completeaza profilul cabanei, confirma pozitia pe harta si incarca galeria in ordinea in care vrei sa fie vazuta."
+      highlights={[
+        { label: 'Proces', value: 'Evaluare manuala cabn' },
+        { label: 'Galerie', value: isClient ? 'Minim 5 imagini' : 'Pana la 20 imagini' },
+        { label: 'Publicare', value: isClient ? 'Trimisa pentru aprobare' : 'Salvata ca draft' },
+      ]}
+    >
       <form onSubmit={handleSubmit} noValidate className="space-y-8">
-        <p className="text-sm text-gray-600">Toate campurile sunt obligatorii, cu exceptia celor marcate (optional).</p>
+        <div className="rounded-[24px] border border-emerald-100 bg-emerald-50/60 px-4 py-3 text-sm text-emerald-950 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100">
+          Toate campurile sunt obligatorii, cu exceptia celor marcate ca optionale. Proprietatile trimise de clienti intra in revizie inainte de publicare.
+        </div>
+
         <ListingForm
           formData={formData}
           onChange={handleChange}
@@ -350,103 +285,61 @@ function AddPropertyPageContent() {
           onRemove={removeFile}
           selectedImagesTitle="Ordinea galeriei foto"
           selectedImagesSubtitle="Trage sau foloseste sagetile pentru ordinea de afisare (5-20 imagini)"
-          selectedFailedNames={failedUploads.map((f) => f.name)}
+          selectedFailedNames={failedUploadNames}
           maxImagesWarning={20}
           descriptionMin={200}
           descriptionMax={1000}
           descriptionRequired={isClient}
         />
 
-        {/* honeypot */}
-        <input type="text" value={formData.honeypot} onChange={e => handleChange('honeypot', e.target.value)} className="hidden" aria-hidden />
+        <input
+          type="text"
+          value={formData.honeypot}
+          onChange={(event) => setFormData((prev) => ({ ...prev, honeypot: event.target.value }))}
+          className="hidden"
+          aria-hidden
+        />
 
         {isClient && (
-          <div className="space-y-2">
-            <label
-              className={`flex items-start gap-2 text-sm ${
-                showValidation && !acceptedTerms ? 'text-red-700' : 'text-gray-700'
-              }`}
-            >
-              <input
-                type="checkbox"
-                checked={acceptedTerms}
-                onChange={(e) => setAcceptedTerms(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-              />
-              <span>
-                Accept termenii si conditiile<span className="text-red-600"> *</span>
-              </span>
-            </label>
-            <label className="flex items-start gap-2 text-sm text-gray-700">
-              <input
-                type="checkbox"
-                checked={newsletterOptIn}
-                onChange={(e) => setNewsletterOptIn(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-              />
-              <span>Ma alatur newsletterului/comunitatii cabn.</span>
-            </label>
-          </div>
+          <ClientListingConsentPanel
+            acceptedTerms={acceptedTerms}
+            newsletterOptIn={newsletterOptIn}
+            showTermsError={showValidation && !acceptedTerms}
+            onAcceptedTermsChange={setAcceptedTerms}
+            onNewsletterOptInChange={setNewsletterOptIn}
+          />
         )}
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
-          <div className="text-sm text-gray-600">
-            {uploading
-              ? `Se incarca imaginile... ${uploadedCount}/${files.length}`
-              : 'Verifica datele si foloseste butonul de creare.'}
-          </div>
-          <button type="submit" disabled={loading || uploading} className="w-full sm:w-auto bg-emerald-600 text-white px-5 py-2.5 rounded-full shadow hover:bg-emerald-700 disabled:opacity-60">
-            {loading ? 'Se salveaza...' : 'Adauga proprietate'}
-          </button>
-        </div>
+        <FormSubmitBar
+          uploading={uploading}
+          uploadedCount={uploadedCount}
+          totalFiles={files.length}
+          loading={loading}
+          submitLabel="Adauga proprietate"
+          loadingLabel="Se salveaza..."
+          idleLabel="Verifica datele, ordinea imaginilor si apoi trimite proprietatea."
+        />
 
-        {message && (
-          <FormMessage variant="error" role="status" aria-live="polite">
-            <div className="font-semibold">{message}</div>
-            {failedUploads.length > 0 && (
-              <ul className="mt-2 space-y-1">
-                {failedUploads.map((f, idx) => (
-                  <li key={`${f.name}-${idx}`} className="flex items-start gap-2">
-                    <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-red-500" />
-                    <span>
-                      <span className="font-medium">{f.name}</span>
-                      {f.reason ? ` - ${f.reason === 'file_too_large' ? 'fisier prea mare' : f.reason}` : ''}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </FormMessage>
-        )}
+        <ListingSubmitFeedback message={message} tone="error" failedUploads={failedUploads} />
       </form>
-    </div>
+    </FormPageShell>
   );
 }
 
 export default function AddPropertyPage() {
   return (
-    <>
-      <section className="max-w-6xl 2xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-8">
-        <h1 className="text-3xl font-semibold text-emerald-950">Propune o cabana pe cabn.ro</h1>
-        <p className="mt-3 text-gray-700 max-w-3xl">
-          Formularul de mai jos este destinat proprietarilor care doresc evaluare si publicare in
-          catalogul cabn.
-        </p>
-        <p className="mt-2 text-gray-700 max-w-3xl">
-          Daca ai primit un link de acces, poti trimite proprietatea cu imagini si detalii complete
-          in cateva minute.
-        </p>
-      </section>
-      <Suspense
-        fallback={
-          <div className="max-w-6xl 2xl:max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-10 min-h-[60vh]">
-            <h2 className="text-2xl font-semibold mb-2">Se incarca...</h2>
-            <p className="text-gray-600">Pregatim formularul de publicare.</p>
-          </div>
-        }
-      >
-        <AddPropertyPageContent />
-      </Suspense>
-    </>
+    <Suspense
+      fallback={
+        <FormPageShell
+          eyebrow="Formular de publicare pe cabn.ro"
+          title="Adauga o proprietate"
+          description="Pregatim formularul de publicare si incarcam toate sectiunile necesare."
+        >
+          <FormPageState title="Se incarca..." description="Pregatim formularul de publicare." />
+        </FormPageShell>
+      }
+    >
+      <AddPropertyPageContent />
+    </Suspense>
   );
 }

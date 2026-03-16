@@ -1,15 +1,38 @@
-﻿export const runtime = 'nodejs';
+export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
 import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
+import { getR2PublicUrl, uploadBufferToR2 } from '@/lib/server/r2';
 
+const MAX_FILE_BYTES = 50 * 1024 * 1024;
 const MAX_ATTRACTION_IMAGES = 12;
+
+const MIME_EXT: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/jpg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/avif': 'avif',
+  'image/heic': 'heic',
+};
+
+function safeBaseName(name: string) {
+  const base = name.replace(/[^a-zA-Z0-9.\-_]/g, '').replace(/\.[^.]+$/, '');
+  return base || 'image';
+}
+
+function getExtension(name: string, mime?: string) {
+  const raw = name.split('.').pop();
+  if (raw && raw.length <= 5) return raw.toLowerCase();
+  if (mime && MIME_EXT[mime]) return MIME_EXT[mime];
+  return 'bin';
+}
 
 export async function POST(req: Request) {
   try {
-    const limit = rateLimit(req, { windowMs: 60_000, max: 120, keyPrefix: 'attraction-upload-complete' });
+    const limit = rateLimit(req, { windowMs: 60_000, max: 40, keyPrefix: 'attraction-upload-file' });
     if (!limit.ok) {
       return NextResponse.json(
         { error: 'Too many requests' },
@@ -18,15 +41,19 @@ export async function POST(req: Request) {
     }
 
     const supabaseAdmin = getSupabaseAdmin();
-    const body = await req.json();
-    const attractionId = body?.attractionId as string | undefined;
-    const path = body?.path as string | undefined;
-    const displayOrder = Number(body?.displayOrder);
-    const alt = body?.alt ?? null;
+    const form = await req.formData();
+    const attractionId = String(form.get('attractionId') || '').trim();
+    const displayOrder = Number(form.get('displayOrder'));
+    const altValue = form.get('alt');
+    const alt = typeof altValue === 'string' ? altValue : null;
+    const fileValue = form.get('file');
 
-    if (!attractionId || !path) return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
-    if (!path.startsWith(`attractions/${attractionId}/`)) {
-      return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
+    if (!attractionId || !(fileValue instanceof File)) {
+      return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
+    }
+
+    if (typeof fileValue.size === 'number' && fileValue.size > MAX_FILE_BYTES) {
+      return NextResponse.json({ error: 'Fisier prea mare.' }, { status: 400 });
     }
 
     const role = getDraftRoleFromRequest(req);
@@ -38,15 +65,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: publicData } = supabaseAdmin.storage.from('listing-images').getPublicUrl(path);
-    const url = (publicData as any)?.publicUrl || (publicData as any)?.public_url || '';
-    if (!url) return NextResponse.json({ error: 'public_url_missing' }, { status: 500 });
-
     const { count: existingCount } = await supabaseAdmin
       .from('attraction_images')
       .select('id', { count: 'exact', head: true })
       .eq('attraction_id', attractionId);
-
     if ((existingCount || 0) >= MAX_ATTRACTION_IMAGES) {
       return NextResponse.json(
         { error: `Maximum ${MAX_ATTRACTION_IMAGES} imagini per atractie.` },
@@ -54,6 +76,15 @@ export async function POST(req: Request) {
       );
     }
 
+    const base = safeBaseName(fileValue.name || 'image');
+    const ext = getExtension(fileValue.name || 'image', fileValue.type);
+    const name = `${Date.now()}_${Math.random().toString(36).slice(2)}_${base}.${ext}`;
+    const path = `attractions/${attractionId}/${name}`;
+    const sourceBuffer = Buffer.from(await fileValue.arrayBuffer());
+
+    await uploadBufferToR2(path, sourceBuffer, fileValue.type || 'application/octet-stream');
+
+    const url = getR2PublicUrl(path);
     const { data: inserted, error: imgErr } = await supabaseAdmin
       .from('attraction_images')
       .insert([
@@ -66,7 +97,6 @@ export async function POST(req: Request) {
       ])
       .select('id, image_url, display_order')
       .single();
-
     if (imgErr || !inserted) {
       return NextResponse.json({ error: imgErr?.message || 'insert_failed' }, { status: 500 });
     }

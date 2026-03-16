@@ -1,7 +1,7 @@
 export function validateRequired(fields: Array<{ value: string | null | undefined; label: string }>) {
-  const missing = fields.filter((f) => !(f.value ?? '').trim()).map((f) => f.label);
+  const missing = fields.filter((field) => !(field.value ?? '').trim()).map((field) => field.label);
   if (missing.length === 0) return null;
-  return `Câmpurile obligatorii lipsesc: ${missing.join(', ')}.`;
+  return `Campurile obligatorii lipsesc: ${missing.join(', ')}.`;
 }
 
 export function validatePhone(phone: string) {
@@ -11,8 +11,8 @@ export function validatePhone(phone: string) {
 }
 
 export function validateImagesCount(count: number, min: number, max: number) {
-  if (count < min) return `Adaugă cel puțin ${min} imagini (maxim ${max}).`;
-  if (count > max) return `Poți încărca maximum ${max} imagini.`;
+  if (count < min) return `Adauga cel putin ${min} imagini (maxim ${max}).`;
+  if (count > max) return `Poti incarca maximum ${max} imagini.`;
   return null;
 }
 

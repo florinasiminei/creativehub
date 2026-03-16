@@ -1,4 +1,6 @@
-﻿export async function createAttraction(payload: any, inviteToken?: string | null) {
+import type { AttractionImage } from '@/lib/attractions/attractionForm';
+
+export async function createAttraction(payload: any, inviteToken?: string | null) {
   const resp = await fetch('/api/attraction-create', {
     method: 'POST',
     headers: {
@@ -25,7 +27,7 @@ export async function getAttraction(id: string, inviteToken?: string | null) {
   if (!resp.ok) throw new Error(body?.error || 'Eroare la incarcare atractie');
   return body as {
     attraction: any;
-    images: Array<{ id: string; image_url: string; display_order?: number | null; alt?: string | null }>;
+    images: AttractionImage[];
   };
 }
 
@@ -79,44 +81,25 @@ export async function reorderAttractionImages(attractionId: string, ids: string[
   if (!resp.ok) throw new Error('Nu am putut salva ordinea imaginilor');
 }
 
-export async function requestAttractionUploadUrls(
+export async function uploadAttractionFile(
   attractionId: string,
-  files: Array<{ index: number; name: string; type?: string; size?: number }>,
-  startIndex = 0,
-  inviteToken?: string | null
-) {
-  const resp = await fetch('/api/attraction-upload-sign', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(inviteToken ? { 'x-invite-token': inviteToken } : {}),
-    },
-    body: JSON.stringify({ attractionId, files, startIndex }),
-  });
-  const body = await resp.json();
-  if (!resp.ok) throw new Error(body?.error || 'Eroare la semnarea upload-ului');
-  return body as {
-    uploads?: Array<{ index: number; path: string; token: string; display_order: number }>;
-    failed?: Array<{ index: number; name: string; reason: string }>;
-  };
-}
-
-export async function completeAttractionUpload(
-  attractionId: string,
-  path: string,
+  file: File,
   displayOrder: number,
   inviteToken?: string | null,
   alt?: string | null
 ) {
-  const resp = await fetch('/api/attraction-upload-complete', {
+  const form = new FormData();
+  form.append('attractionId', attractionId);
+  form.append('displayOrder', String(displayOrder));
+  if (alt) form.append('alt', alt);
+  form.append('file', file);
+
+  const resp = await fetch('/api/attraction-upload-file', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(inviteToken ? { 'x-invite-token': inviteToken } : {}),
-    },
-    body: JSON.stringify({ attractionId, path, displayOrder, alt }),
+    headers: inviteToken ? { 'x-invite-token': inviteToken } : undefined,
+    body: form,
   });
   const body = await resp.json();
-  if (!resp.ok) throw new Error(body?.error || 'Eroare la finalizarea upload-ului');
+  if (!resp.ok) throw new Error(body?.error || 'Eroare la incarcarea imaginii');
   return body as { id: string; url: string; display_order: number };
 }

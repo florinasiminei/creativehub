@@ -6,8 +6,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import DarkModeToggle from "./DarkModeToggle";
 import { NAV_LINKS } from "@/lib/constants";
-import { classNames, isActiveLink } from "@/lib/utils";
 import { useHash } from "@/hooks/useHash";
+import { classNames, isActiveLink } from "@/lib/utils";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -53,14 +53,12 @@ export default function Navbar() {
               alt="cabn.ro - exploram cazari autentice"
               width={101}
               height={150}
+              style={{ height: "auto" }}
               priority
             />
           </Link>
 
-          <nav
-            className="hidden md:flex min-w-0 flex-1 items-center justify-center"
-            aria-label="Meniu principal"
-          >
+          <nav className="hidden min-w-0 flex-1 items-center justify-center md:flex" aria-label="Meniu principal">
             <ul className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-600 transition-colors dark:text-gray-300 sm:text-xs">
               {NAV_LINKS.map((link) => {
                 const active = isActiveLink(pathname, hash, link.href);
@@ -95,13 +93,7 @@ export default function Navbar() {
               className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200/70 bg-white/60 shadow-sm outline-none transition hover:bg-white dark:border-white/10 dark:bg-zinc-900/70"
             >
               <span className="sr-only">Deschide meniul</span>
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                className="h-5 w-5"
-                aria-hidden="true"
-              >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5" aria-hidden="true">
                 {menuOpen ? (
                   <path strokeWidth="2" strokeLinecap="round" d="M6 18L18 6M6 6l12 12" />
                 ) : (
@@ -115,7 +107,7 @@ export default function Navbar() {
         <div
           id="mobile-nav"
           className={classNames(
-            "md:hidden overflow-hidden transition-[max-height,opacity] duration-300",
+            "overflow-hidden transition-[max-height,opacity] duration-300 md:hidden",
             menuOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
           )}
         >
@@ -137,7 +129,7 @@ export default function Navbar() {
                         aria-hidden="true"
                         className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-zinc-200/70 dark:border-white/10"
                       >
-                        ›
+                        &rsaquo;
                       </span>
                     </Link>
                   </li>

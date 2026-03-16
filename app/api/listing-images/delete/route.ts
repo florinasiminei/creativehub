@@ -3,6 +3,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
 import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
 import { isListingTokenValid } from '@/lib/listingTokens';
+import { deleteStoredImageUrls } from '@/lib/server/r2';
 
 export async function POST(request: Request) {
   try {
@@ -30,16 +31,10 @@ export async function POST(request: Request) {
       }
     }
 
-    const imageUrl = rows.image_url as string;
-    // parse storage path from public url when using public bucket
-    // public url format: https://<project>.supabase.co/storage/v1/object/public/<bucket>/<path>
-    const url = new URL(imageUrl);
-    const matched = url.pathname.match(/\/storage\/v1\/object\/public\/([^\/]+)\/(.*)$/);
-    if (matched) {
-      const bucket = matched[1];
-      const path = decodeURIComponent(matched[2]);
-      await supabaseAdmin.storage.from(bucket).remove([path]);
-    }
+    await deleteStoredImageUrls([rows.image_url as string], {
+      supabaseAdmin,
+      includeListingCardVariant: true,
+    });
 
     const { error } = await supabaseAdmin.from('listing_images').delete().eq('id', id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

@@ -3,6 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
 import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
+import { deleteStoredImageUrls } from '@/lib/server/r2';
 
 export async function POST(request: Request) {
   try {
@@ -32,19 +33,7 @@ export async function POST(request: Request) {
       .select('id, image_url')
       .eq('attraction_id', id);
 
-    for (const img of imgs || []) {
-      try {
-        const url = new URL(img.image_url);
-        const matched = url.pathname.match(/\/storage\/v1\/object\/public\/([^\/]+)\/(.*)$/);
-        if (matched) {
-          const bucket = matched[1];
-          const path = decodeURIComponent(matched[2]);
-          await supabaseAdmin.storage.from(bucket).remove([path]);
-        }
-      } catch {
-        // ignore
-      }
-    }
+    await deleteStoredImageUrls((imgs || []).map((img) => img.image_url), { supabaseAdmin });
 
     await supabaseAdmin.from('attraction_images').delete().eq('attraction_id', id);
     const { error } = await supabaseAdmin.from('attractions').delete().eq('id', id);
@@ -63,4 +52,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: err?.message || 'unknown' }, { status: 500 });
   }
 }
-

@@ -73,7 +73,7 @@ export default function ImageUploader({
   const overLimit = totalSelected > maxAllowed;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <ImageDropzone
         title={dropzoneTitle}
         subtitle={dropzoneSubtitle}
@@ -87,7 +87,8 @@ export default function ImageUploader({
 
       {overLimit && (
         <FormMessage variant="warning" size="sm">
-          Ai in total {totalSelected} imagini. Pentru publicare trebuie sa ramai cu maximum {maxAllowed}. Sterge {totalSelected - maxAllowed}.
+          Ai in total {totalSelected} imagini. Pentru publicare trebuie sa ramai cu maximum {maxAllowed}. Sterge{' '}
+          {totalSelected - maxAllowed}.
         </FormMessage>
       )}
 

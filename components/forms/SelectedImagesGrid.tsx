@@ -1,6 +1,6 @@
 import React from 'react';
 import Image from 'next/image';
-import { ArrowUp, ArrowDown, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react';
 
 type SelectedImagesGridProps = {
   title: string;
@@ -33,27 +33,33 @@ export default function SelectedImagesGrid({
   const failedSet = new Set(failedNames);
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{title}</div>
-        <div className="text-xs text-gray-500 dark:text-gray-400">{subtitle}</div>
+    <div className="space-y-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{title}</div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">{subtitle}</div>
+        </div>
+        <div className="inline-flex w-fit items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-900/20 dark:text-emerald-200">
+          {files.length} imagini noi
+        </div>
       </div>
+
       <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-        {files.map((f, idx) => (
+        {files.map((file, idx) => (
           <div
-            key={`${f.name}-${idx}`}
-            className={`rounded-xl overflow-hidden border bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${
+            key={`${file.name}-${idx}`}
+            className={`overflow-hidden rounded-[24px] border bg-white shadow-[0_16px_45px_-34px_rgba(15,23,42,0.55)] dark:border-zinc-800 dark:bg-zinc-900 ${
               draggingIdx === idx ? 'ring-2 ring-emerald-500' : ''
-            } ${failedSet.has(f.name) ? 'border-red-400 ring-1 ring-red-300' : ''}`}
+            } ${failedSet.has(file.name) ? 'border-red-400 ring-1 ring-red-300' : ''}`}
             draggable
             onDragStart={() => onDragStart(idx)}
-            onDragOver={(e) => {
-              e.preventDefault();
+            onDragOver={(event) => {
+              event.preventDefault();
               onDragOver(idx);
             }}
             onDragEnd={onDragEnd}
           >
-            <div className="relative h-56 sm:h-60 md:h-64 bg-gray-50 touch-pan-y overflow-hidden">
+            <div className="relative h-56 overflow-hidden bg-gray-50 touch-pan-y sm:h-60 md:h-64">
               {previews[idx] && (
                 <>
                   <Image
@@ -75,19 +81,22 @@ export default function SelectedImagesGrid({
                   />
                 </>
               )}
-              <div className="absolute top-2 left-2 text-xs px-2 py-1 rounded-full bg-white/80 text-gray-700 shadow">#{idx + 1}</div>
+              <div className="absolute left-3 top-3 rounded-full bg-white/85 px-2.5 py-1 text-xs font-semibold text-gray-700 shadow">
+                #{idx + 1}
+              </div>
             </div>
-            <div className="flex items-center gap-2 px-3 py-2 border-t bg-white dark:border-zinc-800 dark:bg-zinc-900">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate text-gray-900 dark:text-gray-100">{f.name}</p>
+
+            <div className="flex items-center gap-2 border-t border-gray-100 bg-white px-3 py-3 dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{file.name}</p>
               </div>
               <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => onMove(idx, idx - 1)}
                   disabled={idx === 0}
-                  aria-label="Mută în sus"
-                  className="h-8 w-8 rounded-full border text-xs font-semibold disabled:opacity-40 flex items-center justify-center dark:border-zinc-700 dark:text-gray-100"
+                  aria-label="Muta in sus"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-xs font-semibold disabled:opacity-40 dark:border-zinc-700 dark:text-gray-100"
                 >
                   <ArrowUp size={14} />
                 </button>
@@ -95,16 +104,16 @@ export default function SelectedImagesGrid({
                   type="button"
                   onClick={() => onMove(idx, idx + 1)}
                   disabled={idx === files.length - 1}
-                  aria-label="Mută în jos"
-                  className="h-8 w-8 rounded-full border text-xs font-semibold disabled:opacity-40 flex items-center justify-center dark:border-zinc-700 dark:text-gray-100"
+                  aria-label="Muta in jos"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-xs font-semibold disabled:opacity-40 dark:border-zinc-700 dark:text-gray-100"
                 >
                   <ArrowDown size={14} />
                 </button>
                 <button
                   type="button"
                   onClick={() => onRemove(idx)}
-                  aria-label="Șterge imaginea"
-                  className="h-8 w-8 rounded-full border text-xs font-semibold text-red-600 flex items-center justify-center dark:border-zinc-700"
+                  aria-label="Sterge imaginea"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-red-200 text-xs font-semibold text-red-600 dark:border-zinc-700"
                 >
                   <Trash2 size={14} />
                 </button>
