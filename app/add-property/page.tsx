@@ -241,11 +241,6 @@ function AddPropertyPageContent() {
       eyebrow="Formular de publicare pe cabn.ro"
       title="Adauga o proprietate"
       description="Completeaza profilul cabanei, confirma pozitia pe harta si incarca galeria in ordinea in care vrei sa fie vazuta."
-      highlights={[
-        { label: 'Proces', value: 'Evaluare manuala cabn' },
-        { label: 'Galerie', value: isClient ? 'Minim 5 imagini' : 'Pana la 20 imagini' },
-        { label: 'Publicare', value: isClient ? 'Trimisa pentru aprobare' : 'Salvata ca draft' },
-      ]}
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-8">
         <div className="rounded-[24px] border border-emerald-100 bg-emerald-50/60 px-4 py-3 text-sm text-emerald-950 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100">

@@ -51,8 +51,104 @@ const DARK_MAP_STYLE = [
   { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#64748b" }] },
 ];
 
-function hasGoogleMaps() {
-  return typeof window !== "undefined" && typeof google !== "undefined" && Boolean(google.maps);
+let googleMapsLoadPromise: Promise<void> | null = null;
+
+function hasGoogleMapsCore() {
+  return (
+    typeof window !== "undefined" &&
+    typeof google !== "undefined" &&
+    Boolean(google.maps) &&
+    typeof google.maps.Map === "function" &&
+    typeof google.maps.Geocoder === "function"
+  );
+}
+
+function hasGoogleMapsPlaces() {
+  return Boolean(
+    hasGoogleMapsCore() &&
+      google.maps.places &&
+      typeof (google.maps.places as unknown as { AutocompleteService?: unknown }).AutocompleteService === "function"
+  );
+}
+
+function hasGoogleMapsApiReady() {
+  return hasGoogleMapsCore() && hasGoogleMapsPlaces();
+}
+
+function loadGoogleMapsApi(apiKey: string) {
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("Google Maps poate fi incarcat doar in browser."));
+  }
+
+  if (hasGoogleMapsApiReady()) {
+    return Promise.resolve();
+  }
+
+  if (googleMapsLoadPromise) {
+    return googleMapsLoadPromise;
+  }
+
+  googleMapsLoadPromise = new Promise<void>((resolve, reject) => {
+    const existingScript = document.getElementById("google-maps-script") as HTMLScriptElement | null;
+    const needsReplacement =
+      !!existingScript &&
+      (existingScript.src.includes("callback=") ||
+        !existingScript.src.includes("libraries=places") ||
+        !existingScript.src.includes("loading=async"));
+    const startedAt = Date.now();
+
+    const cleanup = () => {
+      window.clearInterval(intervalId);
+      if (script) {
+        script.removeEventListener("error", handleError);
+      }
+    };
+
+    const handleError = () => {
+      cleanup();
+      googleMapsLoadPromise = null;
+      reject(new Error("Google Maps nu a putut fi incarcat."));
+    };
+
+    const checkReady = () => {
+      if (hasGoogleMapsApiReady()) {
+        cleanup();
+        resolve();
+        return;
+      }
+
+      if (Date.now() - startedAt > 15000) {
+        cleanup();
+        googleMapsLoadPromise = null;
+        reject(new Error("Google Maps nu a devenit disponibil in timp util."));
+      }
+    };
+
+    const script = needsReplacement ? document.createElement("script") : existingScript ?? document.createElement("script");
+    const intervalId = window.setInterval(checkReady, 50);
+
+    if (needsReplacement) {
+      existingScript?.remove();
+    }
+
+    if (!existingScript || needsReplacement) {
+      const scriptUrl = new URL("https://maps.googleapis.com/maps/api/js");
+      scriptUrl.searchParams.set("key", apiKey);
+      scriptUrl.searchParams.set("libraries", "places");
+      scriptUrl.searchParams.set("loading", "async");
+
+      script.id = "google-maps-script";
+      script.src = scriptUrl.toString();
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+
+    script.addEventListener("error", handleError, { once: true });
+    checkReady();
+  });
+
+  return googleMapsLoadPromise;
 }
 
 export default function LocationPicker({
@@ -87,6 +183,8 @@ export default function LocationPicker({
   }, [isConfirmed, onConfirmChange]);
 
   const updateLocationName = useCallback((lat: number, lng: number) => {
+    if (!hasGoogleMapsCore()) return;
+
     const geocoder = new google.maps.Geocoder();
     geocoder.geocode({ location: { lat, lng } }, (results, status) => {
       if (status === google.maps.GeocoderStatus.OK && results?.[0]) {
@@ -96,6 +194,8 @@ export default function LocationPicker({
   }, []);
 
   const updateMarker = useCallback((map: google.maps.Map, lat: number, lng: number) => {
+    if (!hasGoogleMapsCore() || typeof google.maps.Marker !== "function") return;
+
     if (markerRef.current) markerRef.current.setMap(null);
 
     const marker = new google.maps.Marker({
@@ -136,44 +236,25 @@ export default function LocationPicker({
   }, [isDarkMode]);
 
   useEffect(() => {
-    const existingScript = document.getElementById("google-maps-script");
-    if (existingScript) {
-      if (hasGoogleMaps()) {
-        setIsLoaded(true);
-        return;
-      }
-
-      const timer = window.setInterval(() => {
-        if (!hasGoogleMaps()) return;
-        window.clearInterval(timer);
-        setIsLoaded(true);
-      }, 50);
-
-      return () => window.clearInterval(timer);
-    }
-
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
     if (!apiKey) {
       console.error("Missing NEXT_PUBLIC_GOOGLE_MAPS_API_KEY");
       return;
     }
 
-    const scriptUrl = new URL("https://maps.googleapis.com/maps/api/js");
-    scriptUrl.searchParams.set("key", apiKey);
-    scriptUrl.searchParams.set("libraries", "places");
-    scriptUrl.searchParams.set("loading", "async");
+    let active = true;
 
-    const script = document.createElement("script");
-    script.id = "google-maps-script";
-    script.src = scriptUrl.toString();
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
-      if (hasGoogleMaps()) setIsLoaded(true);
+    loadGoogleMapsApi(apiKey)
+      .then(() => {
+        if (active) setIsLoaded(true);
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+
+    return () => {
+      active = false;
     };
-    script.onerror = () => console.error("Failed to load Google Maps");
-
-    document.head.appendChild(script);
   }, []);
 
   useEffect(() => {
@@ -186,7 +267,7 @@ export default function LocationPicker({
   }, [initialLat, initialLng]);
 
   useEffect(() => {
-    if (!isLoaded || !hasGoogleMaps()) return;
+    if (!isLoaded || !hasGoogleMapsCore()) return;
 
     const city = (geocodeCity || "").trim();
     const county = (geocodeCounty || "").trim();
@@ -226,7 +307,6 @@ export default function LocationPicker({
       didSet = true;
       setSelectedLocation({ lat, lng });
       setIsConfirmed(false);
-      updateLocationName(lat, lng);
     };
 
     const getIpLocation = async () => {
@@ -251,15 +331,17 @@ export default function LocationPicker({
       () => getIpLocation(),
       { enableHighAccuracy: false, timeout: 4000, maximumAge: 5 * 60 * 1000 }
     );
-  }, [autoLocate, initialLat, initialLng, updateLocationName]);
+  }, [autoLocate, initialLat, initialLng]);
 
   useEffect(() => {
-    if (!isLoaded || !mapContainerRef.current || !hasGoogleMaps()) return;
+    if (!isLoaded || !mapContainerRef.current || !hasGoogleMapsCore()) return;
 
     const defaultCenter = { lat: 45.9432, lng: 24.9668 };
     const initialCenter = selectedLocation || defaultCenter;
 
     if (!mapRef.current) {
+      if (typeof google.maps.Map !== "function") return;
+
       const map = new google.maps.Map(mapContainerRef.current, {
         zoom: selectedLocation ? 14 : 10,
         center: initialCenter,
@@ -286,7 +368,7 @@ export default function LocationPicker({
   }, [isDarkMode, isLoaded, selectedLocation, updateMarker]);
 
   useEffect(() => {
-    if (!isLoaded || !searchValue || !hasGoogleMaps()) {
+    if (!isLoaded || !searchValue || !hasGoogleMapsPlaces()) {
       setPredictions([]);
       return;
     }
@@ -302,12 +384,20 @@ export default function LocationPicker({
   }, [isLoaded, searchValue]);
 
   useEffect(() => {
-    if (!selectedLocation || !mapRef.current) return;
-    updateMarker(mapRef.current, selectedLocation.lat, selectedLocation.lng);
-    updateLocationName(selectedLocation.lat, selectedLocation.lng);
-  }, [selectedLocation, updateLocationName, updateMarker]);
+    if (!selectedLocation) return;
+
+    if (mapRef.current) {
+      updateMarker(mapRef.current, selectedLocation.lat, selectedLocation.lng);
+    }
+
+    if (isLoaded) {
+      updateLocationName(selectedLocation.lat, selectedLocation.lng);
+    }
+  }, [isLoaded, selectedLocation, updateLocationName, updateMarker]);
 
   const onSelectPrediction = (prediction: Prediction) => {
+    if (!hasGoogleMapsCore()) return;
+
     const geocoder = new google.maps.Geocoder();
     geocoder.geocode({ placeId: prediction.place_id }, (results, status) => {
       if (status !== google.maps.GeocoderStatus.OK || !results?.[0]?.geometry?.location) return;
@@ -329,7 +419,7 @@ export default function LocationPicker({
 
   const handleSearchSubmit = useCallback(() => {
     const query = searchValue.trim();
-    if (!query || !hasGoogleMaps()) return;
+    if (!query || !hasGoogleMapsCore()) return;
 
     setIsSearching(true);
     const geocoder = new google.maps.Geocoder();
@@ -369,7 +459,6 @@ export default function LocationPicker({
 
         setSelectedLocation({ lat, lng });
         setIsConfirmed(false);
-        updateLocationName(lat, lng);
 
         if (!mapRef.current) return;
         mapRef.current.setCenter({ lat, lng });
@@ -392,6 +481,8 @@ export default function LocationPicker({
     let city = initialCity || "";
 
     try {
+      if (!hasGoogleMapsCore()) throw new Error("Google Maps nu este inca disponibil.");
+
       const geocoder = new google.maps.Geocoder();
       await new Promise<void>((resolve) => {
         geocoder.geocode({ location: { lat: selectedLocation.lat, lng: selectedLocation.lng } }, (results, status) => {

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import DarkModeToggle from "./DarkModeToggle";
@@ -48,13 +47,12 @@ export default function Navbar() {
             aria-label="cabn.ro - Pagina principala"
             className="group flex shrink-0 select-none items-center gap-3 pl-2 sm:pl-3 lg:pl-5"
           >
-            <Image
+            <img
               src="/images/logo.svg"
               alt="cabn.ro - exploram cazari autentice"
               width={101}
-              height={150}
-              style={{ height: "auto" }}
-              priority
+              height={38}
+              className="block h-[38px] w-[101px]"
             />
           </Link>
 
