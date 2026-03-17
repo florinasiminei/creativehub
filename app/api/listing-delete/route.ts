@@ -10,7 +10,8 @@ export async function POST(request: Request) {
     const requiredToken = process.env.INVITE_TOKEN;
     const inviteToken = request.headers.get('x-invite-token');
     const hasInvite = requiredToken && inviteToken && inviteToken === requiredToken;
-    if (role !== 'admin' && !hasInvite) {
+    const hasRole = role === 'admin' || role === 'staff';
+    if (!hasRole && !hasInvite) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

@@ -94,12 +94,14 @@ export default function DraftActions({
   };
 
   const viewHref = slug ? (isPublished ? `/cazare/${slug}` : `/cazare/${slug}?preview=1&id=${id}`) : "";
+  const actionClassName =
+    "inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-xl px-2.5 py-2 text-center text-[11px] font-medium leading-none tracking-[-0.01em] transition disabled:opacity-60 sm:text-xs";
 
   return (
-    <div className="mt-3 grid grid-cols-2 gap-2">
+    <div className="mt-3 grid grid-cols-2 gap-1.5">
       <Link
         href={`/edit-property/${id}`}
-        className="rounded-xl bg-gray-100 px-3 py-2 text-center text-xs font-medium text-gray-700 transition hover:bg-gray-200"
+        className={`${actionClassName} bg-gray-100 text-gray-700 hover:bg-gray-200`}
       >
         Editeaza
       </Link>
@@ -107,7 +109,7 @@ export default function DraftActions({
       <button
         type="button"
         onClick={togglePublish}
-        className="rounded-xl bg-blue-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-blue-700 disabled:opacity-60"
+        className={`${actionClassName} bg-blue-600 text-white hover:bg-blue-700`}
         disabled={loading}
       >
         {isPublished ? "Retrage (draft)" : "Publica"}
@@ -117,7 +119,7 @@ export default function DraftActions({
         <button
           type="button"
           onClick={remove}
-          className="rounded-xl bg-red-100 px-3 py-2 text-xs font-medium text-red-700 transition hover:bg-red-200 disabled:opacity-60"
+          className={`${actionClassName} bg-red-100 text-red-700 hover:bg-red-200`}
           disabled={loading}
         >
           Sterge
@@ -128,7 +130,7 @@ export default function DraftActions({
         <button
           type="button"
           onClick={copyClientLink}
-          className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-emerald-700 disabled:opacity-60"
+          className={`${actionClassName} bg-emerald-600 text-white hover:bg-emerald-700`}
           disabled={loading}
         >
           {copied ? "Copiat" : "Link edit"}
@@ -138,7 +140,7 @@ export default function DraftActions({
       {slug && (
         <Link
           href={viewHref}
-          className="rounded-xl bg-emerald-50 px-3 py-2 text-center text-xs font-medium text-emerald-700 transition hover:bg-emerald-100"
+          className={`${actionClassName} bg-emerald-50 text-emerald-700 hover:bg-emerald-100`}
         >
           Vezi
         </Link>

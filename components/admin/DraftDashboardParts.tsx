@@ -225,7 +225,7 @@ export function PropertyDraftCard({
       <div className="p-4">
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <StatusPill tone="neutral">{item.tip}</StatusPill>
-          {item.termsAccepted && <StatusPill tone="blue">Client completat</StatusPill>}
+          {item.termsAccepted && <StatusPill tone="blue">Client OK</StatusPill>}
           <StatusPill tone={item.status === "publicat" ? "emerald" : item.status === "inactiv" ? "amber" : "orange"}>
             {item.status === "publicat" ? "Publicat" : item.status === "inactiv" ? "Inactiv" : "Draft"}
           </StatusPill>

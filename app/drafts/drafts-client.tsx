@@ -79,8 +79,8 @@ export default function DraftsClient({
   const [attractionItems, setAttractionItems] = useState(attractions);
   const [attractionActionLoadingId, setAttractionActionLoadingId] = useState<string | null>(null);
 
-  const canDelete = role === "admin";
   const canStaffActions = role === "staff" || role === "admin";
+  const canDelete = canStaffActions;
 
   const baseUrl = useMemo(() => {
     if (siteUrl) return siteUrl.replace(/\/$/, "");
@@ -406,7 +406,7 @@ export default function DraftsClient({
                 description="Momentan nu exista proprietati completate de client si inca nepublicate."
               />
             ) : (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                 {visibleItems.map((item, index) => {
                   const isDragging = dragId === item.id;
                   const isOver = overId === item.id && dragId !== item.id;
@@ -489,7 +489,7 @@ export default function DraftsClient({
                 description="Nu exista atractii care sa corespunda filtrului selectat."
               />
             ) : (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                 {visibleAttractions.map((item, index) => (
                   <AttractionDraftCard
                     key={item.id}
