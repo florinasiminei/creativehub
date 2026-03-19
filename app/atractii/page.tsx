@@ -1,10 +1,20 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { getCanonicalSiteUrl } from "@/lib/siteUrl";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { getCanonicalSiteUrl, toCanonicalUrl } from "@/lib/siteUrl";
+import { buildPageMetadata } from "@/lib/seoMetadata";
+import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonLd";
 
 export const revalidate = 60 * 30;
+
+const siteUrl = getCanonicalSiteUrl();
+const pagePath = "/atractii";
+const pageUrl = `${siteUrl}${pagePath}`;
+const pageTitle = "Atractii";
+const pageDescription =
+  "Atractii si experiente locale langa cabane si pensiuni, publicate de gazde si administratori.";
+const socialDescription = "Atractii si experiente locale langa cabane si pensiuni.";
 
 type AttractionRow = {
   id: string;
@@ -29,39 +39,13 @@ type AttractionCard = {
   image: string;
 };
 
-const siteUrl = getCanonicalSiteUrl();
-const defaultSocialImage = "/images/og-default.png";
-
-export const metadata: Metadata = {
-  title: "Atractii",
-  description:
-    "Atractii si experiente locale langa cabane si pensiuni, publicate de gazde si administratori.",
-  alternates: {
-    canonical: toCanonicalUrl("/atractii"),
-  },
-  openGraph: {
-    title: "Atractii",
-    description: "Atractii si experiente locale langa cabane si pensiuni.",
-    url: `${siteUrl}/atractii`,
-    siteName: "cabn",
-    locale: "ro_RO",
-    type: "website",
-    images: [
-      {
-        url: defaultSocialImage,
-        width: 1200,
-        height: 630,
-        alt: "Atractii cabn.ro",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Atractii",
-    description: "Atractii si experiente locale langa cabane si pensiuni.",
-    images: [defaultSocialImage],
-  },
-};
+export const metadata: Metadata = buildPageMetadata({
+  title: pageTitle,
+  description: pageDescription,
+  pathname: pagePath,
+  socialDescription,
+  imageAlt: "Atractii cabn.ro",
+});
 
 function formatLocation(row: AttractionRow): string {
   const parts = [row.location_name, row.sat, row.city, row.judet]
@@ -116,15 +100,55 @@ async function getPublishedAttractions(): Promise<AttractionCard[]> {
 
 export default async function AtractiiPage() {
   const attractions = await getPublishedAttractions();
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "Acasa", item: siteUrl },
+    { name: "Atractii", item: pageUrl },
+  ]);
+  const collectionJsonLd = buildCollectionPageJsonLd({
+    siteUrl,
+    pageUrl,
+    name: pageTitle,
+    description: pageDescription,
+  });
+  const itemListJsonLd =
+    attractions.length > 0
+      ? {
+          "@context": "https://schema.org",
+          "@type": "ItemList",
+          name: "Atractii locale pe cabn.ro",
+          itemListOrder: "https://schema.org/ItemListOrderAscending",
+          numberOfItems: attractions.length,
+          itemListElement: attractions.map((item, index) => ({
+            "@type": "ListItem",
+            position: index + 1,
+            url: new URL(`/atractie/${item.slug}`, siteUrl).toString(),
+            name: item.title,
+          })),
+        }
+      : null;
 
   return (
     <div className="min-h-screen bg-white text-zinc-900 dark:bg-transparent dark:text-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }}
+      />
+      {itemListJsonLd ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
+        />
+      ) : null}
       <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
         <header className="mb-10 space-y-3">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-600/80">
             cabn.ro
           </p>
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Atractii</h1>
+          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">{pageTitle}</h1>
           <p className="max-w-2xl text-base text-zinc-600 dark:text-zinc-300">
             Descopera atractii locale publicate pe platforma, pe care le poti combina cu
             cazarea potrivita.
@@ -200,7 +224,9 @@ export default async function AtractiiPage() {
                         </span>
                       ) : null}
                     </div>
-                    <p className="line-clamp-1 text-sm text-zinc-600 dark:text-zinc-300">{item.location}</p>
+                    <p className="line-clamp-1 text-sm text-zinc-600 dark:text-zinc-300">
+                      {item.location}
+                    </p>
                     {item.description ? (
                       <p className="line-clamp-2 text-sm text-zinc-500 dark:text-zinc-400">
                         {item.description}

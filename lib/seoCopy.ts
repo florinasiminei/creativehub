@@ -17,25 +17,26 @@ function sanitizeText(value: string): string {
   return collapseSpaces(stripHtml(normalizeUnicode(value)));
 }
 
-function clampMetaText(value: string, maxLength: number): string {
+function clampMetaText(value: string, maxLength: number, appendEllipsis: boolean): string {
   const normalized = sanitizeText(value);
   if (!normalized) return "";
   if (normalized.length <= maxLength) return normalized;
 
-  const sliced = normalized.slice(0, maxLength - 1).trim();
+  const sliceLimit = appendEllipsis ? maxLength - 1 : maxLength;
+  const sliced = normalized.slice(0, sliceLimit).trim();
   const lastSpace = sliced.lastIndexOf(" ");
-  if (lastSpace > Math.floor(maxLength * 0.6)) {
-    return `${sliced.slice(0, lastSpace).trim()}…`;
-  }
-  return `${sliced}…`;
+  const trimmed =
+    lastSpace > Math.floor(maxLength * 0.6) ? sliced.slice(0, lastSpace).trim() : sliced;
+
+  return appendEllipsis ? `${trimmed}…` : trimmed;
 }
 
 export function clampMetaTitle(value: string): string {
-  return clampMetaText(value, META_TITLE_MAX);
+  return clampMetaText(value, META_TITLE_MAX, false);
 }
 
 export function clampMetaDescription(value: string): string {
-  return clampMetaText(value, META_DESCRIPTION_MAX);
+  return clampMetaText(value, META_DESCRIPTION_MAX, true);
 }
 
 function withPreposition(scope?: string, preposition = "în"): string {
@@ -47,7 +48,8 @@ function withPreposition(scope?: string, preposition = "în"): string {
   return `${preposition} ${s}`;
 }
 
-const A_FRAME_LABEL = "Cabane A‑Frame";
+const A_FRAME_LABEL = "Cabane A-Frame";
+const SEO_COLLECTION_TITLE_BASE = "Cabane premium și retreat-uri";
 
 // H1/hero text: keep it expressive, without clamp.
 export const SEO_COLLECTION_HEADLINE =
@@ -82,7 +84,7 @@ export function getSeoTypeLabel(typeSlug: string, fallbackLabel: string): string
 
 export function buildSeoCollectionTitle(scope?: string): string {
   const suffix = withPreposition(scope);
-  return clampMetaTitle(`Cabane premium, tiny houses și retreat-uri ${suffix}`.trim());
+  return clampMetaTitle(`${SEO_COLLECTION_TITLE_BASE} ${suffix}`.trim());
 }
 
 const COLLECTION_DESCRIPTIONS = [
@@ -112,7 +114,7 @@ const TYPE_DESCRIPTIONS = [
   (label: string, scopeTxt: string) =>
     `Explorează ${label} ${scopeTxt}, selectate cu grijă pentru experiențe premium în natură. Toate locațiile sunt verificate.`,
   (label: string, scopeTxt: string) =>
-    `Alege ${label} ${scopeTxt}, din colecția CABN – spații verificate și curatoriate pentru momente de neuitat.`,
+    `Alege ${label} ${scopeTxt}, din colecția CABN - spații verificate și curatoriate pentru momente de neuitat.`,
 ];
 
 export function buildSeoTypeDescription(typeLabel: string, scope?: string, variant = 0): string {

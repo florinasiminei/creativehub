@@ -6,6 +6,7 @@ import { mapListingSummary } from "@/lib/transformers";
 import { sortFacilitiesByPriority } from "@/lib/facilitiesCatalog";
 import { getCanonicalSiteUrl, toCanonicalUrl } from "@/lib/siteUrl";
 import { buildCollectionPageJsonLd } from "@/lib/jsonLd";
+import { buildPageMetadata } from "@/lib/seoMetadata";
 import {
   SEO_COLLECTION_DESCRIPTION,
   SEO_COLLECTION_HEADLINE,
@@ -27,35 +28,14 @@ const homeCollectionJsonLd = buildCollectionPageJsonLd({
   description: homeDescription,
 });
 
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: homeMetaTitle,
   description: homeDescription,
-  alternates: {
-    canonical: homePageUrl,
-  },
-  openGraph: {
-    type: "website",
-    siteName: "cabn",
-    locale: "ro_RO",
-    title: homeHeadline,
-    description: homeDescription,
-    url: siteUrl,
-    images: [
-      {
-        url: defaultSocialImage,
-        width: 1200,
-        height: 630,
-        alt: "CABN",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: homeHeadline,
-    description: homeDescription,
-    images: [defaultSocialImage],
-  },
-};
+  pathname: "/",
+  socialTitle: homeHeadline,
+  imageUrl: defaultSocialImage,
+  imageAlt: "CABN",
+});
 
 async function getHomeData() {
   const baseSelect = `

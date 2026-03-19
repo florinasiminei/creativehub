@@ -15,43 +15,17 @@ import {
   Sparkles,
   Users,
 } from "lucide-react";
-import { getCanonicalSiteUrl, toCanonicalUrl } from "@/lib/siteUrl";
+import { buildPageMetadata } from "@/lib/seoMetadata";
 
-const siteUrl = getCanonicalSiteUrl();
-const defaultSocialImage = "/images/og-default.png";
-
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: "Despre noi",
   description:
     "Cine este echipa cabn, ce face compania, istoricul, misiunea, valorile si datele legale.",
-  alternates: {
-    canonical: toCanonicalUrl("/about-us"),
-  },
-  openGraph: {
-    title: "Despre noi",
-    description:
-      "Pagina oficiala despre echipa cabn, activitate, istoric, misiune si contact.",
-    url: `${siteUrl}/about-us`,
-    siteName: "cabn",
-    locale: "ro_RO",
-    type: "website",
-    images: [
-      {
-        url: defaultSocialImage,
-        width: 1200,
-        height: 630,
-        alt: "Despre cabn.ro",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Despre noi",
-    description:
-      "Pagina oficiala despre echipa cabn, activitate, istoric, misiune si contact.",
-    images: [defaultSocialImage],
-  },
-};
+  pathname: "/about-us",
+  socialDescription:
+    "Pagina oficiala despre echipa cabn, activitate, istoric, misiune si contact.",
+  imageAlt: "Despre cabn.ro",
+});
 
 const socialLinks = [
   {

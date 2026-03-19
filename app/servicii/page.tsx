@@ -12,43 +12,17 @@ import {
   Zap,
 } from "lucide-react";
 import ContactForm from "@/components/forms/ContactForm";
-import { getCanonicalSiteUrl, toCanonicalUrl } from "@/lib/siteUrl";
+import { buildPageMetadata } from "@/lib/seoMetadata";
 
-const siteUrl = getCanonicalSiteUrl();
-const defaultSocialImage = "/images/og-default.png";
-
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: "Servicii",
   description:
     "Servicii de promovare pentru proprietăți turistice: strategie, foto-video, website, social media, proces clar și CTA direct.",
-  alternates: {
-    canonical: toCanonicalUrl("/servicii"),
-  },
-  openGraph: {
-    title: "Servicii",
-    description:
-      "Vezi ce oferim concret: pachete, servicii specifice, proces de lucru și modalități de colaborare.",
-    url: `${siteUrl}/servicii`,
-    siteName: "cabn",
-    locale: "ro_RO",
-    type: "website",
-    images: [
-      {
-        url: defaultSocialImage,
-        width: 1200,
-        height: 630,
-        alt: "Servicii cabn.ro",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Servicii",
-    description:
-      "Vezi ce oferim concret: pachete, servicii specifice, proces de lucru si modalitati de colaborare.",
-    images: [defaultSocialImage],
-  },
-};
+  pathname: "/servicii",
+  socialDescription:
+    "Vezi ce oferim concret: pachete, servicii specifice, proces de lucru și modalități de colaborare.",
+  imageAlt: "Servicii cabn.ro",
+});
 
 const SERVICES = [
   {

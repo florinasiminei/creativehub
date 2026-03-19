@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getCanonicalSiteUrl, toCanonicalUrl } from "@/lib/siteUrl";
-import { buildSocialMetadata } from "@/lib/seoMetadata";
+import { buildPageMetadata } from "@/lib/seoMetadata";
+import { buildBreadcrumbJsonLd, buildTouristAttractionJsonLd } from "@/lib/jsonLd";
 import PropertyImageGrid from "@/components/listing/PropertyImageGrid";
 import SubtleBackLink from "@/components/SubtleBackLink";
 
@@ -130,23 +131,42 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const image = attraction.images[0] || "/images/logo.svg";
   const canonical = toCanonicalUrl(`/atractie/${attraction.slug}`);
 
-  return {
+  return buildPageMetadata({
     title,
     description,
-    alternates: { canonical },
-    ...buildSocialMetadata({
-      title,
-      description,
-      canonicalUrl: `${siteUrl}/atractie/${attraction.slug}`,
-      imageUrl: image,
-      imageAlt: title,
-    }),
-  };
+    canonicalUrl: canonical,
+    imageUrl: image,
+    imageAlt: title,
+  });
 }
 
 export default async function AtractiePage({ params }: PageProps) {
   const attraction = await fetchAttraction(params.slug);
   if (!attraction) notFound();
+
+  const canonicalUrl = toCanonicalUrl(`/atractie/${attraction.slug}`);
+  const absoluteImages = attraction.images.map((image) =>
+    image.startsWith("http://") || image.startsWith("https://")
+      ? image
+      : new URL(image, siteUrl).toString()
+  );
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "Acasa", item: siteUrl },
+    { name: "Atractii", item: `${siteUrl}/atractii` },
+    { name: attraction.title, item: canonicalUrl },
+  ]);
+  const attractionJsonLd = buildTouristAttractionJsonLd({
+    url: canonicalUrl,
+    name: attraction.title,
+    description: attraction.description,
+    images: absoluteImages,
+    locationLabel: attraction.locationLabel,
+    geo:
+      attraction.lat !== null && attraction.lng !== null
+        ? { lat: attraction.lat, lng: attraction.lng }
+        : undefined,
+    price: attraction.price,
+  });
 
   const mapsHref =
     attraction.lat !== null && attraction.lng !== null
@@ -156,6 +176,14 @@ export default async function AtractiePage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-white text-zinc-900 dark:bg-transparent dark:text-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(attractionJsonLd) }}
+      />
       <main className="mx-auto max-w-6xl px-4 pt-3 pb-10 sm:px-6 lg:px-8">
         <div className="mb-2">
           <SubtleBackLink href="/atractii" label="Inapoi la atractii" />

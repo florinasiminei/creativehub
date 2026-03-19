@@ -10,6 +10,7 @@ export function buildListingPageJsonLd({
   locationSlug,
   description,
   items,
+  includeBreadcrumb = true,
 }: {
   siteUrl: string;
   pageUrl: string;
@@ -18,6 +19,7 @@ export function buildListingPageJsonLd({
   locationLabel?: string;
   locationSlug?: string;
   description: string;
+  includeBreadcrumb?: boolean;
   items: Array<{
     name: string;
     url: string;
@@ -29,14 +31,14 @@ export function buildListingPageJsonLd({
   }>;
 }) {
   const breadcrumbItems = [
-    { '@type': 'ListItem', position: 1, name: 'Acasă', item: siteUrl },
-    { '@type': 'ListItem', position: 2, name: 'Cazări', item: `${siteUrl}/cazari` },
-    { '@type': 'ListItem', position: 3, name: typeLabel, item: `${siteUrl}/cazari/${typeSlug}` },
+    { "@type": "ListItem", position: 1, name: "Acasă", item: siteUrl },
+    { "@type": "ListItem", position: 2, name: "Cazări", item: `${siteUrl}/cazari` },
+    { "@type": "ListItem", position: 3, name: typeLabel, item: `${siteUrl}/cazari/${typeSlug}` },
   ];
 
   if (locationLabel && pageUrl) {
     breadcrumbItems.push({
-      '@type': 'ListItem',
+      "@type": "ListItem",
       position: 4,
       name: locationLabel,
       item: pageUrl,
@@ -44,30 +46,37 @@ export function buildListingPageJsonLd({
   }
 
   const breadcrumb = {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
     itemListElement: breadcrumbItems,
   };
 
   const itemList = {
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    name: `${typeLabel} în ${locationLabel || 'România'}`,
-    itemListOrder: 'https://schema.org/ItemListOrderAscending',
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: `${typeLabel} în ${locationLabel || "România"}`,
+    itemListOrder: "https://schema.org/ItemListOrderAscending",
     numberOfItems: items.length,
     itemListElement: items.map((it, idx) => {
       const lodgingItem: any = {
-        '@type': 'LodgingBusiness',
+        "@type": "LodgingBusiness",
         name: it.name,
         url: it.url,
         ...(it.image && { image: it.image }),
-        ...(it.addressLocality && { address: { '@type': 'PostalAddress', addressLocality: it.addressLocality, addressRegion: it.addressRegion, addressCountry: 'RO' } }),
+        ...(it.addressLocality && {
+          address: {
+            "@type": "PostalAddress",
+            addressLocality: it.addressLocality,
+            addressRegion: it.addressRegion,
+            addressCountry: "RO",
+          },
+        }),
         ...(it.priceRange && { priceRange: it.priceRange }),
         ...(it.aggregateRating && { aggregateRating: it.aggregateRating }),
       };
 
       return {
-        '@type': 'ListItem',
+        "@type": "ListItem",
         position: idx + 1,
         item: lodgingItem,
       };
@@ -75,19 +84,19 @@ export function buildListingPageJsonLd({
   };
 
   const webPage = {
-    '@context': 'https://schema.org',
-    '@type': 'WebPage',
-    name: `Cazare ${typeLabel.toLowerCase()} în ${locationLabel || 'România'} | cabn.ro`,
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: `Cazare ${typeLabel.toLowerCase()} în ${locationLabel || "România"} | cabn.ro`,
     url: pageUrl,
-    description: description,
+    description,
     isPartOf: {
-      '@type': 'WebSite',
-      name: 'cabn',
+      "@type": "WebSite",
+      name: "cabn",
       url: siteUrl,
     },
   };
 
-  return [webPage, breadcrumb, itemList];
+  return includeBreadcrumb ? [webPage, breadcrumb, itemList] : [webPage, itemList];
 }
 
 export function buildPropertyJsonLd({
@@ -112,30 +121,30 @@ export function buildPropertyJsonLd({
   rating?: { ratingValue: number; reviewCount: number };
 }) {
   const obj: any = {
-    '@context': 'https://schema.org',
-    '@type': 'LodgingBusiness',
-    name: name,
-    url: url,
-    description: description,
+    "@context": "https://schema.org",
+    "@type": "LodgingBusiness",
+    name,
+    url,
+    description,
     image: images?.length ? images : undefined,
     address: {
-      '@type': 'PostalAddress',
+      "@type": "PostalAddress",
       ...(address.street ? { streetAddress: address.street } : {}),
       ...(address.locality ? { addressLocality: address.locality } : {}),
       ...(address.region ? { addressRegion: address.region } : {}),
       ...(address.postalCode ? { postalCode: address.postalCode } : {}),
-      addressCountry: 'RO',
+      addressCountry: "RO",
     },
     ...(priceRange ? { priceRange } : {}),
   };
 
   if (geo) {
-    obj.geo = { '@type': 'GeoCoordinates', latitude: geo.lat, longitude: geo.lng };
+    obj.geo = { "@type": "GeoCoordinates", latitude: geo.lat, longitude: geo.lng };
   }
 
   if (amenities?.length) {
     obj.amenityFeature = amenities.map((a) => ({
-      '@type': 'LocationFeatureSpecification',
+      "@type": "LocationFeatureSpecification",
       name: a,
       value: true,
     }));
@@ -143,7 +152,7 @@ export function buildPropertyJsonLd({
 
   if (rating) {
     obj.aggregateRating = {
-      '@type': 'AggregateRating',
+      "@type": "AggregateRating",
       ratingValue: rating.ratingValue,
       reviewCount: rating.reviewCount,
     };
@@ -162,22 +171,22 @@ export function buildPropertyBreadcrumbJsonLd({
   listingName: string;
 }) {
   return {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Acasa', item: siteUrl },
-      { '@type': 'ListItem', position: 2, name: 'Cazari', item: `${siteUrl}/cazari` },
-      { '@type': 'ListItem', position: 3, name: listingName, item: pageUrl },
+      { "@type": "ListItem", position: 1, name: "Acasa", item: siteUrl },
+      { "@type": "ListItem", position: 2, name: "Cazari", item: `${siteUrl}/cazari` },
+      { "@type": "ListItem", position: 3, name: listingName, item: pageUrl },
     ],
   };
 }
 
 export function buildBreadcrumbJsonLd(items: Array<{ name: string; item: string }>) {
   return {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
     itemListElement: items.map((entry, index) => ({
-      '@type': 'ListItem',
+      "@type": "ListItem",
       position: index + 1,
       name: entry.name,
       item: entry.item,
@@ -185,16 +194,15 @@ export function buildBreadcrumbJsonLd(items: Array<{ name: string; item: string 
   };
 }
 
-
 export function buildFaqJsonLd(pageUrl: string, faqs: Array<{ q: string; a: string }>) {
   if (!faqs || faqs.length === 0) return null;
   return {
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
     mainEntity: faqs.map((f) => ({
-      '@type': 'Question',
+      "@type": "Question",
       name: f.q,
-      acceptedAnswer: { '@type': 'Answer', 'text': f.a },
+      acceptedAnswer: { "@type": "Answer", text: f.a },
     })),
     url: pageUrl,
   };
@@ -283,4 +291,60 @@ export function buildCollectionPageJsonLd({
       "@id": `${siteUrl}#organization`,
     },
   };
+}
+
+export function buildTouristAttractionJsonLd({
+  url,
+  name,
+  description,
+  images,
+  locationLabel,
+  geo,
+  price,
+}: {
+  url: string;
+  name: string;
+  description: string;
+  images?: string[];
+  locationLabel?: string;
+  geo?: { lat: number; lng: number };
+  price?: number | null;
+}) {
+  const obj: any = {
+    "@context": "https://schema.org",
+    "@type": "TouristAttraction",
+    url,
+    name,
+    description,
+    ...(images?.length ? { image: images } : {}),
+    ...(locationLabel
+      ? {
+          address: {
+            "@type": "PostalAddress",
+            addressLocality: locationLabel,
+            addressCountry: "RO",
+          },
+        }
+      : {}),
+  };
+
+  if (geo) {
+    obj.geo = {
+      "@type": "GeoCoordinates",
+      latitude: geo.lat,
+      longitude: geo.lng,
+    };
+  }
+
+  if (typeof price === "number" && Number.isFinite(price) && price > 0) {
+    obj.offers = {
+      "@type": "Offer",
+      price,
+      priceCurrency: "RON",
+      availability: "https://schema.org/InStock",
+      url,
+    };
+  }
+
+  return obj;
 }

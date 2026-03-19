@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { toCanonicalUrl } from "@/lib/siteUrl";
 
 export const DEFAULT_SOCIAL_IMAGE = "/images/og-default.png";
-const DEFAULT_SOCIAL_IMAGE_ALT = "CABN — cabane premium, tiny houses si retreat-uri";
+const DEFAULT_SOCIAL_IMAGE_ALT = "CABN - cabane premium, tiny houses si retreat-uri";
 const DEFAULT_TWITTER_SITE = process.env.NEXT_PUBLIC_TWITTER_SITE;
 const DEFAULT_TWITTER_CREATOR = process.env.NEXT_PUBLIC_TWITTER_CREATOR;
 
@@ -14,6 +15,19 @@ type BuildSocialMetadataInput = {
   type?: "website" | "article";
   twitterSite?: string;
   twitterCreator?: string;
+};
+
+type BuildPageMetadataInput = {
+  title: string;
+  description: string;
+  pathname?: string;
+  canonicalUrl?: string;
+  socialTitle?: string;
+  socialDescription?: string;
+  imageUrl?: string;
+  imageAlt?: string;
+  type?: "website" | "article";
+  robots?: Metadata["robots"];
 };
 
 export function buildSocialMetadata({
@@ -57,5 +71,37 @@ export function buildSocialMetadata({
       ...(finalTwitterSite ? { site: finalTwitterSite } : {}),
       ...(finalTwitterCreator ? { creator: finalTwitterCreator } : {}),
     },
+  };
+}
+
+export function buildPageMetadata({
+  title,
+  description,
+  pathname,
+  canonicalUrl,
+  socialTitle,
+  socialDescription,
+  imageUrl,
+  imageAlt,
+  type = "website",
+  robots,
+}: BuildPageMetadataInput): Metadata {
+  const resolvedCanonicalUrl = canonicalUrl || (pathname ? toCanonicalUrl(pathname) : "");
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: resolvedCanonicalUrl,
+    },
+    ...buildSocialMetadata({
+      title: socialTitle || title,
+      description: socialDescription || description,
+      canonicalUrl: resolvedCanonicalUrl,
+      imageUrl,
+      imageAlt,
+      type,
+    }),
+    ...(robots ? { robots } : {}),
   };
 }

@@ -8,7 +8,7 @@ import { getCanonicalSiteUrl } from "@/lib/siteUrl";
 import { resolveListingsRouteIndexability } from "@/lib/seoRouteIndexing";
 import { countPublishedListingsByCounty } from "@/lib/seoListingsCounts";
 import { buildSeoCollectionDescription, buildSeoCollectionTitle } from "@/lib/seoCopy";
-import { buildSocialMetadata } from "@/lib/seoMetadata";
+import { buildPageMetadata } from "@/lib/seoMetadata";
 import { buildBreadcrumbJsonLd, buildListingPageJsonLd } from "@/lib/jsonLd";
 import { findCountyBySlug, getCounties } from "@/lib/counties";
 import { buildTypeCountyPath } from "@/lib/typeCountyRoutes";
@@ -41,19 +41,12 @@ export async function generateMetadata({ params }: PageProps) {
     publishedListingsCount
   );
 
-  return {
+  return buildPageMetadata({
     title,
     description,
-    alternates: {
-      canonical,
-    },
-    ...buildSocialMetadata({
-      title,
-      description,
-      canonicalUrl: canonical,
-    }),
+    canonicalUrl: canonical,
     robots: shouldIndex ? undefined : { index: false, follow: true },
-  };
+  });
 }
 
 async function getCountyListings(countyName: string): Promise<Cazare[]> {
@@ -171,6 +164,7 @@ export default async function CountyPage({ params }: PageProps) {
     locationLabel: `Judetul ${county.name}`,
     locationSlug: county.slug,
     description,
+    includeBreadcrumb: false,
     items: listings.map((l) => ({
       name: l.title,
       url: `${siteUrl}/cazare/${l.slug}`,
@@ -186,7 +180,7 @@ export default async function CountyPage({ params }: PageProps) {
   ]);
   const jsonLdScripts: Record<string, unknown>[] = [
     breadcrumbJsonLd,
-    ...listingJsonLd.filter((obj) => (obj as any)?.["@type"] !== "BreadcrumbList"),
+    ...listingJsonLd,
   ];
 
   return (

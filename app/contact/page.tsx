@@ -1,42 +1,17 @@
 ﻿import type { Metadata } from "next";
 import { FaFacebookF, FaInstagram, FaTiktok, FaWhatsapp, FaPhoneAlt, FaEnvelope } from "react-icons/fa";
 import ContactForm from "@/components/forms/ContactForm";
-import { getCanonicalSiteUrl, toCanonicalUrl } from "@/lib/siteUrl";
+import { buildPageMetadata } from "@/lib/seoMetadata";
 
-const siteUrl = getCanonicalSiteUrl();
-const defaultSocialImage = "/images/og-default.png";
-
-export const metadata: Metadata = {
+export const metadata: Metadata = buildPageMetadata({
   title: "Contact",
   description:
     "Scrie echipei cabn pentru marketing, foto-video și listări de cabane și pensiuni. Răspundem rapid cu o soluție clară.",
-  alternates: {
-    canonical: toCanonicalUrl("/contact"),
-  },
-  openGraph: {
-    title: "Contact",
-    description:
-      "Contactează echipa cabn pentru marketing, foto-video și listări de cabane și pensiuni.",
-    url: `${siteUrl}/contact`,
-    siteName: "cabn",
-    locale: "ro_RO",
-    type: "website",
-    images: [
-      {
-        url: defaultSocialImage,
-        width: 1200,
-        height: 630,
-        alt: "Contact cabn.ro",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Contact",
-    description: "Contactează echipa cabn pentru marketing și listări turistice.",
-    images: [defaultSocialImage],
-  },
-};
+  pathname: "/contact",
+  socialDescription:
+    "Contactează echipa cabn pentru marketing, foto-video și listări de cabane și pensiuni.",
+  imageAlt: "Contact cabn.ro",
+});
 
 const SOCIAL_LINKS = [
   {

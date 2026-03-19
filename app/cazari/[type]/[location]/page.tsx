@@ -13,9 +13,9 @@ import {
   resolveRegionCountyNames,
 } from "@/lib/seoListingsCounts";
 import { buildSeoTypeDescription, buildSeoTypeTitle, getSeoTypeLabel } from "@/lib/seoCopy";
-import { buildSocialMetadata } from "@/lib/seoMetadata";
+import { buildPageMetadata } from "@/lib/seoMetadata";
 import { allRegions, normalizeRegionText } from "@/lib/regions";
-import { buildListingPageJsonLd } from "@/lib/jsonLd";
+import { buildBreadcrumbJsonLd, buildListingPageJsonLd } from "@/lib/jsonLd";
 import {
   buildCountySegment,
   buildRegionSegment,
@@ -128,19 +128,12 @@ export async function generateMetadata({ params }: PageProps) {
       : 0;
   const shouldIndex = await resolveListingsRouteIndexability(canonicalPath, publishedListingsCount);
 
-  return {
+  return buildPageMetadata({
     title,
     description,
-    alternates: {
-      canonical,
-    },
-    ...buildSocialMetadata({
-      title,
-      description,
-      canonicalUrl: canonical,
-    }),
+    canonicalUrl: canonical,
     robots: shouldIndex ? undefined : { index: false, follow: true },
-  };
+  });
 }
 
 async function getTypeCountyListings(typeValue: string, countyName: string): Promise<Cazare[]> {
@@ -260,6 +253,7 @@ export default async function CazariLocationPage({ params }: PageProps) {
         ? location.region.slug
         : "",
     description,
+    includeBreadcrumb: false,
     items: listings.map((listing) => ({
       name: listing.title,
       url: `${siteUrl}/cazare/${listing.slug}`,
@@ -269,10 +263,20 @@ export default async function CazariLocationPage({ params }: PageProps) {
       priceRange: String(listing.price || ""),
     })),
   });
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd([
+    { name: "Acasa", item: siteUrl },
+    { name: "Cazari", item: `${siteUrl}/cazari` },
+    { name: listingType.label, item: `${siteUrl}/cazari/${listingType.slug}` },
+    { name: locationName, item: pageUrl },
+  ]);
+  const jsonLdScripts: Record<string, unknown>[] = [
+    breadcrumbJsonLd,
+    ...listingJsonLd,
+  ];
 
   return (
     <>
-      {listingJsonLd.map((obj, index) => (
+      {jsonLdScripts.map((obj, index) => (
         <script
           key={index}
           type="application/ld+json"

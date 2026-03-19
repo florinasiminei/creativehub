@@ -10,7 +10,7 @@ import {
   resolveRegionCountyNames,
 } from "@/lib/seoListingsCounts";
 import { buildSeoCollectionDescription, buildSeoCollectionTitle } from "@/lib/seoCopy";
-import { buildSocialMetadata } from "@/lib/seoMetadata";
+import { buildPageMetadata } from "@/lib/seoMetadata";
 import { findRegionBySlug, normalizeRegionText, touristRegions } from "@/lib/regions";
 import { buildBreadcrumbJsonLd, buildListingPageJsonLd } from "@/lib/jsonLd";
 import { buildRegionPagePath } from "@/lib/locationRoutes";
@@ -36,17 +36,12 @@ export async function generateMetadata({ params }: PageProps) {
     const canonicalLocality = new URL(`/localitate/${region.slug}`, siteUrl).toString();
     const title = buildSeoCollectionTitle(`în ${region.name}`);
     const description = buildSeoCollectionDescription(`în ${region.name}`);
-    return {
+    return buildPageMetadata({
       title,
       description,
-      alternates: { canonical: canonicalLocality },
-      ...buildSocialMetadata({
-        title,
-        description,
-        canonicalUrl: canonicalLocality,
-      }),
+      canonicalUrl: canonicalLocality,
       robots: { index: false, follow: true },
-    };
+    });
   }
   const title = buildSeoCollectionTitle(`în ${region.name}`);
   const description = buildSeoCollectionDescription(`în ${region.name}`);
@@ -59,21 +54,13 @@ export async function generateMetadata({ params }: PageProps) {
     publishedListingsCount
   );
 
-  return {
+  return buildPageMetadata({
     title,
     description,
-    alternates: {
-      canonical,
-    },
-    ...buildSocialMetadata({
-      title,
-      description,
-      canonicalUrl: canonical,
-    }),
+    canonicalUrl: canonical,
     robots: shouldIndex ? undefined : { index: false, follow: true },
-  };
+  });
 }
-
 
 async function getRegionListings(region: { counties: string[]; type: string; coreCities?: string[] }): Promise<Cazare[]> {
   const countyNames = resolveRegionCountyNames(region.counties);
@@ -149,6 +136,7 @@ export default async function RegionPage({ params }: PageProps) {
     locationLabel: region.name,
     locationSlug: region.slug,
     description,
+    includeBreadcrumb: false,
     items: listings.map((l) => ({
       name: l.title,
       url: `${siteUrl}/cazare/${l.slug}`,
@@ -164,7 +152,7 @@ export default async function RegionPage({ params }: PageProps) {
   ]);
   const jsonLdScripts: Record<string, unknown>[] = [
     breadcrumbJsonLd,
-    ...listingJsonLd.filter((obj) => (obj as any)?.["@type"] !== "BreadcrumbList"),
+    ...listingJsonLd,
   ];
 
   return (

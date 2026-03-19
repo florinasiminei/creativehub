@@ -10,7 +10,7 @@ import { getCanonicalSiteUrl } from '@/lib/siteUrl';
 import { resolveListingsRouteIndexability } from '@/lib/seoRouteIndexing';
 import { countPublishedListingsByType } from '@/lib/seoListingsCounts';
 import { buildSeoTypeDescription, buildSeoTypeTitle, getSeoTypeLabel } from '@/lib/seoCopy';
-import { buildSocialMetadata } from '@/lib/seoMetadata';
+import { buildPageMetadata } from '@/lib/seoMetadata';
 import { buildBreadcrumbJsonLd, buildListingPageJsonLd } from '@/lib/jsonLd';
 import { buildTypeCountyPath } from '@/lib/typeCountyRoutes';
 import type { ListingRaw } from '@/lib/types';
@@ -41,19 +41,12 @@ export async function generateMetadata({ params }: PageProps) {
     `/cazari/${listingType.slug}`,
     publishedListingsCount
   );
-  return {
+  return buildPageMetadata({
     title,
     description,
-    alternates: {
-      canonical,
-    },
-    ...buildSocialMetadata({
-      title,
-      description,
-      canonicalUrl: canonical,
-    }),
+    canonicalUrl: canonical,
     robots: shouldIndex ? undefined : { index: false, follow: true },
-  };
+  });
 }
 
 
@@ -157,6 +150,7 @@ export default async function TypePage({ params }: PageProps) {
     typeLabel: listingType.label,
     typeSlug: listingType.slug,
     description,
+    includeBreadcrumb: false,
     items: listings.map((l) => ({
       name: l.title,
       url: `${siteUrl}/cazare/${l.slug}`,
@@ -172,7 +166,7 @@ export default async function TypePage({ params }: PageProps) {
   ]);
   const jsonLdScripts: Record<string, unknown>[] = [
     breadcrumbJsonLd,
-    ...listingJsonLd.filter((obj) => (obj as any)?.["@type"] !== "BreadcrumbList"),
+    ...listingJsonLd,
   ];
 
   return (
@@ -220,7 +214,6 @@ export default async function TypePage({ params }: PageProps) {
         <section className="mt-10">
           {listings.length === 0 ? (
             <div className="rounded-3xl border border-emerald-100 bg-emerald-50/60 px-6 py-10 text-center">
-              <div className="text-5xl mb-3">🏡</div>
               <h2 className="text-2xl font-semibold text-emerald-900 mb-2">
                 Momentan nu avem {listingType.label.toLowerCase()} publicate
               </h2>

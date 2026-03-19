@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import ListingClient, { type Listing } from './ListingClient';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getCanonicalSiteUrl } from '@/lib/siteUrl';
@@ -76,6 +76,31 @@ function parseHighlights(raw: unknown) {
     .split(/\r?\n|[;,]+/)
     .map((item) => item.trim())
     .filter((item) => item.length > 0);
+}
+
+function getCanonicalListingPath(slug: string | null | undefined, fallbackSlug: string) {
+  return `/cazare/${slug || fallbackSlug}`;
+}
+
+function buildSearchParamsString(searchParams?: PageProps['searchParams']) {
+  const params = new URLSearchParams();
+  if (!searchParams) return "";
+
+  for (const [key, value] of Object.entries(searchParams)) {
+    if (typeof value === "string") {
+      params.append(key, value);
+      continue;
+    }
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (typeof item === "string") params.append(key, item);
+      }
+    }
+  }
+
+  const query = params.toString();
+  return query ? `?${query}` : "";
 }
 
 async function fetchListing(slug: string, searchParams?: PageProps['searchParams']) {
@@ -250,7 +275,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const baseTitle = listing.title;
   const titleSuffix = locationLabel ? ` | Cazare in ${locationLabel}` : "";
   const title = `${baseTitle}${titleSuffix}`;
-  const canonicalPath = listing.slug ? `/cazare/${listing.slug}` : `/cazare/${params.slug}`;
+  const canonicalPath = getCanonicalListingPath(listing.slug, params.slug);
   const canonical = new URL(canonicalPath, siteUrl).toString();
   const absoluteImage =
     image.startsWith("http://") || image.startsWith("https://")
@@ -305,8 +330,15 @@ export default async function CazarePage({ params, searchParams }: PageProps) {
     notFound();
   }
 
+  const canonicalPath = getCanonicalListingPath(listing.slug, params.slug);
+  if (params.slug !== (listing.slug || params.slug)) {
+    permanentRedirect(`${canonicalPath}${buildSearchParamsString(searchParams)}`);
+  }
+
+  const canonicalUrl = new URL(canonicalPath, siteUrl).toString();
+
   const jsonLd = buildPropertyJsonLd({
-    url: `${siteUrl}/cazare/${params.slug}`,
+    url: canonicalUrl,
     name: listing.title,
     description: listing.description,
     images: listing.images,
@@ -324,7 +356,7 @@ export default async function CazarePage({ params, searchParams }: PageProps) {
 
   const breadcrumbJsonLd = buildPropertyBreadcrumbJsonLd({
     siteUrl,
-    pageUrl: `${siteUrl}/cazare/${params.slug}`,
+    pageUrl: canonicalUrl,
     listingName: listing.title,
   });
 
