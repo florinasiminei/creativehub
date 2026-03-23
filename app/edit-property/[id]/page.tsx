@@ -157,7 +157,7 @@ export default function EditPropertyPage({ params }: any) {
     return () => {
       mounted = false;
     };
-  }, [id, isClient, listingToken, tokenReady]);
+  }, [clearFeedback, id, isClient, listingToken, setError, tokenReady]);
 
   const handleChange = (key: keyof ListingFormFields, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -235,10 +235,22 @@ export default function EditPropertyPage({ params }: any) {
       let updatedImages = images;
 
       if (files.length > 0) {
-        const { uploaded } = await upload(id, files, images.length, listingToken);
-        if (uploaded.length > 0) {
-          updatedImages = [...images, ...uploaded.map((item) => ({ id: item.id, image_url: item.url, alt: null }))];
-          setImages(updatedImages);
+        try {
+          const { uploaded } = await upload(id, files, images.length, listingToken);
+          if (uploaded.length > 0) {
+            updatedImages = [...images, ...uploaded.map((item) => ({ id: item.id, image_url: item.url, alt: null }))];
+            setImages(updatedImages);
+          }
+        } catch (error: any) {
+          const partialUploaded = Array.isArray(error?.uploaded)
+            ? error.uploaded.map((item: any) => ({ id: item.id, image_url: item.url, alt: null }))
+            : [];
+          if (partialUploaded.length > 0) {
+            updatedImages = [...images, ...partialUploaded];
+            setImages(updatedImages);
+          }
+          setError(error?.failed ? error.message : error instanceof Error ? error.message : 'Nu s-au incarcat toate imaginile.');
+          throw error;
         }
         resetFiles();
       }
@@ -268,8 +280,12 @@ export default function EditPropertyPage({ params }: any) {
 
       if (isClient) router.push('/?updated=1');
       else router.push('/drafts?updated=1');
-    } catch (error) {
-      setErrorFromUnknown(error);
+    } catch (error: any) {
+      if (Array.isArray(error?.failed)) {
+        setError(error?.message || 'Nu s-au incarcat toate imaginile.');
+      } else {
+        setErrorFromUnknown(error);
+      }
     } finally {
       setLoading(false);
     }

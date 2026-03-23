@@ -215,44 +215,33 @@ export async function uploadImageBatch<T>({
 
   const hardMaxMb = Math.round(HARD_MAX_BYTES / 1024 / 1024);
   const failed: UploadFailure[] = [];
-  const prepared: Array<{ file: File; originalName: string }> = [];
+  const uploadedAll: T[] = [];
+  const failedIndices: number[] = [];
+  const uploadedIndices: number[] = [];
 
-  for (const file of files) {
-    if (typeof file.size === 'number' && file.size > HARD_MAX_BYTES) {
-      failed.push({ name: file.name, reason: 'file_too_large' });
+  for (let index = 0; index < files.length; index += 1) {
+    const entry = files[index];
+    if (typeof entry.size === 'number' && entry.size > HARD_MAX_BYTES) {
+      failed.push({ name: entry.name, reason: 'file_too_large' });
+      failedIndices.push(index);
+      await yieldToBrowser();
       continue;
     }
 
-    const processed = await compressImageForUpload(file);
-    prepared.push({ file: processed, originalName: file.name });
-    await yieldToBrowser();
-  }
+    const processed = await compressImageForUpload(entry);
 
-  if (failed.length > 0) {
-    const onlySizeFailures = failed.every((item) => item.reason === 'file_too_large');
-    const error = new Error(
-      onlySizeFailures
-        ? `Unele imagini sunt prea mari pentru upload (maxim ${hardMaxMb}MB).`
-        : `Unele imagini sunt prea mari pentru upload (maxim ${hardMaxMb}MB).`
-    );
-    (error as Error & { failed?: UploadFailure[]; uploaded?: T[] }).failed = failed;
-    (error as Error & { failed?: UploadFailure[]; uploaded?: T[] }).uploaded = [];
-    throw error;
-  }
-
-  const uploadedAll: T[] = [];
-  for (let index = 0; index < prepared.length; index += 1) {
-    const entry = prepared[index];
     try {
-      const uploaded = await uploadFile(entry.file, startIndex + index);
+      const uploaded = await uploadFile(processed, startIndex + index);
       uploadedAll.push(uploaded);
+      uploadedIndices.push(index);
       onUploaded?.(uploaded, index);
     } catch (error: any) {
       const message = String(error?.message || '');
       failed.push({
-        name: entry.originalName,
+        name: entry.name,
         reason: isRequestTooLargeMessage(message) ? 'payload_too_large' : message || 'insert_failed',
       });
+      failedIndices.push(index);
     }
 
     await yieldToBrowser();
@@ -267,6 +256,8 @@ export async function uploadImageBatch<T>({
     );
     (error as Error & { failed?: UploadFailure[]; uploaded?: T[] }).failed = failed;
     (error as Error & { failed?: UploadFailure[]; uploaded?: T[] }).uploaded = uploadedAll;
+    (error as Error & { failedIndices?: number[] }).failedIndices = failedIndices;
+    (error as Error & { uploadedIndices?: number[] }).uploadedIndices = uploadedIndices;
     throw error;
   }
 

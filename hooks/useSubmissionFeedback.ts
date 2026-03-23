@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 export type SubmissionFeedbackTone = 'error' | 'success' | 'info';
 
@@ -16,12 +16,12 @@ export default function useSubmissionFeedback(initialTone: SubmissionFeedbackTon
 
   const failedUploadNames = useMemo(() => failedUploads.map((file) => file.name), [failedUploads]);
 
-  const clearFeedback = () => {
+  const clearFeedback = useCallback(() => {
     setMessage(null);
     setFailedUploads([]);
-  };
+  }, []);
 
-  const setFeedback = (
+  const setFeedback = useCallback((
     nextMessage: string | null,
     nextTone: SubmissionFeedbackTone = 'error',
     nextFailedUploads: SubmissionFailedUpload[] = []
@@ -29,26 +29,26 @@ export default function useSubmissionFeedback(initialTone: SubmissionFeedbackTon
     setTone(nextTone);
     setMessage(nextMessage);
     setFailedUploads(nextFailedUploads);
-  };
+  }, []);
 
-  const setError = (nextMessage: string | null, nextFailedUploads: SubmissionFailedUpload[] = []) => {
+  const setError = useCallback((nextMessage: string | null, nextFailedUploads: SubmissionFailedUpload[] = []) => {
     setFeedback(nextMessage, 'error', nextFailedUploads);
-  };
+  }, [setFeedback]);
 
-  const setSuccess = (nextMessage: string | null) => {
+  const setSuccess = useCallback((nextMessage: string | null) => {
     setFeedback(nextMessage, 'success', []);
-  };
+  }, [setFeedback]);
 
-  const setInfo = (nextMessage: string | null) => {
+  const setInfo = useCallback((nextMessage: string | null) => {
     setFeedback(nextMessage, 'info', []);
-  };
+  }, [setFeedback]);
 
-  const setErrorFromUnknown = (error: unknown, fallbackMessage = 'A aparut o eroare.') => {
+  const setErrorFromUnknown = useCallback((error: unknown, fallbackMessage = 'A aparut o eroare.') => {
     const nextMessage = error instanceof Error ? error.message : fallbackMessage;
     setError(nextMessage || fallbackMessage);
-  };
+  }, [setError]);
 
-  const setUploadError = (
+  const setUploadError = useCallback((
     error: any,
     fallbackMessage = 'Eroare la incarcarea imaginilor'
   ) => {
@@ -59,7 +59,7 @@ export default function useSubmissionFeedback(initialTone: SubmissionFeedbackTon
 
     setError(nextMessage, parsedFailed);
     return parsedFailed;
-  };
+  }, [setError]);
 
   return {
     message,

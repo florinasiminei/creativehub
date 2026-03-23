@@ -47,6 +47,11 @@ export default function ListingForm({
   onMove,
   onRemove,
   selectedImagesLocked = false,
+  galleryOrder,
+  pendingImageIds,
+  onMoveGalleryToken,
+  onReorderGalleryToken,
+  onDeleteGalleryToken,
   selectedImagesTitle,
   selectedImagesSubtitle,
   selectedFailedNames = [],
@@ -132,6 +137,11 @@ export default function ListingForm({
         onMove={onMove}
         onRemove={onRemove}
         selectedImagesLocked={selectedImagesLocked}
+        galleryOrder={galleryOrder}
+        pendingImageIds={pendingImageIds}
+        onMoveGalleryToken={onMoveGalleryToken}
+        onReorderGalleryToken={onReorderGalleryToken}
+        onDeleteGalleryToken={onDeleteGalleryToken}
         selectedImagesTitle={selectedImagesTitle}
         selectedImagesSubtitle={selectedImagesSubtitle}
         selectedFailedNames={selectedFailedNames}

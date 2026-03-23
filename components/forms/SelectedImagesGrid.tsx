@@ -1,6 +1,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react';
+import { CONSTRAINED_GRID_PREVIEW_LIMIT, isConstrainedClientDevice } from '@/lib/deviceProfile';
 
 type SelectedImagesGridProps = {
   title: string;
@@ -31,8 +32,17 @@ export default function SelectedImagesGrid({
   locked = false,
   failedNames = [],
 }: SelectedImagesGridProps) {
-  if (files.length === 0) return null;
   const failedSet = new Set(failedNames);
+  const [compactMode, setCompactMode] = React.useState(false);
+  const [expanded, setExpanded] = React.useState(false);
+
+  React.useEffect(() => {
+    setCompactMode(isConstrainedClientDevice());
+  }, []);
+
+  const visibleFiles = compactMode && !expanded ? files.slice(0, CONSTRAINED_GRID_PREVIEW_LIMIT) : files;
+
+  if (files.length === 0) return null;
 
   return (
     <div className="space-y-4">
@@ -46,11 +56,23 @@ export default function SelectedImagesGrid({
         </div>
       </div>
 
+      {compactMode && files.length > CONSTRAINED_GRID_PREVIEW_LIMIT && (
+        <button
+          type="button"
+          onClick={() => setExpanded((prev) => !prev)}
+          className="text-xs font-semibold text-emerald-700 transition hover:text-emerald-800 dark:text-emerald-300"
+        >
+          {expanded
+            ? 'Arata mai putine'
+            : `Arata toate imaginile (${files.length - CONSTRAINED_GRID_PREVIEW_LIMIT} in plus)`}
+        </button>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-        {files.map((file, idx) => (
+        {visibleFiles.map((file, idx) => (
           <div
             key={`${file.name}-${idx}`}
-            className={`overflow-hidden rounded-[24px] border bg-white shadow-[0_16px_45px_-34px_rgba(15,23,42,0.55)] dark:border-zinc-800 dark:bg-zinc-900 ${
+            className={`overflow-hidden rounded-[24px] border bg-white shadow-[0_16px_45px_-34px_rgba(15,23,42,0.55)] [content-visibility:auto] [contain-intrinsic-size:280px] dark:border-zinc-800 dark:bg-zinc-900 ${
               draggingIdx === idx ? 'ring-2 ring-emerald-500' : ''
             } ${failedSet.has(file.name) ? 'border-red-400 ring-1 ring-red-300' : ''}`}
             draggable={!locked}
@@ -65,7 +87,9 @@ export default function SelectedImagesGrid({
             }}
             onDragEnd={onDragEnd}
           >
-            <div className="relative h-56 overflow-hidden bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.16),rgba(249,250,251,0.96)_60%)] touch-pan-y sm:h-60 md:h-64 dark:bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.2),rgba(24,24,27,0.96)_60%)]">
+            <div className={`relative overflow-hidden bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.16),rgba(249,250,251,0.96)_60%)] touch-pan-y dark:bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.2),rgba(24,24,27,0.96)_60%)] ${
+              compactMode ? 'h-40 sm:h-52' : 'h-56 sm:h-60 md:h-64'
+            }`}>
               {previews[idx] && (
                 <Image
                   src={previews[idx]}
@@ -75,6 +99,11 @@ export default function SelectedImagesGrid({
                   className="relative z-10 object-contain"
                   unoptimized
                 />
+              )}
+              {!previews[idx] && (
+                <div className="absolute inset-0 flex items-center justify-center text-xs font-medium text-gray-500 dark:text-gray-400">
+                  Pregatim preview-ul...
+                </div>
               )}
               <div className="absolute left-3 top-3 rounded-full bg-white/85 px-2.5 py-1 text-xs font-semibold text-gray-700 shadow">
                 #{idx + 1}

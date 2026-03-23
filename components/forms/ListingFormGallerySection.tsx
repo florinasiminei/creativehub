@@ -22,6 +22,11 @@ type ListingFormGallerySectionProps = {
   onMove: (from: number, to: number) => void;
   onRemove: (idx: number) => void;
   selectedImagesLocked?: boolean;
+  galleryOrder?: string[];
+  pendingImageIds?: string[];
+  onMoveGalleryToken?: (token: string, direction: -1 | 1) => void;
+  onReorderGalleryToken?: (token: string, toIndex: number) => void;
+  onDeleteGalleryToken?: (token: string) => void;
   selectedImagesTitle: string;
   selectedImagesSubtitle: string;
   selectedFailedNames?: string[];
@@ -55,6 +60,11 @@ export default function ListingFormGallerySection({
   onMove,
   onRemove,
   selectedImagesLocked = false,
+  galleryOrder,
+  pendingImageIds,
+  onMoveGalleryToken,
+  onReorderGalleryToken,
+  onDeleteGalleryToken,
   selectedImagesTitle,
   selectedImagesSubtitle,
   selectedFailedNames = [],
@@ -90,6 +100,11 @@ export default function ListingFormGallerySection({
         onMove={onMove}
         onRemove={onRemove}
         selectedImagesLocked={selectedImagesLocked}
+        galleryOrder={galleryOrder}
+        pendingImageIds={pendingImageIds}
+        onMoveGalleryToken={onMoveGalleryToken}
+        onReorderGalleryToken={onReorderGalleryToken}
+        onDeleteGalleryToken={onDeleteGalleryToken}
         selectedTitle={selectedImagesTitle}
         selectedSubtitle={selectedImagesSubtitle}
         selectedFailedNames={selectedFailedNames}

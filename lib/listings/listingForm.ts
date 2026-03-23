@@ -22,7 +22,12 @@ export type LocationData = {
   city: string;
 };
 
-export type ExistingImage = { id: string; image_url: string; alt?: string | null };
+export type ExistingImage = {
+  id: string;
+  image_url: string;
+  alt?: string | null;
+  preview_url?: string | null;
+};
 
 type ListingLocationSource = {
   lat?: number | string | null;

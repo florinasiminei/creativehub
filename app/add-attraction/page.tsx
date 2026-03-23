@@ -121,7 +121,7 @@ function AddAttractionPageContent() {
     return () => {
       mounted = false;
     };
-  }, [editIdParam, inviteToken, isEditMode, tokenReady]);
+  }, [editIdParam, inviteToken, isEditMode, setError, tokenReady]);
 
   const {
     locationsError,
@@ -217,6 +217,18 @@ function AddAttractionPageContent() {
               setExistingImages(updatedImages);
             }
           } catch (error: any) {
+            const partialUploaded = Array.isArray(error?.uploaded)
+              ? error.uploaded.map((item: any) => ({
+                  id: item.id,
+                  image_url: item.url,
+                  display_order: item.display_order,
+                  alt: null,
+                }))
+              : [];
+            if (partialUploaded.length > 0) {
+              updatedImages = [...existingImages, ...partialUploaded];
+              setExistingImages(updatedImages);
+            }
             setUploadError(error);
             return;
           }

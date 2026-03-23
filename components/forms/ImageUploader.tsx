@@ -1,10 +1,9 @@
 import React from 'react';
 import ImageDropzone from './ImageDropzone';
-import SelectedImagesGrid from './SelectedImagesGrid';
-import ExistingImagesGrid from './ExistingImagesGrid';
+import UnifiedGalleryGrid from './UnifiedGalleryGrid';
 import FormMessage from './FormMessage';
 
-type ExistingImage = { id: string; image_url: string; alt?: string | null };
+type ExistingImage = { id: string; image_url: string; alt?: string | null; preview_url?: string | null };
 
 type ImageUploaderProps = {
   dropzoneTitle: string;
@@ -24,6 +23,11 @@ type ImageUploaderProps = {
   onMove: (from: number, to: number) => void;
   onRemove: (idx: number) => void;
   selectedImagesLocked?: boolean;
+  galleryOrder?: string[];
+  pendingImageIds?: string[];
+  onMoveGalleryToken?: (token: string, direction: -1 | 1) => void;
+  onReorderGalleryToken?: (token: string, toIndex: number) => void;
+  onDeleteGalleryToken?: (token: string) => void;
   selectedTitle: string;
   selectedSubtitle: string;
   selectedFailedNames?: string[];
@@ -57,6 +61,11 @@ export default function ImageUploader({
   onMove,
   onRemove,
   selectedImagesLocked = false,
+  galleryOrder,
+  pendingImageIds,
+  onMoveGalleryToken,
+  onReorderGalleryToken,
+  onDeleteGalleryToken,
   selectedTitle,
   selectedSubtitle,
   selectedFailedNames = [],
@@ -94,23 +103,9 @@ export default function ImageUploader({
         </FormMessage>
       )}
 
-      {existingImages.length > 0 && existingTitle && existingSubtitle && onExistingDragStart && onExistingDragOver && onExistingDragEnd && onExistingMove && onExistingDelete && (
-        <ExistingImagesGrid
-          title={existingTitle}
-          subtitle={existingSubtitle}
-          images={existingImages}
-          draggingIdx={existingDraggingIdx ?? null}
-          onDragStart={onExistingDragStart}
-          onDragOver={onExistingDragOver}
-          onDragEnd={onExistingDragEnd}
-          onMove={onExistingMove}
-          onDelete={onExistingDelete}
-        />
-      )}
-
-      <SelectedImagesGrid
-        title={selectedTitle}
-        subtitle={selectedSubtitle}
+      <UnifiedGalleryGrid
+        title={existingImages.length > 0 ? existingTitle || selectedTitle : selectedTitle}
+        subtitle={existingImages.length > 0 ? existingSubtitle || selectedSubtitle : selectedSubtitle}
         files={files}
         previews={previews}
         draggingIdx={draggingIdx}
@@ -121,6 +116,18 @@ export default function ImageUploader({
         onRemove={onRemove}
         locked={selectedImagesLocked}
         failedNames={selectedFailedNames}
+        galleryOrder={galleryOrder}
+        pendingIds={pendingImageIds}
+        onMoveToken={onMoveGalleryToken}
+        onReorderToken={onReorderGalleryToken}
+        onDeleteToken={onDeleteGalleryToken}
+        existingImages={existingImages}
+        existingDraggingIdx={existingDraggingIdx ?? null}
+        onExistingDragStart={onExistingDragStart}
+        onExistingDragOver={onExistingDragOver}
+        onExistingDragEnd={onExistingDragEnd}
+        onExistingMove={onExistingMove}
+        onExistingDelete={onExistingDelete}
       />
     </div>
   );

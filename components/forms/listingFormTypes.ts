@@ -44,6 +44,11 @@ export type ListingFormProps = {
   onMove: (from: number, to: number) => void;
   onRemove: (idx: number) => void;
   selectedImagesLocked?: boolean;
+  galleryOrder?: string[];
+  pendingImageIds?: string[];
+  onMoveGalleryToken?: (token: string, direction: -1 | 1) => void;
+  onReorderGalleryToken?: (token: string, toIndex: number) => void;
+  onDeleteGalleryToken?: (token: string) => void;
   selectedImagesTitle: string;
   selectedImagesSubtitle: string;
   selectedFailedNames?: string[];
