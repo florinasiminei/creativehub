@@ -245,6 +245,8 @@ export default function UnifiedGalleryGrid({
       <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
         {visibleItems.map((item) => {
           const isExisting = item.kind === 'existing';
+          const existingItem = isExisting ? item : null;
+          const pendingItem = isExisting ? null : item;
           const unifiedIndex = items.findIndex((candidate) => candidate.token === item.token);
           const disabledExistingHandlers =
             !onExistingDragStart || !onExistingDragOver || !onExistingDragEnd || !onExistingMove || !onExistingDelete;
@@ -309,19 +311,19 @@ export default function UnifiedGalleryGrid({
                   compactMode ? 'h-40 sm:h-52' : 'h-56 sm:h-60 md:h-64'
                 }`}
               >
-                {'src' in item && item.src ? (
+                {existingItem?.src ? (
                   <Image
-                    src={item.src}
-                    alt={isExisting ? item.image.alt || 'Imagine listare' : `Imagine ${item.overallIndex + 1}`}
+                    src={existingItem.src}
+                    alt={existingItem.image.alt || 'Imagine listare'}
                     fill
-                    unoptimized={isExisting ? Boolean(item.image.preview_url) : true}
+                    unoptimized={Boolean(existingItem.image.preview_url)}
                     sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     className="relative z-10 object-contain"
                   />
-                ) : 'preview' in item && item.preview ? (
+                ) : pendingItem?.preview ? (
                   <Image
-                    src={item.preview}
-                    alt={`Imagine ${item.overallIndex + 1}`}
+                    src={pendingItem.preview}
+                    alt={`Imagine ${pendingItem.overallIndex + 1}`}
                     fill
                     unoptimized
                     sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
