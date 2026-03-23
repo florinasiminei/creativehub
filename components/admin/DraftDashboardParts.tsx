@@ -9,6 +9,8 @@ type DraftItem = Cazare & {
   isPublished: boolean;
   termsAccepted?: boolean;
   editToken?: string | null;
+  isDraftSeed?: boolean;
+  isEmptyDraftSeed?: boolean;
 };
 
 type AttractionItem = {
@@ -226,6 +228,8 @@ export function PropertyDraftCard({
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <StatusPill tone="neutral">{item.tip}</StatusPill>
           {item.termsAccepted && <StatusPill tone="blue">Client OK</StatusPill>}
+          {item.isEmptyDraftSeed && <StatusPill tone="amber">Seed gol</StatusPill>}
+          {!item.isEmptyDraftSeed && item.isDraftSeed && <StatusPill tone="orange">Seed draft</StatusPill>}
           <StatusPill tone={item.status === "publicat" ? "emerald" : item.status === "inactiv" ? "amber" : "orange"}>
             {item.status === "publicat" ? "Publicat" : item.status === "inactiv" ? "Inactiv" : "Draft"}
           </StatusPill>

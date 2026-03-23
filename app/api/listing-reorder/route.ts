@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { rateLimit } from "@/lib/rateLimit";
 import { getDraftRoleFromRequest } from "@/lib/draftsAuth";
@@ -23,6 +24,17 @@ export async function POST(request: Request) {
 
     const supabaseAdmin = getSupabaseAdmin();
 
+    const revalidateListingCollections = () => {
+      revalidatePath("/");
+      revalidatePath("/cazari");
+      revalidatePath("/cazari/[type]", "page");
+      revalidatePath("/cazari/[type]/[location]", "page");
+      revalidatePath("/judet/[slug]", "page");
+      revalidatePath("/localitate/[slug]", "page");
+      revalidatePath("/regiune/[slug]", "page");
+      revalidatePath("/sitemap.xml");
+    };
+
     if (reset) {
       const { error } = await supabaseAdmin
         .from("listings")
@@ -34,6 +46,7 @@ export async function POST(request: Request) {
         }
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
+      revalidateListingCollections();
       return NextResponse.json({ ok: true });
     }
 
@@ -54,6 +67,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
     }
+    revalidateListingCollections();
     return NextResponse.json({ ok: true });
   } catch (err: any) {
     console.error(err);

@@ -5,6 +5,34 @@ import { rateLimit } from '@/lib/rateLimit';
 import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
 import { isListingTokenValid } from '@/lib/listingTokens';
 import { syncListingGeoZones } from '@/lib/geoZones';
+import { slugify } from '@/lib/utils';
+
+async function ensureUniqueSlug(
+  supabaseAdmin: ReturnType<typeof getSupabaseAdmin>,
+  baseSlug: string,
+  listingId: string
+) {
+  const normalizedBase = slugify(baseSlug) || 'cazare';
+  let candidate = normalizedBase;
+  let suffix = 2;
+
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from('listings')
+      .select('id')
+      .eq('slug', candidate)
+      .limit(1);
+
+    if (error) return candidate;
+    if (!data || data.length === 0 || String(data[0]?.id) === String(listingId)) return candidate;
+
+    candidate = `${normalizedBase}-${suffix}`;
+    suffix += 1;
+    if (suffix > 10_000) {
+      return `${normalizedBase}-${Date.now().toString(36)}`;
+    }
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -16,7 +44,7 @@ export async function POST(request: Request) {
     const supabaseAdmin = getSupabaseAdmin();
 
     const body = await request.json();
-    const { id, title, judet, city, sat, price, capacity, phone, description, type, facilities, is_published, camere, paturi, bai } = body;
+    const { id, title, slug, judet, city, sat, price, capacity, phone, description, type, facilities, is_published, camere, paturi, bai } = body;
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
     const role = getDraftRoleFromRequest(request);
@@ -31,6 +59,9 @@ export async function POST(request: Request) {
 
     const updateData: any = {};
     if (title !== undefined) updateData.title = title;
+    if (slug !== undefined) {
+      updateData.slug = await ensureUniqueSlug(supabaseAdmin, String(slug || title || 'cazare'), String(id));
+    }
     if (judet !== undefined) updateData.judet = judet;
     if (city !== undefined) updateData.city = city;
     if (sat !== undefined) updateData.sat = sat;

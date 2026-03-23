@@ -67,6 +67,7 @@ async function getTypeListings(typeValue: string): Promise<Cazare[]> {
     .eq('is_published', true)
     .eq('type', typeValue)
     .order('display_order', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false })
     .order('display_order', { foreignTable: 'listing_images', ascending: true })
     .limit(1, { foreignTable: 'listing_images' });
 
@@ -79,6 +80,7 @@ async function getTypeListings(typeValue: string): Promise<Cazare[]> {
       .select(baseSelect)
       .eq('is_published', true)
       .eq('type', typeValue)
+      .order('created_at', { ascending: false })
       .order('display_order', { foreignTable: 'listing_images', ascending: true })
       .limit(1, { foreignTable: 'listing_images' });
     data = fallback.data;

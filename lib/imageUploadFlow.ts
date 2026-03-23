@@ -235,7 +235,8 @@ export async function uploadImageBatch<T>({
         ? `Unele imagini sunt prea mari pentru upload (maxim ${hardMaxMb}MB).`
         : `Unele imagini sunt prea mari pentru upload (maxim ${hardMaxMb}MB).`
     );
-    (error as Error & { failed?: UploadFailure[] }).failed = failed;
+    (error as Error & { failed?: UploadFailure[]; uploaded?: T[] }).failed = failed;
+    (error as Error & { failed?: UploadFailure[]; uploaded?: T[] }).uploaded = [];
     throw error;
   }
 
@@ -264,7 +265,8 @@ export async function uploadImageBatch<T>({
         ? `Unele imagini sunt prea mari pentru upload chiar si dupa optimizare. Incearca fisiere mai mici sau mai putine poze facute direct la rezolutie maxima.`
         : 'Nu s-au incarcat toate imaginile.'
     );
-    (error as Error & { failed?: UploadFailure[] }).failed = failed;
+    (error as Error & { failed?: UploadFailure[]; uploaded?: T[] }).failed = failed;
+    (error as Error & { failed?: UploadFailure[]; uploaded?: T[] }).uploaded = uploadedAll;
     throw error;
   }
 

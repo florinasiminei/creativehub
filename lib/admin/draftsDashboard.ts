@@ -5,6 +5,8 @@ export type DraftItem = Cazare & {
   isPublished: boolean;
   termsAccepted?: boolean;
   editToken?: string | null;
+  isDraftSeed?: boolean;
+  isEmptyDraftSeed?: boolean;
 };
 
 export type AttractionItem = {
@@ -21,7 +23,7 @@ export type AttractionItem = {
 };
 
 export type DraftTab = "properties" | "attractions";
-export type PropertyViewFilter = "all" | "client_unpublished";
+export type PropertyViewFilter = "all" | "client_unpublished" | "draft_seed";
 export type AttractionViewFilter = "all" | "published" | "draft";
 
 export function moveItem<T>(items: T[], fromIndex: number, toIndex: number) {
@@ -44,6 +46,14 @@ export function countClientUnpublishedListings(items: DraftItem[]) {
   return items.filter((item) => Boolean(item.termsAccepted) && !item.isPublished).length;
 }
 
+export function countDraftSeedListings(items: DraftItem[]) {
+  return items.filter((item) => Boolean(item.isDraftSeed)).length;
+}
+
+export function countEmptyDraftSeedListings(items: DraftItem[]) {
+  return items.filter((item) => Boolean(item.isEmptyDraftSeed)).length;
+}
+
 export function countPublishedAttractions(items: AttractionItem[]) {
   return items.filter((item) => item.isPublished).length;
 }
@@ -51,6 +61,9 @@ export function countPublishedAttractions(items: AttractionItem[]) {
 export function filterVisibleListings(items: DraftItem[], filter: PropertyViewFilter) {
   if (filter === "client_unpublished") {
     return items.filter((item) => Boolean(item.termsAccepted) && !item.isPublished);
+  }
+  if (filter === "draft_seed") {
+    return items.filter((item) => Boolean(item.isDraftSeed));
   }
 
   return items;

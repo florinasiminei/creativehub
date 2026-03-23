@@ -17,6 +17,8 @@ import { copyTextToClipboard } from "@/lib/copyToClipboard";
 import {
   countClientCompletedListings,
   countClientUnpublishedListings,
+  countDraftSeedListings,
+  countEmptyDraftSeedListings,
   countPublishedAttractions,
   countPublishedListings,
   filterVisibleAttractions,
@@ -108,6 +110,8 @@ export default function DraftsClient({
   const publishedCount = useMemo(() => countPublishedListings(ordered), [ordered]);
   const clientCompletedCount = useMemo(() => countClientCompletedListings(ordered), [ordered]);
   const clientUnpublishedCount = useMemo(() => countClientUnpublishedListings(ordered), [ordered]);
+  const draftSeedCount = useMemo(() => countDraftSeedListings(ordered), [ordered]);
+  const emptyDraftSeedCount = useMemo(() => countEmptyDraftSeedListings(ordered), [ordered]);
   const attractionsPublishedCount = useMemo(() => countPublishedAttractions(attractionItems), [attractionItems]);
 
   const visibleItems = useMemo(() => filterVisibleListings(ordered, viewFilter), [ordered, viewFilter]);
@@ -163,6 +167,48 @@ export default function DraftsClient({
       }
 
       setStatusMessage(reset ? "Ordinea a fost resetata." : "Ordinea a fost salvata.");
+      markPageModified();
+      router.refresh();
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "A aparut o eroare.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const cleanupEmptyDraftSeeds = async () => {
+    if (emptyDraftSeedCount === 0) return;
+    if (!confirm(`Sigur vrei sa stergi ${emptyDraftSeedCount} drafturi seed goale?`)) return;
+
+    setSaving(true);
+    setStatusMessage(null);
+
+    try {
+      const response = await fetch("/api/listing-delete-seeds", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ onlyEmpty: true }),
+      });
+
+      if (response.status === 401) {
+        router.push("/drafts-login?error=1");
+        return;
+      }
+
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body?.error || "Nu am putut sterge drafturile seed goale.");
+      }
+
+      const deletedIds = Array.isArray(body?.deletedIds) ? body.deletedIds.map(String) : [];
+      if (deletedIds.length > 0) {
+        setOrdered((prev) => prev.filter((item) => !deletedIds.includes(item.id)));
+      }
+      setStatusMessage(
+        body?.deletedCount > 0
+          ? `Au fost sterse ${body.deletedCount} drafturi seed goale.`
+          : "Nu exista drafturi seed goale de sters."
+      );
       markPageModified();
       router.refresh();
     } catch (error) {
@@ -281,6 +327,16 @@ export default function DraftsClient({
                 </button>
               </>
             )}
+            {activeTab === "properties" && canDelete && emptyDraftSeedCount > 0 && (
+              <button
+                type="button"
+                onClick={cleanupEmptyDraftSeeds}
+                className={secondaryActionClassName}
+                disabled={saving}
+              >
+                {saving ? "Se sterg..." : `Sterge seed goale (${emptyDraftSeedCount})`}
+              </button>
+            )}
             {activeTab === "attractions" && canStaffActions && (
               <button type="button" onClick={handleStaffAddAttraction} className={primaryActionClassName}>
                 Adauga atractie
@@ -308,6 +364,7 @@ export default function DraftsClient({
               <>
                 <SummaryChip label="Completate de client" value={clientCompletedCount} tone="blue" />
                 <SummaryChip label="Client + nepublicate" value={clientUnpublishedCount} tone="amber" />
+                <SummaryChip label="Draft seed" value={draftSeedCount} tone="amber" />
               </>
             ) : (
               <SummaryChip
@@ -350,6 +407,9 @@ export default function DraftsClient({
               </FilterButton>
               <FilterButton active={viewFilter === "client_unpublished"} onClick={() => setViewFilter("client_unpublished")}>
                 Nepublicate + client ({clientUnpublishedCount})
+              </FilterButton>
+              <FilterButton active={viewFilter === "draft_seed"} onClick={() => setViewFilter("draft_seed")}>
+                Draft seed ({draftSeedCount})
               </FilterButton>
             </div>
 
@@ -403,7 +463,11 @@ export default function DraftsClient({
             ) : visibleItems.length === 0 ? (
               <AdminEmptyState
                 title="Nu exista rezultate pentru filtrul curent"
-                description="Momentan nu exista proprietati completate de client si inca nepublicate."
+                description={
+                  viewFilter === "draft_seed"
+                    ? "Momentan nu exista drafturi seed ramase pentru curatare sau verificare."
+                    : "Momentan nu exista proprietati completate de client si inca nepublicate."
+                }
               />
             ) : (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">

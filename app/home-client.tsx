@@ -239,6 +239,7 @@ export default function HomeClient({
           .select(baseSelect)
           .eq("is_published", true)
           .order("display_order", { ascending: false, nullsFirst: false })
+          .order("created_at", { ascending: false })
           .order("display_order", { foreignTable: "listing_images", ascending: true })
           .limit(1, { foreignTable: "listing_images" });
 
@@ -250,6 +251,7 @@ export default function HomeClient({
             .from("listings")
             .select(baseSelect)
             .eq("is_published", true)
+            .order("created_at", { ascending: false })
             .order("display_order", { foreignTable: "listing_images", ascending: true })
             .limit(1, { foreignTable: "listing_images" });
           data = fallback.data;

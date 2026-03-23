@@ -69,11 +69,13 @@ export async function POST(req: Request) {
       bai,
     } = body;
 
+    const isDraftSeed = body?.draft_seed === true;
+    const titleValue = typeof title === 'string' ? title.trim() : '';
     const judetVal = body.judet ?? null;
-    if (!title) {
+    if (!isDraftSeed && !titleValue) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
-    if (!judetVal) {
+    if (!isDraftSeed && !judetVal) {
       return NextResponse.json({ error: 'Județ obligatoriu' }, { status: 400 });
     }
 
@@ -113,14 +115,14 @@ export async function POST(req: Request) {
     const normalizedCapacity = normalizeCapacity(capacity);
 
     const preferredSlug = typeof slug === 'string' ? slugify(slug) : '';
-    const titleSlug = slugify(String(title || ''));
+    const titleSlug = slugify(titleValue || 'Draft proprietate');
     const baseSlug = preferredSlug || titleSlug || 'cazare';
     const uniqueSlug = await ensureUniqueSlug(supabaseAdmin, baseSlug);
 
     const payload: any = {
-      title,
+      title: titleValue || 'Draft proprietate',
       slug: uniqueSlug,
-      judet: judetVal,
+      judet: judetVal || null,
       city: city || null,
       sat: sat || null,
       price: price || 0,
@@ -146,7 +148,9 @@ export async function POST(req: Request) {
       payload.terms_accepted_at = termsAccepted ? new Date().toISOString() : null;
     }
 
-    if (Object.prototype.hasOwnProperty.call(body, 'display_order')) {
+    if (isDraftSeed) {
+      payload.display_order = null;
+    } else if (Object.prototype.hasOwnProperty.call(body, 'display_order')) {
       payload.display_order = display_order ?? null;
     } else {
       // Use an incrementing counter so newer listings get higher values.

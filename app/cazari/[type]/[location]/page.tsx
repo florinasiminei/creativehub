@@ -146,6 +146,7 @@ async function getTypeCountyListings(typeValue: string, countyName: string): Pro
     .eq("type", typeValue)
     .eq("judet", countyName)
     .order("display_order", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
     .order("display_order", { foreignTable: "listing_images", ascending: true })
     .limit(1, { foreignTable: "listing_images" });
 
@@ -159,6 +160,7 @@ async function getTypeCountyListings(typeValue: string, countyName: string): Pro
       .eq("is_published", true)
       .eq("type", typeValue)
       .eq("judet", countyName)
+      .order("created_at", { ascending: false })
       .order("display_order", { foreignTable: "listing_images", ascending: true })
       .limit(1, { foreignTable: "listing_images" });
     data = fallback.data;
@@ -180,6 +182,7 @@ async function getTypeRegionListings(typeValue: string, region: RegionInput): Pr
     .eq("type", typeValue)
     .in("judet", countyNames)
     .order("display_order", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
     .order("display_order", { foreignTable: "listing_images", ascending: true })
     .limit(1, { foreignTable: "listing_images" });
 
@@ -193,6 +196,7 @@ async function getTypeRegionListings(typeValue: string, region: RegionInput): Pr
       .eq("is_published", true)
       .eq("type", typeValue)
       .in("judet", countyNames)
+      .order("created_at", { ascending: false })
       .order("display_order", { foreignTable: "listing_images", ascending: true })
       .limit(1, { foreignTable: "listing_images" });
     data = fallback.data;

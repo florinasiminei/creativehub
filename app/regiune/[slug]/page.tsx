@@ -80,6 +80,7 @@ async function getRegionListings(region: { counties: string[]; type: string; cor
     .eq("is_published", true)
     .in("judet", countyNames)
     .order("display_order", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
     .order("display_order", { foreignTable: "listing_images", ascending: true })
     .limit(1, { foreignTable: "listing_images" });
 
@@ -92,6 +93,7 @@ async function getRegionListings(region: { counties: string[]; type: string; cor
       .select(baseSelect)
       .eq("is_published", true)
       .in("judet", countyNames)
+      .order("created_at", { ascending: false })
       .order("display_order", { foreignTable: "listing_images", ascending: true })
       .limit(1, { foreignTable: "listing_images" });
     data = fallback.data;

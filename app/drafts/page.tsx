@@ -53,7 +53,15 @@ export default async function DraftsPage() {
           : "draft";
       const editToken = await ensureListingToken(summary.id, (row as any).edit_token);
       const termsAccepted = Boolean((row as any).terms_accepted);
-      return { ...summary, status, isPublished, termsAccepted, editToken };
+      const normalizedTitle = String((row as any).title || "").trim().toLowerCase();
+      const hasUploadedImage = Array.isArray((row as any).listing_images)
+        ? (row as any).listing_images.some((image: any) => String(image?.image_url || "").trim())
+        : false;
+      const isDraftSeed =
+        !isPublished && (row as any).display_order == null && normalizedTitle === "draft proprietate";
+      const isEmptyDraftSeed = isDraftSeed && !hasUploadedImage;
+
+      return { ...summary, status, isPublished, termsAccepted, editToken, isDraftSeed, isEmptyDraftSeed };
     })
   );
 

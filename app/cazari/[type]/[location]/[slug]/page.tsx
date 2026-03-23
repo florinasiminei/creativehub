@@ -255,6 +255,7 @@ async function getFacilityCountyTypeListings(
     .eq("type", typeValue)
     .in("id", listingIds)
     .order("display_order", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
     .order("display_order", { foreignTable: "listing_images", ascending: true })
     .limit(1, { foreignTable: "listing_images" });
 
@@ -268,6 +269,7 @@ async function getFacilityCountyTypeListings(
       .eq("is_published", true)
       .eq("type", typeValue)
       .in("id", listingIds)
+      .order("created_at", { ascending: false })
       .order("display_order", { foreignTable: "listing_images", ascending: true })
       .limit(1, { foreignTable: "listing_images" });
     data = fallback.data;

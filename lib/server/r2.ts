@@ -4,10 +4,8 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
-import { SignatureV4MultiRegion } from "@aws-sdk/signature-v4-multi-region";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { Hash } from "@smithy/hash-node";
-import { HttpRequest } from "@smithy/protocol-http";
 import { Readable } from "stream";
 import { toListingCardVariantPath } from "@/lib/listingImagePaths";
 
@@ -24,14 +22,6 @@ type R2Config = {
 type SignedUpload = {
   uploadUrl: string;
   headers: Record<string, string>;
-};
-
-type SignedRequestLike = {
-  protocol: string;
-  hostname: string;
-  port?: number;
-  path: string;
-  query?: Record<string, string | readonly string[] | null | undefined>;
 };
 
 let r2Client: S3Client | null = null;
@@ -58,10 +48,10 @@ export function getR2Client() {
     r2Client = new S3Client({
       region: "auto",
       endpoint: config.endpoint,
-      credentials: {
+      credentials: async () => ({
         accessKeyId: config.accessKeyId,
         secretAccessKey: config.secretAccessKey,
-      },
+      }),
     });
   }
   return r2Client;
@@ -73,26 +63,6 @@ function encodeObjectKey(key: string) {
     .filter(Boolean)
     .map((segment) => encodeURIComponent(segment))
     .join("/");
-}
-
-function toSignedRequestUrl(request: SignedRequestLike) {
-  const baseUrl = `${request.protocol}//${request.hostname}${request.port ? `:${request.port}` : ""}${request.path}`;
-  const url = new URL(baseUrl);
-
-  for (const [key, rawValue] of Object.entries(request.query || {})) {
-    if (Array.isArray(rawValue)) {
-      rawValue.forEach((value) => {
-        if (value !== undefined) url.searchParams.append(key, String(value));
-      });
-      continue;
-    }
-
-    if (rawValue !== undefined && rawValue !== null) {
-      url.searchParams.set(key, String(rawValue));
-    }
-  }
-
-  return url.toString();
 }
 
 function extractSupabaseStorageObject(rawUrl: string) {
@@ -175,44 +145,17 @@ export async function createSignedUploadUrl(
   contentType: string,
   expiresInSeconds = 900
 ): Promise<SignedUpload> {
-  const config = getR2Config();
-  const endpoint = new URL(config.endpoint);
-  const hostname = `${config.bucket}.${endpoint.hostname}`;
-  const encodedKey = encodeObjectKey(key);
-  const basePath = endpoint.pathname.replace(/\/+$/, "");
-  const path = basePath ? `${basePath}/${encodedKey}` : `/${encodedKey}`;
-  const host = endpoint.port ? `${hostname}:${endpoint.port}` : hostname;
-  const headers = {
-    host,
-    "content-type": contentType,
-    "cache-control": R2_UPLOAD_CACHE_CONTROL,
-  };
-
-  const request = new HttpRequest({
-    protocol: endpoint.protocol,
-    hostname,
-    port: endpoint.port ? Number(endpoint.port) : undefined,
-    method: "PUT",
-    path,
-    headers,
+  const { bucket } = getR2Config();
+  const command = new PutObjectCommand({
+    Bucket: bucket,
+    Key: key,
+    ContentType: contentType,
   });
-
-  const signer = new SignatureV4MultiRegion({
-    credentials: {
-      accessKeyId: config.accessKeyId,
-      secretAccessKey: config.secretAccessKey,
-    },
-    region: "auto",
-    service: "s3",
-    sha256: Hash.bind(null, "sha256"),
-  });
-
-  const signedRequest = await signer.presign(request, { expiresIn: expiresInSeconds });
+  const uploadUrl = await getSignedUrl(getR2Client(), command, { expiresIn: expiresInSeconds });
   return {
-    uploadUrl: toSignedRequestUrl(signedRequest),
+    uploadUrl,
     headers: {
       "Content-Type": contentType,
-      "Cache-Control": R2_UPLOAD_CACHE_CONTROL,
     },
   };
 }
