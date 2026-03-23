@@ -1,4 +1,14 @@
-﻿export async function createListing(payload: any, facilities: string[], inviteToken?: string | null) {
+async function readApiBody(resp: Response) {
+  const contentType = resp.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    return resp.json();
+  }
+
+  const text = await resp.text();
+  return { error: text || `HTTP ${resp.status}` };
+}
+
+export async function createListing(payload: any, facilities: string[], inviteToken?: string | null) {
   const resp = await fetch('/api/listing-create', {
     method: 'POST',
     headers: {
@@ -7,7 +17,7 @@
     },
     body: JSON.stringify({ ...payload, facilities }),
   });
-  const body = await resp.json();
+  const body = await readApiBody(resp);
   if (!resp.ok) throw new Error(body?.error || 'Eroare la creare anunt');
   return body as { id: string; editToken?: string | null };
 }
@@ -20,7 +30,7 @@ export async function updateListing(payload: any, listingToken?: string | null) 
     headers,
     body: JSON.stringify(payload),
   });
-  const body = await resp.json();
+  const body = await readApiBody(resp);
   if (!resp.ok) throw new Error(body?.error || 'Eroare la actualizare');
   return body;
 }
@@ -43,7 +53,7 @@ export async function uploadListingFile(
     headers: listingToken ? { 'x-listing-token': listingToken } : undefined,
     body: form,
   });
-  const body = await resp.json();
+  const body = await readApiBody(resp);
   if (!resp.ok) throw new Error(body?.error || 'Eroare la incarcarea imaginii');
   return body as { id: string; url: string; display_order: number };
 }
