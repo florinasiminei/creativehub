@@ -25,6 +25,8 @@ const DEFAULT_MAX_DIMENSION = 2560;
 const CONSTRAINED_MAX_DIMENSION = 1800;
 const DEFAULT_MAX_PIXELS = 7_000_000;
 const CONSTRAINED_MAX_PIXELS = 3_200_000;
+const DEFAULT_UPLOAD_CONCURRENCY = 6;
+const CONSTRAINED_UPLOAD_CONCURRENCY = 3;
 
 function isCompressibleImage(file: File) {
   const extension = file.name.split('.').pop()?.toLowerCase() || '';
@@ -46,6 +48,10 @@ function isConstrainedDevice() {
 
 function getTargetFileBytes() {
   return isConstrainedDevice() ? CONSTRAINED_TARGET_FILE_BYTES : DEFAULT_TARGET_FILE_BYTES;
+}
+
+function getUploadConcurrency() {
+  return isConstrainedDevice() ? CONSTRAINED_UPLOAD_CONCURRENCY : DEFAULT_UPLOAD_CONCURRENCY;
 }
 
 function getSizeConstraints() {
@@ -213,26 +219,29 @@ export async function uploadImageBatch<T>({
 }: UploadImageBatchOptions<T>) {
   if (files.length === 0) return { uploaded: [] as T[] };
 
-  const hardMaxMb = Math.round(HARD_MAX_BYTES / 1024 / 1024);
   const failed: UploadFailure[] = [];
-  const uploadedAll: T[] = [];
+  const uploadedByIndex = new Map<number, T>();
   const failedIndices: number[] = [];
   const uploadedIndices: number[] = [];
+  const concurrency = Math.max(1, Math.min(getUploadConcurrency(), files.length));
+  let nextIndex = 0;
 
-  for (let index = 0; index < files.length; index += 1) {
+  const processSingleFile = async (index: number) => {
     const entry = files[index];
+    if (!entry) return;
+
     if (typeof entry.size === 'number' && entry.size > HARD_MAX_BYTES) {
       failed.push({ name: entry.name, reason: 'file_too_large' });
       failedIndices.push(index);
       await yieldToBrowser();
-      continue;
+      return;
     }
 
     const processed = await compressImageForUpload(entry);
 
     try {
       const uploaded = await uploadFile(processed, startIndex + index);
-      uploadedAll.push(uploaded);
+      uploadedByIndex.set(index, uploaded);
       uploadedIndices.push(index);
       onUploaded?.(uploaded, index);
     } catch (error: any) {
@@ -245,6 +254,27 @@ export async function uploadImageBatch<T>({
     }
 
     await yieldToBrowser();
+  };
+
+  const workers = Array.from({ length: concurrency }, async () => {
+    while (true) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      if (currentIndex >= files.length) return;
+      await processSingleFile(currentIndex);
+    }
+  });
+
+  await Promise.all(workers);
+
+  const orderedUploadedIndices = [...uploadedIndices].sort((left, right) => left - right);
+  const uploadedAll = orderedUploadedIndices
+    .map((index) => uploadedByIndex.get(index))
+    .filter((item): item is T => item !== undefined);
+
+  if (uploadedAll.length > 0) {
+    uploadedIndices.length = 0;
+    uploadedIndices.push(...orderedUploadedIndices);
   }
 
   if (failed.length > 0) {

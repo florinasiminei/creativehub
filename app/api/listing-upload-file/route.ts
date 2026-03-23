@@ -139,13 +139,13 @@ async function handleComplete(req: Request, body: any) {
   const url = getR2PublicUrl(path);
 
   try {
-    await createCardVariant(path);
-
-    const { data: inserted, error: imgErr } = await access.supabaseAdmin
+    const variantPromise = createCardVariant(path);
+    const insertPromise = access.supabaseAdmin
       .from('listing_images')
       .insert([{ listing_id: listingId, image_url: url, display_order: Number.isFinite(displayOrder) ? displayOrder : null, alt }])
       .select('id, image_url, display_order')
       .single();
+    const [{ data: inserted, error: imgErr }] = await Promise.all([insertPromise, variantPromise]);
 
     if (imgErr || !inserted) {
       throw new Error(imgErr?.message || 'insert_failed');
@@ -190,14 +190,14 @@ async function handleLegacyUpload(req: Request) {
 
   try {
     await uploadBufferToR2(path, sourceBuffer, fileValue.type || 'application/octet-stream');
-    await createCardVariant(path);
-
     const url = getR2PublicUrl(path);
-    const { data: inserted, error: imgErr } = await supabaseAdmin
+    const variantPromise = createCardVariant(path);
+    const insertPromise = supabaseAdmin
       .from('listing_images')
       .insert([{ listing_id: listingId, image_url: url, display_order: Number.isFinite(displayOrder) ? displayOrder : null, alt }])
       .select('id, image_url, display_order')
       .single();
+    const [{ data: inserted, error: imgErr }] = await Promise.all([insertPromise, variantPromise]);
 
     if (imgErr || !inserted) {
       throw new Error(imgErr?.message || 'insert_failed');
