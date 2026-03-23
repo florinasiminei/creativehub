@@ -141,49 +141,47 @@ export default function UnifiedGalleryGrid({
       const imageById = new Map(existingImages.map((image, index) => [image.id, { image, index }] as const));
       const pendingById = new Map(pendingIds.map((id, index) => [id, { file: files[index], preview: previews[index] || '', index }] as const));
 
-      return galleryOrder.flatMap((token, overallIndex) => {
+      return galleryOrder.reduce<GalleryItem[]>((acc, token, overallIndex) => {
         if (token.startsWith('saved:')) {
           const imageId = token.slice('saved:'.length);
           const match = imageById.get(imageId);
-          if (!match) return [];
-          return [
-            {
-              kind: 'existing' as const,
-              key: token,
-              token,
-              image: match.image,
-              overallIndex,
-              localIndex: match.index,
-              src: match.image.preview_url || match.image.image_url,
-              status: 'ready' as const,
-            },
-          ];
+          if (!match) return acc;
+          acc.push({
+            kind: 'existing' as const,
+            key: token,
+            token,
+            image: match.image,
+            overallIndex,
+            localIndex: match.index,
+            src: match.image.preview_url || match.image.image_url,
+            status: 'ready' as const,
+          });
+          return acc;
         }
 
-        if (!token.startsWith('pending:')) return [];
+        if (!token.startsWith('pending:')) return acc;
 
         const pendingId = token.slice('pending:'.length);
         const match = pendingById.get(pendingId);
-        if (!match?.file) return [];
+        if (!match?.file) return acc;
 
         let status: GalleryItem['status'] = 'queued';
         if (failedSet.has(match.file.name)) status = 'failed';
         else if (!match.preview) status = 'preparing';
         else if (locked && overallIndex === 0) status = 'uploading';
 
-        return [
-          {
-            kind: 'pending' as const,
-            key: token,
-            token,
-            file: match.file,
-            preview: match.preview,
-            overallIndex,
-            localIndex: match.index,
-            status,
-          },
-        ];
-      });
+        acc.push({
+          kind: 'pending' as const,
+          key: token,
+          token,
+          file: match.file,
+          preview: match.preview,
+          overallIndex,
+          localIndex: match.index,
+          status,
+        });
+        return acc;
+      }, []);
     }
 
     const existing = existingImages.map((image, index) => ({
