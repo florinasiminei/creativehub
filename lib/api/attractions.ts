@@ -1,14 +1,5 @@
 import type { AttractionImage } from '@/lib/attractions/attractionForm';
-
-async function readApiBody(resp: Response) {
-  const contentType = resp.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
-    return resp.json();
-  }
-
-  const text = await resp.text();
-  return { error: text || `HTTP ${resp.status}` };
-}
+import { prepareAndUploadDirectFile, readApiBody } from '@/lib/api/directUploads';
 
 export async function createAttraction(payload: any, inviteToken?: string | null) {
   const resp = await fetch('/api/attraction-create', {
@@ -98,18 +89,22 @@ export async function uploadAttractionFile(
   inviteToken?: string | null,
   alt?: string | null
 ) {
-  const form = new FormData();
-  form.append('attractionId', attractionId);
-  form.append('displayOrder', String(displayOrder));
-  if (alt) form.append('alt', alt);
-  form.append('file', file);
+  const authHeaders = inviteToken ? { 'x-invite-token': inviteToken } : undefined;
 
-  const resp = await fetch('/api/attraction-upload-file', {
-    method: 'POST',
-    headers: inviteToken ? { 'x-invite-token': inviteToken } : undefined,
-    body: form,
-  });
-  const body = await readApiBody(resp);
-  if (!resp.ok) throw new Error(body?.error || 'Eroare la incarcarea imaginii');
-  return body as { id: string; url: string; display_order: number };
+  return prepareAndUploadDirectFile({
+    endpoint: '/api/attraction-upload-file',
+    preparePayload: {
+      attractionId,
+      displayOrder,
+      ...(alt ? { alt } : {}),
+    },
+    completePayload: (prepared) => ({
+      attractionId,
+      displayOrder,
+      path: prepared.path,
+      ...(alt ? { alt } : {}),
+    }),
+    authHeaders,
+    file,
+  }) as Promise<{ id: string; url: string; display_order: number }>;
 }

@@ -56,15 +56,7 @@ export default function ExistingImagesGrid({
             }}
             onDragEnd={onDragEnd}
           >
-            <div className="relative h-56 overflow-hidden bg-gray-50 sm:h-60 md:h-64">
-              <Image
-                src={image.image_url}
-                alt=""
-                fill
-                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                className="pointer-events-none object-cover opacity-40 blur-2xl scale-110"
-                aria-hidden
-              />
+            <div className="relative h-56 overflow-hidden bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.16),rgba(249,250,251,0.96)_60%)] sm:h-60 md:h-64 dark:bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.2),rgba(24,24,27,0.96)_60%)]">
               <Image
                 src={image.image_url}
                 alt={image.alt || 'Imagine listare'}

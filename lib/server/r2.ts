@@ -1,12 +1,17 @@
 import {
   DeleteObjectsCommand,
+  GetObjectCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import { SignatureV4MultiRegion } from "@aws-sdk/signature-v4-multi-region";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { Hash } from "@smithy/hash-node";
+import { HttpRequest } from "@smithy/protocol-http";
+import { Readable } from "stream";
 import { toListingCardVariantPath } from "@/lib/listingImagePaths";
 
-const TARGET_CACHE_CONTROL = "public, max-age=31536000, immutable";
+export const R2_UPLOAD_CACHE_CONTROL = "public, max-age=31536000, immutable";
 
 type R2Config = {
   accessKeyId: string;
@@ -14,6 +19,19 @@ type R2Config = {
   bucket: string;
   endpoint: string;
   publicBaseUrl: string;
+};
+
+type SignedUpload = {
+  uploadUrl: string;
+  headers: Record<string, string>;
+};
+
+type SignedRequestLike = {
+  protocol: string;
+  hostname: string;
+  port?: number;
+  path: string;
+  query?: Record<string, string | readonly string[] | null | undefined>;
 };
 
 let r2Client: S3Client | null = null;
@@ -57,6 +75,26 @@ function encodeObjectKey(key: string) {
     .join("/");
 }
 
+function toSignedRequestUrl(request: SignedRequestLike) {
+  const baseUrl = `${request.protocol}//${request.hostname}${request.port ? `:${request.port}` : ""}${request.path}`;
+  const url = new URL(baseUrl);
+
+  for (const [key, rawValue] of Object.entries(request.query || {})) {
+    if (Array.isArray(rawValue)) {
+      rawValue.forEach((value) => {
+        if (value !== undefined) url.searchParams.append(key, String(value));
+      });
+      continue;
+    }
+
+    if (rawValue !== undefined && rawValue !== null) {
+      url.searchParams.set(key, String(rawValue));
+    }
+  }
+
+  return url.toString();
+}
+
 function extractSupabaseStorageObject(rawUrl: string) {
   try {
     const url = new URL(rawUrl);
@@ -69,6 +107,33 @@ function extractSupabaseStorageObject(rawUrl: string) {
   } catch {
     return null;
   }
+}
+
+async function bodyToBuffer(body: unknown): Promise<Buffer> {
+  if (!body) return Buffer.alloc(0);
+
+  const maybeBody = body as {
+    transformToByteArray?: () => Promise<Uint8Array>;
+    arrayBuffer?: () => Promise<ArrayBuffer>;
+  };
+
+  if (typeof maybeBody.transformToByteArray === "function") {
+    return Buffer.from(await maybeBody.transformToByteArray());
+  }
+
+  if (typeof maybeBody.arrayBuffer === "function") {
+    return Buffer.from(await maybeBody.arrayBuffer());
+  }
+
+  if (body instanceof Readable) {
+    const chunks: Buffer[] = [];
+    for await (const chunk of body) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks);
+  }
+
+  throw new Error("Unsupported R2 response body");
 }
 
 export function getR2PublicUrl(key: string) {
@@ -105,6 +170,53 @@ export function getR2ObjectKeyFromUrl(rawUrl: string) {
   }
 }
 
+export async function createSignedUploadUrl(
+  key: string,
+  contentType: string,
+  expiresInSeconds = 900
+): Promise<SignedUpload> {
+  const config = getR2Config();
+  const endpoint = new URL(config.endpoint);
+  const hostname = `${config.bucket}.${endpoint.hostname}`;
+  const encodedKey = encodeObjectKey(key);
+  const basePath = endpoint.pathname.replace(/\/+$/, "");
+  const path = basePath ? `${basePath}/${encodedKey}` : `/${encodedKey}`;
+  const host = endpoint.port ? `${hostname}:${endpoint.port}` : hostname;
+  const headers = {
+    host,
+    "content-type": contentType,
+    "cache-control": R2_UPLOAD_CACHE_CONTROL,
+  };
+
+  const request = new HttpRequest({
+    protocol: endpoint.protocol,
+    hostname,
+    port: endpoint.port ? Number(endpoint.port) : undefined,
+    method: "PUT",
+    path,
+    headers,
+  });
+
+  const signer = new SignatureV4MultiRegion({
+    credentials: {
+      accessKeyId: config.accessKeyId,
+      secretAccessKey: config.secretAccessKey,
+    },
+    region: "auto",
+    service: "s3",
+    sha256: Hash.bind(null, "sha256"),
+  });
+
+  const signedRequest = await signer.presign(request, { expiresIn: expiresInSeconds });
+  return {
+    uploadUrl: toSignedRequestUrl(signedRequest),
+    headers: {
+      "Content-Type": contentType,
+      "Cache-Control": R2_UPLOAD_CACHE_CONTROL,
+    },
+  };
+}
+
 export async function uploadBufferToR2(key: string, buffer: Buffer, contentType: string) {
   const { bucket } = getR2Config();
   await getR2Client().send(new PutObjectCommand({
@@ -112,8 +224,17 @@ export async function uploadBufferToR2(key: string, buffer: Buffer, contentType:
     Key: key,
     Body: buffer,
     ContentType: contentType,
-    CacheControl: TARGET_CACHE_CONTROL,
+    CacheControl: R2_UPLOAD_CACHE_CONTROL,
   }));
+}
+
+export async function downloadBufferFromR2(key: string) {
+  const { bucket } = getR2Config();
+  const response = await getR2Client().send(new GetObjectCommand({
+    Bucket: bucket,
+    Key: key,
+  }));
+  return bodyToBuffer(response.Body);
 }
 
 async function deleteR2Keys(keys: string[]) {
@@ -131,6 +252,10 @@ async function deleteR2Keys(keys: string[]) {
       },
     }));
   }
+}
+
+export async function deleteR2Object(key: string) {
+  await deleteR2Keys([key]);
 }
 
 async function deleteSupabaseKeys(

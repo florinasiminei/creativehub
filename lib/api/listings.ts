@@ -1,12 +1,4 @@
-async function readApiBody(resp: Response) {
-  const contentType = resp.headers.get('content-type') || '';
-  if (contentType.includes('application/json')) {
-    return resp.json();
-  }
-
-  const text = await resp.text();
-  return { error: text || `HTTP ${resp.status}` };
-}
+import { prepareAndUploadDirectFile, readApiBody } from '@/lib/api/directUploads';
 
 export async function createListing(payload: any, facilities: string[], inviteToken?: string | null) {
   const resp = await fetch('/api/listing-create', {
@@ -42,20 +34,24 @@ export async function uploadListingFile(
   listingToken?: string | null,
   alt?: string | null
 ) {
-  const form = new FormData();
-  form.append('listingId', listingId);
-  form.append('displayOrder', String(displayOrder));
-  if (alt) form.append('alt', alt);
-  form.append('file', file);
+  const authHeaders = listingToken ? { 'x-listing-token': listingToken } : undefined;
 
-  const resp = await fetch('/api/listing-upload-file', {
-    method: 'POST',
-    headers: listingToken ? { 'x-listing-token': listingToken } : undefined,
-    body: form,
-  });
-  const body = await readApiBody(resp);
-  if (!resp.ok) throw new Error(body?.error || 'Eroare la incarcarea imaginii');
-  return body as { id: string; url: string; display_order: number };
+  return prepareAndUploadDirectFile({
+    endpoint: '/api/listing-upload-file',
+    preparePayload: {
+      listingId,
+      displayOrder,
+      ...(alt ? { alt } : {}),
+    },
+    completePayload: (prepared) => ({
+      listingId,
+      displayOrder,
+      path: prepared.path,
+      ...(alt ? { alt } : {}),
+    }),
+    authHeaders,
+    file,
+  }) as Promise<{ id: string; url: string; display_order: number }>;
 }
 
 export async function deleteListing(id: string, inviteToken?: string | null) {
