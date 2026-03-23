@@ -43,6 +43,7 @@ export type ListingFormProps = {
   onDragEnd: () => void;
   onMove: (from: number, to: number) => void;
   onRemove: (idx: number) => void;
+  selectedImagesLocked?: boolean;
   selectedImagesTitle: string;
   selectedImagesSubtitle: string;
   selectedFailedNames?: string[];

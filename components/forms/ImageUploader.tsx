@@ -23,6 +23,7 @@ type ImageUploaderProps = {
   onDragEnd: () => void;
   onMove: (from: number, to: number) => void;
   onRemove: (idx: number) => void;
+  selectedImagesLocked?: boolean;
   selectedTitle: string;
   selectedSubtitle: string;
   selectedFailedNames?: string[];
@@ -55,6 +56,7 @@ export default function ImageUploader({
   onDragEnd,
   onMove,
   onRemove,
+  selectedImagesLocked = false,
   selectedTitle,
   selectedSubtitle,
   selectedFailedNames = [],
@@ -117,6 +119,7 @@ export default function ImageUploader({
         onDragEnd={onDragEnd}
         onMove={onMove}
         onRemove={onRemove}
+        locked={selectedImagesLocked}
         failedNames={selectedFailedNames}
       />
     </div>

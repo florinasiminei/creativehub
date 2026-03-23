@@ -21,6 +21,7 @@ type ListingFormGallerySectionProps = {
   onDragEnd: () => void;
   onMove: (from: number, to: number) => void;
   onRemove: (idx: number) => void;
+  selectedImagesLocked?: boolean;
   selectedImagesTitle: string;
   selectedImagesSubtitle: string;
   selectedFailedNames?: string[];
@@ -53,6 +54,7 @@ export default function ListingFormGallerySection({
   onDragEnd,
   onMove,
   onRemove,
+  selectedImagesLocked = false,
   selectedImagesTitle,
   selectedImagesSubtitle,
   selectedFailedNames = [],
@@ -87,6 +89,7 @@ export default function ListingFormGallerySection({
         onDragEnd={onDragEnd}
         onMove={onMove}
         onRemove={onRemove}
+        selectedImagesLocked={selectedImagesLocked}
         selectedTitle={selectedImagesTitle}
         selectedSubtitle={selectedImagesSubtitle}
         selectedFailedNames={selectedFailedNames}

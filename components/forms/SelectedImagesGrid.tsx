@@ -13,6 +13,7 @@ type SelectedImagesGridProps = {
   onDragEnd: () => void;
   onMove: (from: number, to: number) => void;
   onRemove: (idx: number) => void;
+  locked?: boolean;
   failedNames?: string[];
 };
 
@@ -27,6 +28,7 @@ export default function SelectedImagesGrid({
   onDragEnd,
   onMove,
   onRemove,
+  locked = false,
   failedNames = [],
 }: SelectedImagesGridProps) {
   if (files.length === 0) return null;
@@ -51,10 +53,14 @@ export default function SelectedImagesGrid({
             className={`overflow-hidden rounded-[24px] border bg-white shadow-[0_16px_45px_-34px_rgba(15,23,42,0.55)] dark:border-zinc-800 dark:bg-zinc-900 ${
               draggingIdx === idx ? 'ring-2 ring-emerald-500' : ''
             } ${failedSet.has(file.name) ? 'border-red-400 ring-1 ring-red-300' : ''}`}
-            draggable
-            onDragStart={() => onDragStart(idx)}
+            draggable={!locked}
+            onDragStart={() => {
+              if (locked) return;
+              onDragStart(idx);
+            }}
             onDragOver={(event) => {
               event.preventDefault();
+              if (locked) return;
               onDragOver(idx);
             }}
             onDragEnd={onDragEnd}
@@ -78,12 +84,17 @@ export default function SelectedImagesGrid({
             <div className="flex items-center gap-2 border-t border-gray-100 bg-white px-3 py-3 dark:border-zinc-800 dark:bg-zinc-900">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{file.name}</p>
+                {locked && (
+                  <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                    Upload in curs. Reordonarea si stergerea sunt disponibile dupa finalizare.
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => onMove(idx, idx - 1)}
-                  disabled={idx === 0}
+                  disabled={locked || idx === 0}
                   aria-label="Muta in sus"
                   className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-xs font-semibold disabled:opacity-40 dark:border-zinc-700 dark:text-gray-100"
                 >
@@ -92,7 +103,7 @@ export default function SelectedImagesGrid({
                 <button
                   type="button"
                   onClick={() => onMove(idx, idx + 1)}
-                  disabled={idx === files.length - 1}
+                  disabled={locked || idx === files.length - 1}
                   aria-label="Muta in jos"
                   className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-xs font-semibold disabled:opacity-40 dark:border-zinc-700 dark:text-gray-100"
                 >
@@ -101,8 +112,9 @@ export default function SelectedImagesGrid({
                 <button
                   type="button"
                   onClick={() => onRemove(idx)}
+                  disabled={locked}
                   aria-label="Sterge imaginea"
-                  className="flex h-8 w-8 items-center justify-center rounded-full border border-red-200 text-xs font-semibold text-red-600 dark:border-zinc-700"
+                  className="flex h-8 w-8 items-center justify-center rounded-full border border-red-200 text-xs font-semibold text-red-600 disabled:opacity-40 dark:border-zinc-700"
                 >
                   <Trash2 size={14} />
                 </button>

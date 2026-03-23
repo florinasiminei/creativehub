@@ -46,6 +46,7 @@ export default function ListingForm({
   onDragEnd,
   onMove,
   onRemove,
+  selectedImagesLocked = false,
   selectedImagesTitle,
   selectedImagesSubtitle,
   selectedFailedNames = [],
@@ -130,6 +131,7 @@ export default function ListingForm({
         onDragEnd={onDragEnd}
         onMove={onMove}
         onRemove={onRemove}
+        selectedImagesLocked={selectedImagesLocked}
         selectedImagesTitle={selectedImagesTitle}
         selectedImagesSubtitle={selectedImagesSubtitle}
         selectedFailedNames={selectedFailedNames}

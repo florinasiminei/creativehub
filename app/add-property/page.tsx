@@ -267,8 +267,22 @@ function AddPropertyPageContent() {
 
   const handleFilesSelected = (incoming: File[]) => {
     if (incoming.length === 0) return;
-    appendFiles(incoming);
     clearFeedback();
+    const maxImages = 20;
+    const remainingSlots = Math.max(0, maxImages - (imagesRef.current.length + filesRef.current.length));
+    if (remainingSlots <= 0) {
+      setError(`Poti incarca maximum ${maxImages} imagini.`);
+      return;
+    }
+
+    const acceptedFiles = incoming.slice(0, remainingSlots);
+    if (acceptedFiles.length < incoming.length) {
+      setError(`Poti incarca maximum ${maxImages} imagini.`);
+    }
+
+    if (acceptedFiles.length === 0) return;
+
+    appendFiles(acceptedFiles);
     void ensureDraftListing().catch((error) => {
       setErrorFromUnknown(error, 'Nu am putut pregati draftul pentru uploadul imaginilor.');
     });
@@ -506,6 +520,7 @@ function AddPropertyPageContent() {
           onDragEnd={handleDragEnd}
           onMove={moveFile}
           onRemove={removeFile}
+          selectedImagesLocked={uploading}
           selectedImagesTitle="Imagini in asteptare pentru upload"
           selectedImagesSubtitle="Ordinea de aici devine ordinea de upload pentru fisierele noi"
           selectedFailedNames={failedUploadNames}
