@@ -1,8 +1,13 @@
-const META_TITLE_MAX = 58;
+const META_TITLE_MAX = 52;
 const META_DESCRIPTION_MAX = 160;
 
 function normalizeUnicode(value: string): string {
-  return String(value ?? "").normalize("NFC");
+  return String(value ?? "")
+    .normalize("NFC")
+    .replace(/Ş/g, "Ș")
+    .replace(/ş/g, "ș")
+    .replace(/Ţ/g, "Ț")
+    .replace(/ţ/g, "ț");
 }
 
 function stripHtml(value: string): string {
@@ -37,6 +42,28 @@ export function clampMetaTitle(value: string): string {
 
 export function clampMetaDescription(value: string): string {
   return clampMetaText(value, META_DESCRIPTION_MAX, true);
+}
+
+export function buildListingMetaTitle(
+  listingTitle: string,
+  locality?: string | null,
+  county?: string | null
+): string {
+  const name = sanitizeText(listingTitle);
+  const cleanLocality = sanitizeText(locality || "");
+  const cleanCounty = sanitizeText(county || "");
+  const locations = [
+    [cleanLocality, cleanCounty].filter(Boolean).join(", "),
+    cleanLocality,
+    cleanCounty,
+  ].filter((value, index, values) => value && values.indexOf(value) === index);
+
+  for (const location of locations) {
+    const candidate = `${name} | Cazare în ${location}`;
+    if (candidate.length <= META_TITLE_MAX) return candidate;
+  }
+
+  return clampMetaTitle(`${name} | Cazare`);
 }
 
 function withPreposition(scope?: string, preposition = "în"): string {

@@ -351,12 +351,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly",
       priority: 0.7,
     },
-    {
-      url: `${siteUrl}/atractii`,
-      lastModified: attractionsIndexLastModified || lastModified,
-      changeFrequency: "weekly",
-      priority: 0.7,
-    },
+    ...(attractionEntries.length > 0
+      ? [
+          {
+            url: `${siteUrl}/atractii`,
+            lastModified: attractionsIndexLastModified || lastModified,
+            changeFrequency: "weekly",
+            priority: 0.7,
+          } satisfies MetadataRoute.Sitemap[number],
+        ]
+      : []),
     ...attractionEntries,
     ...regionEntries,
     ...countyEntries,

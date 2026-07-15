@@ -1,9 +1,12 @@
 "use client";
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
-import ImageGallery from './ImageGallery';
 import { Camera } from 'lucide-react';
+import { toListingCardVariantUrl } from '@/lib/listingImagePaths';
+
+const ImageGallery = dynamic(() => import('./ImageGallery'), { ssr: false });
 
 interface PropertyImageGridProps {
   images: string[];
@@ -14,6 +17,7 @@ interface PropertyImageGridProps {
 const PropertyImageGrid: React.FC<PropertyImageGridProps> = ({ images, title, className }) => {
   const [showGallery, setShowGallery] = useState(false);
   const [startIndex, setStartIndex] = useState(0);
+  const [failedPreviewUrls, setFailedPreviewUrls] = useState<Set<string>>(() => new Set());
 
   const openGallery = (index: number) => {
     setStartIndex(index);
@@ -36,8 +40,20 @@ const PropertyImageGrid: React.FC<PropertyImageGridProps> = ({ images, title, cl
   }
 
   // Display up to 5 images in the desktop grid for preview, but keep all images for gallery
-  const gridImages = images.slice(0, 5);
+  const gridImages = images.slice(0, 5).map((original) => ({
+    original,
+    preview: failedPreviewUrls.has(original) ? original : toListingCardVariantUrl(original),
+  }));
   const remainingCount = Math.max(0, images.length - 5);
+
+  const handlePreviewError = (original: string, preview: string) => {
+    if (preview === original) return;
+    setFailedPreviewUrls((current) => {
+      const next = new Set(current);
+      next.add(original);
+      return next;
+    });
+  };
 
   return (
     <>
@@ -51,29 +67,31 @@ const PropertyImageGrid: React.FC<PropertyImageGridProps> = ({ images, title, cl
           onClick={() => openGallery(0)}
         >
           <Image
-            src={images[0]}
+            src={gridImages[0].preview}
             alt={title ? `${title} - Imagine principala` : 'Imagine principala'}
             fill
             priority
             sizes="(max-width: 768px) 100vw, (max-width: 1280px) 60vw, 640px"
             className="object-cover"
+            onError={() => handlePreviewError(gridImages[0].original, gridImages[0].preview)}
           />
           <div className="absolute inset-0 bg-black/0 transition-colors duration-300 group-hover:bg-black/10" />
         </div>
 
         {/* Grid of smaller images */}
-        {gridImages.slice(1).map((url: string, index: number) => (
+        {gridImages.slice(1).map(({ original, preview }, index: number) => (
           <div
-            key={`${url}-${index}`}
+            key={`${original}-${index}`}
             className="relative group cursor-pointer overflow-hidden"
             onClick={() => openGallery(index + 1)}
           >
             <Image
-              src={url}
+              src={preview}
               alt={`${title || 'Proprietate'} - Imagine ${index + 2}`}
               fill
               sizes="(max-width: 768px) 50vw, (max-width: 1280px) 30vw, 320px"
               className="object-cover"
+              onError={() => handlePreviewError(original, preview)}
             />
             <div className="absolute inset-0 bg-black/0 transition-colors duration-300 group-hover:bg-black/10" />
             
@@ -93,19 +111,22 @@ const PropertyImageGrid: React.FC<PropertyImageGridProps> = ({ images, title, cl
       {/* Mobile swipeable carousel */}
       <div className="md:hidden -mx-6">
         <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory px-6 pb-4 scrollbar-hide">
-          {images.map((url: string, index: number) => (
+          {gridImages.map(({ original, preview }, index: number) => (
             <div
-              key={`${url}-${index}`}
+              key={`${original}-${index}`}
               className="relative flex-shrink-0 snap-center snap-always w-[85vw] aspect-[4/3] rounded-2xl overflow-hidden shadow-sm cursor-pointer"
               onClick={() => openGallery(index)}
             >
               <Image
-                src={url}
+                src={preview}
                 alt={`${title || 'Locatie'} - Imagine ${index + 1}`}
                 fill
                 sizes="90vw"
                 className="object-cover"
                 priority={index === 0}
+                loading={index === 0 ? 'eager' : 'lazy'}
+                fetchPriority={index === 0 ? 'high' : 'auto'}
+                onError={() => handlePreviewError(original, preview)}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-black/10 to-transparent" />
               <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs px-3 py-1 rounded-full font-medium">

@@ -12,6 +12,18 @@ export default function Footer() {
 
         <div className="mb-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-zinc-600 dark:text-zinc-300">
           <Link
+            href="/cazari"
+            className="hover:text-emerald-500 transition dark:hover:text-emerald-300"
+          >
+            Cazări
+          </Link>
+          <Link
+            href="/atractii"
+            className="hover:text-emerald-500 transition dark:hover:text-emerald-300"
+          >
+            Atracții
+          </Link>
+          <Link
             href="/about-us"
             className="hover:text-emerald-500 transition dark:hover:text-emerald-300"
           >

@@ -11,6 +11,10 @@ type DraftItem = Cazare & {
   editToken?: string | null;
   isDraftSeed?: boolean;
   isEmptyDraftSeed?: boolean;
+  publicationStatus?: "draft" | "active" | "expiring" | "expired" | "suspended" | null;
+  publicationExpiresAt?: string | null;
+  leadId?: string | null;
+  leadStatus?: string | null;
 };
 
 type AttractionItem = {
@@ -74,30 +78,6 @@ function CardCover({
         priority={priority}
       />
       {overlay}
-    </div>
-  );
-}
-
-export function SummaryChip({
-  label,
-  value,
-  tone = "emerald",
-}: {
-  label: string;
-  value: string | number;
-  tone?: "emerald" | "blue" | "amber";
-}) {
-  const toneClassName =
-    tone === "blue"
-      ? "border-blue-100 bg-blue-50 text-blue-900"
-      : tone === "amber"
-        ? "border-amber-100 bg-amber-50 text-amber-900"
-        : "border-emerald-100 bg-emerald-50 text-emerald-900";
-
-  return (
-    <div className={`rounded-2xl border px-4 py-3 ${toneClassName}`}>
-      <div className="text-[11px] font-semibold uppercase tracking-[0.22em] opacity-70">{label}</div>
-      <div className="mt-1 text-lg font-semibold">{value}</div>
     </div>
   );
 }
@@ -181,6 +161,8 @@ export function PropertyDraftCard({
   onDragOver,
   onDrop,
   onStatusChange,
+  onRenew,
+  renewalLoading,
 }: {
   item: DraftItem;
   index: number;
@@ -196,6 +178,8 @@ export function PropertyDraftCard({
   onDragOver: (event: DragEvent<HTMLDivElement>) => void;
   onDrop: (event: DragEvent<HTMLDivElement>) => void;
   onStatusChange: (newStatus: "publicat" | "draft") => void;
+  onRenew?: () => void;
+  renewalLoading?: boolean;
 }) {
   return (
     <div
@@ -233,6 +217,9 @@ export function PropertyDraftCard({
           <StatusPill tone={item.status === "publicat" ? "emerald" : item.status === "inactiv" ? "amber" : "orange"}>
             {item.status === "publicat" ? "Publicat" : item.status === "inactiv" ? "Inactiv" : "Draft"}
           </StatusPill>
+          {item.publicationStatus === "expiring" && <StatusPill tone="amber">Expira curand</StatusPill>}
+          {item.publicationStatus === "expired" && <StatusPill tone="orange">Expirat</StatusPill>}
+          {item.leadId && <StatusPill tone="blue">Lead</StatusPill>}
         </div>
 
         <div className="space-y-1.5 pt-3">
@@ -259,6 +246,16 @@ export function PropertyDraftCard({
             }
             onStatusChange={onStatusChange}
           />
+          {onRenew && (
+            <button
+              type="button"
+              onClick={onRenew}
+              disabled={renewalLoading}
+              className="mt-2 rounded-full bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-800 disabled:opacity-60"
+            >
+              Reinnoieste 1 an
+            </button>
+          )}
         </div>
       </div>
     </div>

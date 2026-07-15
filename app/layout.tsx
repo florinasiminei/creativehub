@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import PageviewTracker from "@/components/PageviewTracker";
 import { ThemeProvider } from "next-themes";
 import { Analytics } from "@vercel/analytics/next";
@@ -112,7 +110,7 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const pageMaxW = "92rem"; // tighten container back up for non-navbar content
+  const pageMaxW = "92rem";
 
   return (
     <html lang="ro" suppressHydrationWarning style={{ ["--page-max-w" as any]: pageMaxW }}>
@@ -122,16 +120,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <PageviewTracker />
-          {/* Navbar has its own container (see below) */}
-          <Navbar />
-
-          {/* Page content matches the shared max-w */}
-          <main id="main" className="mx-auto max-w-[var(--page-max-w)] px-4 sm:px-6 lg:px-8 py-6">
-            {children}
-          </main>
-
-          {/* Footer full-bleed on purpose */}
-          <Footer />
+          {children}
         </ThemeProvider>
         <script
           id="schema-org-organization"

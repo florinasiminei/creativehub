@@ -81,6 +81,9 @@ export async function POST(request: Request) {
     if (description !== undefined) updateData.description = description;
     if (type !== undefined) updateData.type = type;
     if (is_published !== undefined) updateData.is_published = is_published;
+    if (is_published === false) {
+      updateData.publication_status = 'draft';
+    }
     if (Object.prototype.hasOwnProperty.call(body, 'newsletter_opt_in')) {
       updateData.newsletter_opt_in = Boolean((body as any).newsletter_opt_in);
     }
@@ -112,9 +115,23 @@ export async function POST(request: Request) {
       try {
         const { data: currentRow, error: currentErr } = await supabaseAdmin
           .from('listings')
-          .select('display_order')
+          .select('display_order, published_at, publication_expires_at')
           .eq('id', id)
           .single();
+
+        if (!currentRow?.published_at) {
+          const publishedAt = new Date();
+          const expiresAt = new Date(publishedAt);
+          expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+          const renewalDueAt = new Date(expiresAt);
+          renewalDueAt.setDate(renewalDueAt.getDate() - 30);
+          updateData.published_at = publishedAt.toISOString();
+          updateData.publication_expires_at = expiresAt.toISOString();
+          updateData.renewal_due_at = renewalDueAt.toISOString();
+          updateData.publication_status = 'active';
+        } else {
+          updateData.publication_status = 'active';
+        }
         if (!currentErr && (currentRow?.display_order === null || currentRow?.display_order === undefined)) {
           const { data: orderRows, error: orderErr } = await supabaseAdmin
             .from('listings')
@@ -132,9 +149,15 @@ export async function POST(request: Request) {
     }
 
     let { error: upErr } = await supabaseAdmin.from('listings').update(updateData).eq('id', id);
-    if (upErr && /lat|lng|latitude|longitude|search_radius|camere|paturi|bai|newsletter_opt_in|terms_accepted|terms_accepted_at/i.test(upErr.message || '')) {
+    if (upErr && /lat|lng|latitude|longitude|search_radius|camere|paturi|bai|newsletter_opt_in|terms_accepted|terms_accepted_at|published_at|publication_expires_at|renewal_due_at|publication_status/i.test(upErr.message || '')) {
       const fallbackUpdate = { ...updateData };
       const message = String(upErr.message || '');
+      if (/published_at|publication_expires_at|renewal_due_at|publication_status/i.test(message)) {
+        delete fallbackUpdate.published_at;
+        delete fallbackUpdate.publication_expires_at;
+        delete fallbackUpdate.renewal_due_at;
+        delete fallbackUpdate.publication_status;
+      }
       if (/newsletter_opt_in/i.test(message)) {
         delete fallbackUpdate.newsletter_opt_in;
       }

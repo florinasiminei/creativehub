@@ -67,6 +67,15 @@ export type ListingRaw = {
     display_order: number | null;
   }[];
   edit_token?: string | null;
+  is_published?: boolean | null;
+  published_at?: string | null;
+  publication_expires_at?: string | null;
+  renewal_due_at?: string | null;
+  publication_status?: string | null;
+  terms_accepted?: boolean | null;
+  terms_accepted_at?: string | null;
+  newsletter_opt_in?: boolean | null;
+  created_by_actor?: string | null;
   listing_facilities?: {
     facilities: {
       id: string;
