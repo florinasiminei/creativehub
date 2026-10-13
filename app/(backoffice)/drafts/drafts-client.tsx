@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import BackofficeSidebar from "@/components/admin/BackofficeSidebar";
 import BackofficeTopBar from "@/components/admin/BackofficeTopBar";
@@ -15,6 +15,7 @@ import {
   type BackofficeSection,
   type DraftItem,
   type LeadItem,
+  type OwnerClaimItem,
   type PublicationPeriodItem,
 } from "@/lib/admin/draftsDashboard";
 
@@ -23,9 +24,10 @@ type Props = {
   attractions: AttractionItem[];
   leads: LeadItem[];
   publicationPeriods: PublicationPeriodItem[];
+  ownerClaims: OwnerClaimItem[];
   role: string;
-  inviteToken?: string | null;
   siteUrl?: string | null;
+  seoContent?: ReactNode;
 };
 
 export default function DraftsClient({
@@ -33,9 +35,10 @@ export default function DraftsClient({
   attractions,
   leads,
   publicationPeriods,
+  ownerClaims,
   role,
-  inviteToken = null,
   siteUrl = null,
+  seoContent = null,
 }: Props) {
   const searchParams = useSearchParams();
 
@@ -128,9 +131,10 @@ export default function DraftsClient({
                 listings={listings}
                 attractions={attractions}
                 publicationPeriods={publicationPeriods}
+                ownerClaims={ownerClaims}
                 role={role}
-                inviteToken={inviteToken}
                 siteUrl={siteUrl}
+                seoContent={seoContent}
                 showUpdatedNotice={showUpdatedNotice}
                 showCreatedNotice={showCreatedNotice}
                 createdId={createdId}

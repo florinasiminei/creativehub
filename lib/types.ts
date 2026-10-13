@@ -67,6 +67,7 @@ export type ListingRaw = {
     display_order: number | null;
   }[];
   edit_token?: string | null;
+  owner_id?: string | null;
   is_published?: boolean | null;
   published_at?: string | null;
   publication_expires_at?: string | null;

@@ -1,6 +1,7 @@
 "use client";
 
 import ImageUploader from "./ImageUploader";
+import FormMessage from "./FormMessage";
 import ListingFormSection from "./ListingFormSection";
 import type { ExistingImage } from "./listingFormTypes";
 
@@ -10,6 +11,10 @@ type ListingFormGallerySectionProps = {
   dropzoneHelper: string;
   showValidation: boolean;
   imagesInvalid: boolean;
+  imagesError?: string | null;
+  stepLabel?: string;
+  wizardStep?: boolean;
+  minimumImagesRequired?: number;
   isDropActive: boolean;
   onDropActiveChange: (active: boolean) => void;
   onFilesSelected: (files: File[]) => void;
@@ -48,6 +53,10 @@ export default function ListingFormGallerySection({
   dropzoneHelper,
   showValidation,
   imagesInvalid,
+  imagesError = null,
+  stepLabel = "pas 3",
+  wizardStep = false,
+  minimumImagesRequired = 5,
   isDropActive,
   onDropActiveChange,
   onFilesSelected,
@@ -80,13 +89,24 @@ export default function ListingFormGallerySection({
   maxImagesWarning,
 }: ListingFormGallerySectionProps) {
   return (
-    <ListingFormSection step="pas 3" label="Galerie" title="Galerie foto" mobileFlat>
+    <ListingFormSection step={stepLabel} label="Galerie" title="Galerie foto" mobileFlat>
+      {wizardStep && (
+        <p className="text-sm text-gray-600 dark:text-gray-400">
+          {minimumImagesRequired > 0
+            ? `Adaugă între ${minimumImagesRequired} și ${maxImagesWarning || 30} de fotografii reale. `
+            : `Poți adăuga până la ${maxImagesWarning || 30} de fotografii reale. `}
+          Sunt acceptate JPEG, PNG, WebP și AVIF, maximum 15 MB fiecare.
+        </p>
+      )}
+      {showValidation && imagesInvalid && imagesError && (
+        <FormMessage variant="error">{imagesError}</FormMessage>
+      )}
       <ImageUploader
         dropzoneTitle={dropzoneTitle}
         dropzoneSubtitle={dropzoneSubtitle}
         dropzoneHelper={dropzoneHelper}
         maxAllowed={maxImagesWarning}
-        accept="image/jpeg,image/jpg,image/png,image/webp,image/avif,image/heic,image/heif,image/*"
+        accept="image/jpeg,image/png,image/webp,image/avif"
         isActive={isDropActive}
         isInvalid={showValidation && imagesInvalid}
         onActiveChange={onDropActiveChange}

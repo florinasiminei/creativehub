@@ -50,7 +50,9 @@ export async function countPublishedListings(supabaseAdmin: SupabaseAdminLike): 
   const { count, error } = await supabaseAdmin
     .from("listings")
     .select("id", { count: "exact", head: true })
-    .eq("is_published", true);
+    .eq("is_published", true)
+    .in("publication_status", ["active", "expiring"])
+    .or(`publication_expires_at.is.null,publication_expires_at.gt.${new Date().toISOString()}`);
 
   if (error) return Number.POSITIVE_INFINITY;
   return Number(count || 0);
@@ -64,6 +66,8 @@ export async function countPublishedListingsByType(
     .from("listings")
     .select("id", { count: "exact", head: true })
     .eq("is_published", true)
+    .in("publication_status", ["active", "expiring"])
+    .or(`publication_expires_at.is.null,publication_expires_at.gt.${new Date().toISOString()}`)
     .eq("type", typeValue);
 
   if (error) return Number.POSITIVE_INFINITY;
@@ -78,6 +82,8 @@ export async function countPublishedListingsByCounty(
     .from("listings")
     .select("id", { count: "exact", head: true })
     .eq("is_published", true)
+    .in("publication_status", ["active", "expiring"])
+    .or(`publication_expires_at.is.null,publication_expires_at.gt.${new Date().toISOString()}`)
     .eq("judet", countyName);
 
   if (error) return Number.POSITIVE_INFINITY;
@@ -93,6 +99,8 @@ export async function countPublishedListingsByTypeAndCounty(
     .from("listings")
     .select("id", { count: "exact", head: true })
     .eq("is_published", true)
+    .in("publication_status", ["active", "expiring"])
+    .or(`publication_expires_at.is.null,publication_expires_at.gt.${new Date().toISOString()}`)
     .eq("type", typeValue)
     .eq("judet", countyName);
 
@@ -109,6 +117,8 @@ export async function countPublishedListingsByRegion(
     .from("listings")
     .select("city")
     .eq("is_published", true)
+    .in("publication_status", ["active", "expiring"])
+    .or(`publication_expires_at.is.null,publication_expires_at.gt.${new Date().toISOString()}`)
     .in("judet", countyNames);
 
   if (error) return Number.POSITIVE_INFINITY;
@@ -125,6 +135,8 @@ export async function countPublishedListingsByTypeAndRegion(
     .from("listings")
     .select("city")
     .eq("is_published", true)
+    .in("publication_status", ["active", "expiring"])
+    .or(`publication_expires_at.is.null,publication_expires_at.gt.${new Date().toISOString()}`)
     .eq("type", typeValue)
     .in("judet", countyNames);
 

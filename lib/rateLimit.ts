@@ -1,3 +1,5 @@
+import { isIP } from 'node:net';
+
 type RateLimitOptions = {
   windowMs: number;
   max: number;
@@ -17,27 +19,38 @@ type RateLimitEntry = {
 };
 
 const store = (() => {
-  const globalAny = globalThis as any;
-  if (!globalAny.__rateLimitStore) {
-    globalAny.__rateLimitStore = new Map<string, RateLimitEntry>();
+  const rateLimitGlobal = globalThis as typeof globalThis & { __rateLimitStore?: Map<string, RateLimitEntry> };
+  if (!rateLimitGlobal.__rateLimitStore) {
+    rateLimitGlobal.__rateLimitStore = new Map<string, RateLimitEntry>();
   }
-  return globalAny.__rateLimitStore as Map<string, RateLimitEntry>;
+  return rateLimitGlobal.__rateLimitStore;
 })();
+
+const MAX_ENTRIES = 10_000;
+let nextCleanupAt = 0;
 
 function getClientIp(request: Request) {
   const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0]?.trim() || "unknown";
-  const realIp = request.headers.get("x-real-ip");
-  return realIp || "unknown";
+  const candidate = forwarded?.split(",")[0]?.trim() || request.headers.get("x-real-ip")?.trim() || '';
+  return candidate.length <= 64 && isIP(candidate) ? candidate : "unknown";
 }
 
 export function rateLimit(request: Request, options: RateLimitOptions): RateLimitResult {
   const now = Date.now();
+  if (now >= nextCleanupAt) {
+    for (const [key, entry] of store) {
+      if (now >= entry.resetAt) store.delete(key);
+    }
+    nextCleanupAt = now + 60_000;
+  }
   const key = `${options.keyPrefix || "global"}:${getClientIp(request)}`;
   const entry = store.get(key);
 
-  if (!entry || now > entry.resetAt) {
+  if (!entry || now >= entry.resetAt) {
     const resetAt = now + options.windowMs;
+    if (!entry && store.size >= MAX_ENTRIES) {
+      return { ok: false, remaining: 0, resetAt, retryAfter: Math.ceil(options.windowMs / 1000) };
+    }
     store.set(key, { count: 1, resetAt });
     return {
       ok: true,

@@ -13,7 +13,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const role = getDraftRoleFromRequest(req);
+    const role = await getDraftRoleFromRequest(req);
     const requiredToken = process.env.INVITE_TOKEN;
     const inviteToken = req.headers.get('x-invite-token');
     const hasInvite = requiredToken && inviteToken === requiredToken;
@@ -49,12 +49,12 @@ export async function POST(req: Request) {
         .update({ display_order: index })
         .eq('id', id)
         .eq('attraction_id', attractionId);
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
     }
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {
     console.error(err);
-    return NextResponse.json({ error: err?.message || 'Unknown error' }, { status: 500 });
+    return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
   }
 }

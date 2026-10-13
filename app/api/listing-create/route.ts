@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
-import { rateLimit } from '@/lib/rateLimit';
-import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
-import { generateListingToken } from '@/lib/listingTokens';
 import { syncListingGeoZones } from '@/lib/geoZones';
+import { rateLimit } from '@/lib/rateLimit';
+import { getVerifiedOwner, OwnerAuthUnavailableError } from '@/lib/server/ownerAuth';
+import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { slugify } from '@/lib/utils';
 
-async function ensureUniqueSlug(supabaseAdmin: ReturnType<typeof getSupabaseAdmin>, baseSlug: string) {
+async function ensureUniqueSlug(
+  supabaseAdmin: ReturnType<typeof getSupabaseAdmin>,
+  baseSlug: string
+) {
   const normalizedBase = slugify(baseSlug) || 'cazare';
   let candidate = normalizedBase;
   let suffix = 2;
@@ -28,25 +30,78 @@ async function ensureUniqueSlug(supabaseAdmin: ReturnType<typeof getSupabaseAdmi
   }
 }
 
-export async function POST(req: Request) {
+function toNumber(value: unknown) {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function normalizeCapacity(value: unknown) {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  if (typeof value !== 'string') return '';
+  return value
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/\s+/g, ' ')
+    .replace(/\s*([-/])\s*/g, '$1')
+    .trim();
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+export async function POST(request: Request) {
   try {
-    const role = getDraftRoleFromRequest(req);
-    const requiredToken = process.env.INVITE_TOKEN;
-    const inviteToken = req.headers.get('x-invite-token');
-    const hasInvite = requiredToken && inviteToken === requiredToken;
-    const hasRole = role === 'admin' || role === 'staff';
-    if (!hasRole && !hasInvite) {
+    if (request.headers.get('x-owner-access') !== '1') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const limit = rateLimit(req, { windowMs: 60_000, max: 40, keyPrefix: 'listing-create' });
+    const limit = rateLimit(request, {
+      windowMs: 60 * 60_000,
+      max: 3,
+      keyPrefix: 'listing-create-owner',
+    });
     if (!limit.ok) {
-      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } });
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(limit.retryAfter) },
+        }
+      );
     }
 
     const supabaseAdmin = getSupabaseAdmin();
+    const owner = await getVerifiedOwner(request, supabaseAdmin);
+    if (!owner) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-    const body = await req.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
+
+    const expectedOwnerId =
+      typeof body.expectedOwnerId === 'string' ? body.expectedOwnerId.trim() : '';
+    if (!expectedOwnerId) {
+      return NextResponse.json({ error: 'Missing expected owner' }, { status: 400 });
+    }
+    if (expectedOwnerId !== owner.id) {
+      return NextResponse.json(
+        { error: 'Contul activ s-a schimbat. Reia confirmarea emailului.' },
+        { status: 409 }
+      );
+    }
+    if (String(body.honeypot ?? '').trim()) {
+      return NextResponse.json({ error: 'Invalid submission' }, { status: 400 });
+    }
+
     const {
       title,
       slug,
@@ -62,161 +117,183 @@ export async function POST(req: Request) {
       lng,
       latitude,
       longitude,
-      search_radius,
-      display_order,
       camere,
       paturi,
       bai,
     } = body;
 
-    const isDraftSeed = body?.draft_seed === true;
-    const titleValue = typeof title === 'string' ? title.trim() : '';
-    const judetVal = body.judet ?? null;
-    if (!isDraftSeed && !titleValue) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    const textLimits: Array<[string, unknown, number]> = [
+      ['title', title, 160],
+      ['slug', slug, 200],
+      ['judet', body.judet, 120],
+      ['city', city, 120],
+      ['sat', sat, 120],
+      ['phone', phone, 32],
+      ['type', type, 80],
+      ['description', description, 1000],
+    ];
+    const invalidTextField = textLimits.find(
+      ([, value, maxLength]) =>
+        value !== null &&
+        value !== undefined &&
+        (typeof value !== 'string' || value.length > maxLength)
+    );
+    if (invalidTextField) {
+      return NextResponse.json(
+        { error: `Camp invalid: ${invalidTextField[0]}` },
+        { status: 400 }
+      );
     }
-    if (!isDraftSeed && !judetVal) {
-      return NextResponse.json({ error: 'Județ obligatoriu' }, { status: 400 });
+    if (
+      facilities !== undefined &&
+      (!Array.isArray(facilities) ||
+        facilities.length > 50 ||
+        facilities.some(
+          (facilityId: unknown) =>
+            typeof facilityId !== 'string' || facilityId.length > 100
+        ))
+    ) {
+      return NextResponse.json({ error: 'Facilitati invalide' }, { status: 400 });
     }
 
-    const toNumber = (value: unknown) => {
-      if (value === null || value === undefined) return null;
-      if (typeof value === 'number' && Number.isFinite(value)) return value;
-      if (typeof value === 'string') {
-        const parsed = parseFloat(value);
-        return Number.isFinite(parsed) ? parsed : null;
+    const titleValue = typeof title === 'string' ? title.trim() : '';
+    const judetValue = body.judet ?? null;
+    if (!titleValue) {
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+    if (!judetValue) {
+      return NextResponse.json({ error: 'Judet obligatoriu' }, { status: 400 });
+    }
+
+    const normalizedFacilities: string[] = Array.isArray(facilities)
+      ? Array.from(new Set(facilities.map((facilityId: string) => facilityId.toLowerCase())))
+      : [];
+    if (normalizedFacilities.some((facilityId) => !isUuid(facilityId))) {
+      return NextResponse.json({ error: 'Facilitati invalide' }, { status: 400 });
+    }
+    if (normalizedFacilities.length > 0) {
+      const { data: validFacilities, error: facilitiesValidationError } = await supabaseAdmin
+        .from('facilities')
+        .select('id')
+        .in('id', normalizedFacilities);
+      if (facilitiesValidationError) {
+        console.error('Could not validate listing facilities', facilitiesValidationError);
+        return NextResponse.json({ error: 'Nu am putut verifica facilitatile. Incearca din nou.' }, { status: 500 });
       }
-      return null;
-    };
+      if ((validFacilities || []).length !== normalizedFacilities.length) {
+        return NextResponse.json({ error: 'Facilitati invalide' }, { status: 400 });
+      }
+    }
 
     const parsedLat = toNumber(lat) ?? toNumber(latitude);
     const parsedLng = toNumber(lng) ?? toNumber(longitude);
-    const parsedCamere = toNumber(camere);
-    const parsedPaturi = toNumber(paturi);
-    const parsedBai = toNumber(bai);
-    const hasNewsletterOptIn = Object.prototype.hasOwnProperty.call(body, 'newsletter_opt_in');
-    const newsletterOptIn = Boolean(body.newsletter_opt_in);
-    const hasTermsAccepted = Object.prototype.hasOwnProperty.call(body, 'terms_accepted');
-    const termsAccepted = Boolean(body.terms_accepted);
-    const createdByActor: 'admin' | 'georgiana' | 'client' =
-      !hasRole && !!hasInvite ? 'client' : role === 'staff' ? 'georgiana' : 'admin';
-
-    const normalizeCapacity = (value: unknown) => {
-      if (value === null || value === undefined) return '';
-      if (typeof value === 'number' && Number.isFinite(value)) return String(value);
-      if (typeof value !== 'string') return '';
-      return value
-        .replace(/[–—]/g, '-')
-        .replace(/\s+/g, ' ')
-        .replace(/\s*([-/])\s*/g, '$1')
-        .trim();
-    };
-
-    const normalizedCapacity = normalizeCapacity(capacity);
-
+    const hasNewsletterOptIn = Object.prototype.hasOwnProperty.call(
+      body,
+      'newsletter_opt_in'
+    );
+    const hasTermsAccepted = Object.prototype.hasOwnProperty.call(
+      body,
+      'terms_accepted'
+    );
     const preferredSlug = typeof slug === 'string' ? slugify(slug) : '';
     const titleSlug = slugify(titleValue || 'Draft proprietate');
-    const baseSlug = preferredSlug || titleSlug || 'cazare';
-    const uniqueSlug = await ensureUniqueSlug(supabaseAdmin, baseSlug);
+    const uniqueSlug = await ensureUniqueSlug(
+      supabaseAdmin,
+      preferredSlug || titleSlug || 'cazare'
+    );
 
-    const payload: any = {
+    const payload: Record<string, unknown> = {
       title: titleValue || 'Draft proprietate',
       slug: uniqueSlug,
-      judet: judetVal || null,
+      judet: judetValue || null,
       city: city || null,
       sat: sat || null,
       price: price || 0,
-      capacity: normalizedCapacity || '1',
-      camere: parsedCamere,
-      paturi: parsedPaturi,
-      bai: parsedBai,
+      capacity: normalizeCapacity(capacity) || '1',
+      camere: toNumber(camere),
+      paturi: toNumber(paturi),
+      bai: toNumber(bai),
       phone: phone || null,
       type: type || 'cabana',
       description: description || null,
       lat: parsedLat,
       lng: parsedLng,
-      search_radius: search_radius || 5,
+      display_order: null,
       is_published: false,
-      edit_token: generateListingToken(),
-      created_by_actor: createdByActor,
+      publication_status: 'draft',
+      edit_token: null,
+      created_by_actor: 'client',
+      owner_id: owner.id,
     };
     if (hasNewsletterOptIn) {
-      payload.newsletter_opt_in = newsletterOptIn;
+      payload.newsletter_opt_in = body.newsletter_opt_in === true;
     }
     if (hasTermsAccepted) {
+      const termsAccepted = body.terms_accepted === true;
       payload.terms_accepted = termsAccepted;
       payload.terms_accepted_at = termsAccepted ? new Date().toISOString() : null;
     }
 
-    if (isDraftSeed) {
-      payload.display_order = null;
-    } else if (Object.prototype.hasOwnProperty.call(body, 'display_order')) {
-      payload.display_order = display_order ?? null;
-    } else {
-      // Use an incrementing counter so newer listings get higher values.
-      try {
-        const { data: orderRows, error: orderErr } = await supabaseAdmin
-          .from('listings')
-          .select('display_order')
-          .order('display_order', { ascending: false, nullsFirst: false })
-          .limit(1);
-        if (!orderErr) {
-          const maxOrder = orderRows?.[0]?.display_order;
-          const nextOrder = typeof maxOrder === 'number' ? maxOrder + 1 : 1;
-          payload.display_order = nextOrder;
-        }
-      } catch {
-        // ignore if column does not exist yet
-      }
-    }
-
-    let { data, error } = await supabaseAdmin.from('listings').insert(payload).select('id, edit_token').single();
-    if (error && /lat|lng|latitude|longitude|search_radius|camere|paturi|bai|newsletter_opt_in|terms_accepted|terms_accepted_at|created_by_actor/i.test(error.message || '')) {
-      const fallbackPayload = { ...payload };
-      const message = String(error.message || '');
-      if (/newsletter_opt_in/i.test(message)) {
-        delete fallbackPayload.newsletter_opt_in;
-      }
-      if (/terms_accepted|terms_accepted_at/i.test(message)) {
-        delete fallbackPayload.terms_accepted;
-        delete fallbackPayload.terms_accepted_at;
-      }
-      if (/created_by_actor/i.test(message)) {
-        delete fallbackPayload.created_by_actor;
-      }
-      if (/search_radius/i.test(message) && !/lat|lng|latitude|longitude/i.test(message)) {
-        delete fallbackPayload.search_radius;
-      }
-      if (/lat|lng|latitude|longitude/i.test(message)) {
-        delete fallbackPayload.lat;
-        delete fallbackPayload.lng;
-        delete fallbackPayload.search_radius;
-      }
-      ({ data, error } = await supabaseAdmin.from('listings').insert(fallbackPayload).select('id, edit_token').single());
-    }
+    const { data, error } = await supabaseAdmin
+      .from('listings')
+      .insert(payload)
+      .select('id')
+      .single();
     if (error) {
-      console.error('Error inserting listing', error);
-      return NextResponse.json({ error: error.message || 'Insert failed' }, { status: 500 });
+      console.error('Error inserting owner listing', error);
+      return NextResponse.json(
+        { error: "Cererea nu a putut fi procesata. Incearca din nou." },
+        { status: 500 }
+      );
     }
 
-    const listingId = (data as any).id;
-    const editToken = (data as any)?.edit_token || payload.edit_token;
-
-    // Insert listing_facilities if provided (best-effort)
-    if (Array.isArray(facilities) && facilities.length > 0) {
-      const rels = facilities.map((fid: string) => ({ listing_id: listingId, facility_id: fid }));
-      const { error: relErr } = await supabaseAdmin.from('listing_facilities').insert(rels);
-      if (relErr) console.warn('Could not insert listing_facilities', relErr.message);
+    const listingId = String(data.id);
+    if (normalizedFacilities.length > 0) {
+      const { error: relationError } = await supabaseAdmin.rpc(
+        'replace_listing_facilities',
+        {
+          p_listing_id: listingId,
+          p_facility_ids: normalizedFacilities,
+          p_expected_owner_id: owner.id,
+        }
+      );
+      if (relationError) {
+        console.error('Could not save listing facilities', relationError);
+        const { data: removedDraft, error: cleanupError } = await supabaseAdmin
+          .from('listings')
+          .delete()
+          .eq('id', listingId)
+          .eq('owner_id', owner.id)
+          .eq('is_published', false)
+          .eq('publication_status', 'draft')
+          .select('id')
+          .maybeSingle();
+        if (cleanupError || !removedDraft) {
+          console.error('Could not remove incomplete owner draft', cleanupError);
+          return NextResponse.json(
+            { error: 'Nu am putut salva facilitatile. Verifica drafturile din cont inainte de a retrimite formularul.' },
+            { status: 500 }
+          );
+        }
+        return NextResponse.json(
+          { error: 'Nu am putut salva facilitatile. Datele formularului au fost pastrate; incearca din nou.' },
+          { status: 500 }
+        );
+      }
     }
 
     await syncListingGeoZones(supabaseAdmin, {
       listingId,
-      judet: payload.judet,
+      judet: typeof payload.judet === 'string' ? payload.judet : null,
     });
 
-    return NextResponse.json({ ok: true, id: listingId, editToken });
-  } catch (err: any) {
-    console.error(err);
-    return NextResponse.json({ error: err?.message || 'Unknown error' }, { status: 500 });
+    return NextResponse.json({ ok: true, id: listingId });
+  } catch (error: unknown) {
+    if (error instanceof OwnerAuthUnavailableError) {
+      return NextResponse.json({ error: error.message }, { status: 503 });
+    }
+    console.error(error);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

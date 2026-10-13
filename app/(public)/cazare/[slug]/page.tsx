@@ -1,17 +1,29 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
+import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
 import { notFound, permanentRedirect } from 'next/navigation';
 import ListingClient, { type Listing } from './ListingClient';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getCanonicalSiteUrl } from '@/lib/siteUrl';
-import { buildPropertyBreadcrumbJsonLd, buildPropertyJsonLd } from '@/lib/jsonLd';
-import { buildListingMetaTitle, clampMetaDescription } from '@/lib/seoCopy';
+import { buildPropertyBreadcrumbJsonLd, buildPropertyJsonLd, serializeJsonLd } from '@/lib/jsonLd';
+import { buildListingMetaTitle, clampMetaDescription, clampMetaTitle } from '@/lib/seoCopy';
+import SeoRelatedLinks, { type SeoRelatedLink } from '@/components/seo/SeoRelatedLinks';
+import { LISTING_TYPES } from '@/lib/listingTypes';
+import { getCounties } from '@/lib/counties';
+import { normalizeRegionText } from '@/lib/regions';
+import { buildTypeCountyPath } from '@/lib/typeCountyRoutes';
+import { buildTypeFacilityCountyPath } from '@/lib/locationRoutes';
+import { fetchTypeFacilityCountyCombos } from '@/lib/typeFacilityCountySeo';
+import { countPublishedListingsByTypeAndCounty } from '@/lib/seoListingsCounts';
+import { hasMinimumPublishedListings } from '@/lib/seoIndexing';
+import { distinctListingCollections } from '@/lib/publicListingCollections';
 
-export const revalidate = 60 * 60;
+export const revalidate = 3600;
 const siteUrl = getCanonicalSiteUrl();
 
 type PageProps = {
-  params: { slug: string };
-  searchParams?: { [key: string]: string | string[] | undefined };
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
 type ListingRow = {
@@ -26,6 +38,8 @@ type ListingRow = {
   price: number | string | null;
   phone?: string | null;
   description?: string | null;
+  seo_title?: string | null;
+  seo_description?: string | null;
   highlights?: string[] | string | null;
   lat?: number | null;
   lng?: number | null;
@@ -35,6 +49,14 @@ type ListingRow = {
   is_published?: boolean | null;
   listing_images?: { image_url: string | null; display_order: number | null }[];
   listing_facilities?: { facilities?: { id: string; name: string } | null }[];
+};
+
+type ListingPageData = Listing & {
+  judet?: string;
+  city?: string;
+  sat?: string;
+  seoTitle?: string;
+  seoDescription?: string;
 };
 
 function parseCount(value: unknown) {
@@ -83,7 +105,7 @@ function getCanonicalListingPath(slug: string | null | undefined, fallbackSlug: 
   return `/cazare/${slug || fallbackSlug}`;
 }
 
-function buildSearchParamsString(searchParams?: PageProps['searchParams']) {
+function buildSearchParamsString(searchParams?: Awaited<PageProps['searchParams']>) {
   const params = new URLSearchParams();
   if (!searchParams) return "";
 
@@ -104,14 +126,102 @@ function buildSearchParamsString(searchParams?: PageProps['searchParams']) {
   return query ? `?${query}` : "";
 }
 
-async function fetchListing(slug: string, searchParams?: PageProps['searchParams']) {
+async function buildListingRelatedLinks(listing: ListingPageData): Promise<SeoRelatedLink[]> {
+  const listingType = LISTING_TYPES.find((type) => type.value === listing.type) || null;
+  const county =
+    getCounties().find(
+      (item) => normalizeRegionText(item.name) === normalizeRegionText(listing.judet || "")
+    ) || null;
+  const links: SeoRelatedLink[] = [
+    {
+      href: "/cazari",
+      label: "Toate categoriile de cazare",
+      description: "Compară tipurile de proprietăți disponibile în catalog.",
+    },
+  ];
+
+  if (listingType) {
+    links.push({
+      href: `/cazari/${listingType.slug}`,
+      label: listingType.label,
+      description: `Vezi și alte proprietăți din categoria ${listingType.singular.toLowerCase()}.`,
+    });
+  }
+
+  if (county) {
+    links.push({
+      href: `/judet/${county.slug}`,
+      label: `Cazări în județul ${county.name}`,
+      description: "Descoperă toate proprietățile publicate în același județ.",
+    });
+  }
+
+  if (listingType && county) {
+    const supabaseAdmin = getSupabaseAdmin();
+    const [typeCountyCount, combinations] = await Promise.all([
+      countPublishedListingsByTypeAndCounty(
+        supabaseAdmin,
+        listingType.value,
+        county.name
+      ),
+      fetchTypeFacilityCountyCombos(supabaseAdmin, { publishedOnly: true }),
+    ]);
+
+    if (hasMinimumPublishedListings(typeCountyCount)) {
+      links.push({
+        href: buildTypeCountyPath(listingType.slug, county.slug),
+        label: `${listingType.label} în județul ${county.name}`,
+        description: "Restrânge selecția după tip și județ.",
+      });
+    }
+
+    const combinationByFacilityId = new Map(
+      combinations
+        .filter(
+          (combination) =>
+            combination.typeSlug === listingType.slug &&
+            combination.countySlug === county.slug &&
+            hasMinimumPublishedListings(combination.listingIds.length)
+        )
+        .map((combination) => [combination.facilityId, combination] as const)
+    );
+    const eligibleCombinations = distinctListingCollections(listing.facilities
+      .flatMap((facility) => {
+        const combination = combinationByFacilityId.get(facility.id);
+        return combination ? [combination] : [];
+      }))
+      .filter((combination) => combination.listingIds.length < typeCountyCount)
+      .slice(0, 3);
+
+    eligibleCombinations.forEach((combination) => {
+      links.push({
+        href: buildTypeFacilityCountyPath(
+          listingType.slug,
+          county.slug,
+          combination.facilitySlug
+        ),
+        label: `${listingType.label} cu ${combination.facilityName}`,
+        description: `Explorează proprietăți cu ${combination.facilityName} în județul ${county.name}.`,
+      });
+    });
+  }
+
+  return links;
+}
+
+async function fetchListing(slug: string, searchParams?: Awaited<PageProps['searchParams']>) {
   const supabaseAdmin = getSupabaseAdmin();
   const previewMode = searchParams?.preview === '1' || searchParams?.draft === '1';
+  if (previewMode) {
+    const role = await getDraftRoleFromRequest({ headers: await headers() });
+    if (role !== 'admin' && role !== 'staff') return null;
+  }
   const idParam = typeof searchParams?.id === 'string' ? searchParams?.id : null;
   const slugValue = String(slug || '').trim();
 
   const baseSelect = `
     id, title, slug, city, sat, judet, type, capacity, price, phone, description,
+    seo_title, seo_description,
     lat, lng, camere, paturi, bai, is_published,
     listing_images(image_url, display_order),
     listing_facilities(
@@ -120,6 +230,7 @@ async function fetchListing(slug: string, searchParams?: PageProps['searchParams
   `;
   const baseListingSelect = `
     id, title, slug, city, sat, judet, type, capacity, price, phone, description,
+    seo_title, seo_description,
     lat, lng, camere, paturi, bai, is_published
   `;
 
@@ -128,7 +239,9 @@ async function fetchListing(slug: string, searchParams?: PageProps['searchParams
 
   const runQuery = async (field: 'id' | 'slug', value: string) => {
     let query = baseQuery.eq(field, value);
-    if (!previewMode) query = query.eq('is_published', true);
+    if (!previewMode) query = query.eq('is_published', true)
+      .in('publication_status', ['active', 'expiring'])
+      .or(`publication_expires_at.is.null,publication_expires_at.gt.${new Date().toISOString()}`);
     const { data, error } = await query
       .order('display_order', { foreignTable: 'listing_images', ascending: true })
       .maybeSingle();
@@ -139,7 +252,9 @@ async function fetchListing(slug: string, searchParams?: PageProps['searchParams
     }
 
     let fallbackQuery = baseListingQuery.eq(field, value);
-    if (!previewMode) fallbackQuery = fallbackQuery.eq('is_published', true);
+    if (!previewMode) fallbackQuery = fallbackQuery.eq('is_published', true)
+      .in('publication_status', ['active', 'expiring'])
+      .or(`publication_expires_at.is.null,publication_expires_at.gt.${new Date().toISOString()}`);
     const { data: baseRow, error: baseError } = await fallbackQuery.maybeSingle();
     if (baseError || !baseRow) {
       if (baseError) {
@@ -229,7 +344,7 @@ Interiorul este amenajat cu gust, oferind spații generoase și luminoase. Fieca
     'Curte spațioasă cu grătar și foișor',
   ];
 
-  const listing: Listing & { judet?: string; city?: string; sat?: string } = {
+  const listing: ListingPageData = {
     id: row.id,
     slug: row.slug ?? undefined,
     title: row.title,
@@ -243,6 +358,14 @@ Interiorul este amenajat cu gust, oferind spații generoase și luminoase. Fieca
     images: displayImages,
     facilities,
     description: descriptionFromDb.length > 0 ? descriptionFromDb : descriptionFallback,
+    seoTitle:
+      typeof row.seo_title === 'string' && row.seo_title.trim().length > 0
+        ? row.seo_title.trim()
+        : undefined,
+    seoDescription:
+      typeof row.seo_description === 'string' && row.seo_description.trim().length > 0
+        ? row.seo_description.trim()
+        : undefined,
     highlights: highlights.length > 0 ? highlights : highlightsFallback,
     camere: parseCount(row.camere),
     paturi: parseCount(row.paturi),
@@ -255,14 +378,21 @@ Interiorul este amenajat cu gust, oferind spații generoase și luminoase. Fieca
   return listing;
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params: paramsPromise, searchParams: searchParamsPromise }: PageProps): Promise<Metadata> {
+  const params = await paramsPromise;
+  const searchParams = await searchParamsPromise;
+  if (searchParams?.preview === '1' || searchParams?.draft === '1') {
+    return { robots: { index: false, follow: false } };
+  }
   const listing = await fetchListing(params.slug);
   if (!listing) return {};
 
-  const description = clampMetaDescription(listing.description);
+  const description = clampMetaDescription(listing.seoDescription || listing.description);
   const image = listing.images?.[0] || '/images/logo.svg';
   const localityLabel = listing.sat || listing.city || "";
-  const title = buildListingMetaTitle(listing.title, localityLabel, listing.judet);
+  const title = listing.seoTitle
+    ? clampMetaTitle(listing.seoTitle)
+    : buildListingMetaTitle(listing.title, localityLabel, listing.judet);
   const canonicalPath = getCanonicalListingPath(listing.slug, params.slug);
   const canonical = new URL(canonicalPath, siteUrl).toString();
   const absoluteImage =
@@ -312,18 +442,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function CazarePage({ params, searchParams }: PageProps) {
+export default async function CazarePage({ params: paramsPromise, searchParams: searchParamsPromise }: PageProps) {
+  const params = await paramsPromise;
+  const searchParams = await searchParamsPromise;
+  const previewRequested = searchParams?.preview === '1' || searchParams?.draft === '1';
   const listing = await fetchListing(params.slug, searchParams);
   if (!listing) {
     notFound();
   }
 
   const canonicalPath = getCanonicalListingPath(listing.slug, params.slug);
-  if (params.slug !== (listing.slug || params.slug)) {
+  if (!previewRequested && params.slug !== (listing.slug || params.slug)) {
     permanentRedirect(`${canonicalPath}${buildSearchParamsString(searchParams)}`);
   }
 
   const canonicalUrl = new URL(canonicalPath, siteUrl).toString();
+  const relatedLinks = await buildListingRelatedLinks(listing);
 
   const jsonLd = buildPropertyJsonLd({
     url: canonicalUrl,
@@ -352,13 +486,20 @@ export default async function CazarePage({ params, searchParams }: PageProps) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbJsonLd) }}
       />
       <ListingClient data={listing} />
+      <div className="mx-auto max-w-6xl px-4 pb-16">
+        <SeoRelatedLinks
+          title={`Continuă explorarea din ${listing.judet || "România"}`}
+          description="Compară proprietăți similare după tip, județ și facilitățile care contează pentru sejurul tău."
+          links={relatedLinks}
+        />
+      </div>
     </>
   );
 }

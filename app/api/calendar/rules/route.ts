@@ -6,7 +6,7 @@ import type { CalendarRule } from "@/lib/calendar/types";
 
 export async function GET(req: Request) {
   try {
-    const role = getDraftRoleFromRequest(req);
+    const role = await getDraftRoleFromRequest(req);
     if (role !== "admin" && role !== "staff") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -24,7 +24,7 @@ export async function GET(req: Request) {
   } catch (err: any) {
     console.error("GET /api/calendar/rules:", err);
     return NextResponse.json(
-      { error: err?.message || "Internal server error" },
+      { error: "Cererea nu a putut fi procesata. Incearca din nou." },
       { status: 500 }
     );
   }
@@ -32,7 +32,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const role = getDraftRoleFromRequest(req);
+    const role = await getDraftRoleFromRequest(req);
     if (role !== "admin" && role !== "staff") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
   } catch (err: any) {
     console.error("POST /api/calendar/rules:", err);
     return NextResponse.json(
-      { error: err?.message || "Internal server error" },
+      { error: "Cererea nu a putut fi procesata. Incearca din nou." },
       { status: 500 }
     );
   }

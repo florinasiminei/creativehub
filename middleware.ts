@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getDraftAuthFromHeader, getRoleFromEncodedAuth } from "@/lib/draftsAuth";
+import { getDraftAuthFromHeader, getRoleFromEncodedAuth, createDraftSession, DRAFT_SESSION_MAX_AGE } from "@/lib/draftsAuth";
 import { LISTING_TYPES } from "@/lib/listingTypes";
 import { metroRegions, touristRegions } from "@/lib/regions";
 import { slugify } from "@/lib/utils";
@@ -145,14 +145,20 @@ function resolveLegacyRedirectPath(pathname: string): string | null {
   return null;
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const maintenanceEnabled = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === "true";
   const pathname = request.nextUrl.pathname;
 
   const isOnMaintenancePage = pathname.startsWith("/maintenance");
   const isStaticAsset = pathname.includes(".");
+  const isStripeWebhook = pathname === "/api/payments/stripe/webhook";
 
-  if (maintenanceEnabled && !isOnMaintenancePage && !isStaticAsset) {
+  if (
+    maintenanceEnabled &&
+    !isOnMaintenancePage &&
+    !isStaticAsset &&
+    !isStripeWebhook
+  ) {
     return NextResponse.redirect(new URL("/maintenance", request.url));
   }
 
@@ -165,18 +171,22 @@ export function middleware(request: NextRequest) {
 
   const isDrafts = pathname === "/drafts" || pathname.startsWith("/drafts/");
   const isSeoAdmin = pathname === "/admin-seo" || pathname.startsWith("/admin-seo/");
+  const isListingPreview =
+    pathname.startsWith("/cazare/") &&
+    (request.nextUrl.searchParams.get("preview") === "1" ||
+      request.nextUrl.searchParams.get("draft") === "1");
   const isDraftsLogin = pathname === "/drafts-login";
   const isDraftsLoginApi = pathname === "/api/drafts-login";
   if (isDraftsLogin || isDraftsLoginApi) {
     return NextResponse.next();
   }
-  if (isDrafts || isSeoAdmin) {
+  if (isDrafts || isSeoAdmin || isListingPreview) {
     const authHeader = request.headers.get("authorization");
     const authCookie = request.cookies.get("drafts_auth")?.value || null;
     const headerAuth = getDraftAuthFromHeader(authHeader);
-    const cookieRole = getRoleFromEncodedAuth(authCookie);
+    const cookieRole = await getRoleFromEncodedAuth(authCookie);
     const role = headerAuth?.role || cookieRole;
-    const encoded = headerAuth?.encoded || authCookie;
+    const encoded = headerAuth ? await createDraftSession(headerAuth) : authCookie;
 
     if (!role || !encoded) {
       const hasAttempt = !!authHeader || !!authCookie;
@@ -204,7 +214,7 @@ export function middleware(request: NextRequest) {
         httpOnly: true,
         sameSite: "lax",
         secure: process.env.NODE_ENV === "production",
-        maxAge: 60 * 60 * 24 * 30,
+        maxAge: DRAFT_SESSION_MAX_AGE,
         path: "/",
       });
     }

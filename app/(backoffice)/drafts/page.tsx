@@ -1,25 +1,32 @@
 export const revalidate = 0;
 
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getRoleFromEncodedAuth } from "@/lib/draftsAuth";
 import { mapListingSummary } from "@/lib/transformers";
 import { ensureListingToken } from "@/lib/listingTokens";
 import type { ListingRaw } from "@/lib/types";
 import DraftsClient from "./drafts-client";
-import { markExpiringListings, type LeadItem, type LeadStatus, type PublicationPeriodItem } from "@/lib/admin/draftsDashboard";
+import SeoDashboardServer from "../admin-seo/seo-dashboard-server";
+import { markExpiringListings, type LeadItem, type LeadStatus, type OwnerClaimItem, type PublicationPeriodItem } from "@/lib/admin/draftsDashboard";
 
-export default async function DraftsPage() {
+type DraftsPageProps = {
+  searchParams?: Promise<{ tab?: string }>;
+};
+
+export default async function DraftsPage({ searchParams: searchParamsPromise }: DraftsPageProps) {
+  const searchParams = await searchParamsPromise;
   const supabaseAdmin = getSupabaseAdmin();
-  const authCookie = cookies().get("drafts_auth")?.value || null;
-  const role = getRoleFromEncodedAuth(authCookie) || "admin";
-  const inviteToken = process.env.INVITE_TOKEN || null;
+  const authCookie = (await cookies()).get("drafts_auth")?.value || null;
+  const role = await getRoleFromEncodedAuth(authCookie);
+  if (!role) redirect("/drafts-login?error=1");
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || null;
 
   const baseSelect =
-    "id, title, slug, type, judet, city, sat, capacity, price, phone, is_published, terms_accepted, display_order, edit_token, listing_images(image_url, display_order)";
+    "id, title, slug, type, judet, city, sat, capacity, price, phone, is_published, terms_accepted, display_order, edit_token, owner_id, created_at, created_by_actor, listing_images(image_url, display_order)";
   const extendedSelect =
-    "id, title, slug, type, judet, city, sat, capacity, price, phone, is_published, terms_accepted, display_order, edit_token, published_at, publication_expires_at, renewal_due_at, publication_status, listing_images(image_url, display_order)";
+    "id, title, slug, type, judet, city, sat, capacity, price, phone, is_published, terms_accepted, display_order, edit_token, owner_id, created_at, created_by_actor, submitted_at, published_at, publication_expires_at, renewal_due_at, publication_status, listing_images(image_url, display_order)";
 
   let { data, error }: { data: any[] | null; error: any } = await supabaseAdmin
     .from("listings")
@@ -29,7 +36,12 @@ export default async function DraftsPage() {
     .order("display_order", { foreignTable: "listing_images", ascending: true })
     .limit(1, { foreignTable: "listing_images" });
 
-  if (error && /published_at|publication_expires_at|renewal_due_at|publication_status/i.test(error.message || "")) {
+  if (
+    error &&
+    /submitted_at|published_at|publication_expires_at|renewal_due_at|publication_status/i.test(
+      error.message || ""
+    )
+  ) {
     const fallback = await supabaseAdmin
       .from("listings")
       .select(baseSelect)
@@ -71,6 +83,21 @@ export default async function DraftsPage() {
     console.error(publicationPeriodsError);
   }
 
+  let ownerClaimsData: any[] = [];
+  if (role === "admin") {
+    const { data: claimsData, error: ownerClaimsError } = await supabaseAdmin
+      .from("listing_owner_claims")
+      .select("id, listing_id, claimant_email, message, status, created_at, reviewed_at, listings(title)")
+      .order("created_at", { ascending: false });
+    ownerClaimsData = claimsData || [];
+    if (
+      ownerClaimsError &&
+      !/schema cache|relation .*listing_owner_claims/i.test(ownerClaimsError.message || "")
+    ) {
+      console.error(ownerClaimsError);
+    }
+  }
+
   const listings = (data || []) as ListingRaw[];
   const leads = mapLeads(leadsData || []);
   const firstLeadByListingId = new Map<string, LeadItem>();
@@ -90,7 +117,9 @@ export default async function DraftsPage() {
           : statusField === "publicat" || statusField === "published" || isPublished
           ? "publicat"
           : "draft";
-      const editToken = await ensureListingToken(summary.id, (row as any).edit_token);
+      const editToken = (row as any).owner_id
+        ? null
+        : await ensureListingToken(summary.id, (row as any).edit_token);
       const termsAccepted = Boolean((row as any).terms_accepted);
       const normalizedTitle = String((row as any).title || "").trim().toLowerCase();
       const hasUploadedImage = Array.isArray((row as any).listing_images)
@@ -109,6 +138,9 @@ export default async function DraftsPage() {
         editToken,
         isDraftSeed,
         isEmptyDraftSeed,
+        createdAt: (row as any).created_at || null,
+        createdByActor: (row as any).created_by_actor || null,
+        submittedAt: (row as any).submitted_at || null,
         publishedAt: (row as any).published_at || null,
         publicationExpiresAt: (row as any).publication_expires_at || null,
         renewalDueAt: (row as any).renewal_due_at || null,
@@ -143,6 +175,10 @@ export default async function DraftsPage() {
       updatedAt: row?.updated_at ? String(row.updated_at) : null,
     };
   });
+  const seoContent =
+    role === "admin" && searchParams?.tab === "seo"
+      ? <SeoDashboardServer embedded />
+      : null;
 
   return (
     <DraftsClient
@@ -150,11 +186,28 @@ export default async function DraftsPage() {
       attractions={mappedAttractions}
       leads={leads}
       publicationPeriods={mapPublicationPeriods(publicationPeriodsData || [])}
+      ownerClaims={mapOwnerClaims(ownerClaimsData)}
       role={role}
-      inviteToken={inviteToken}
       siteUrl={siteUrl}
+      seoContent={seoContent}
     />
   );
+}
+
+function mapOwnerClaims(rows: any[]): OwnerClaimItem[] {
+  return rows.map((row) => {
+    const listing = Array.isArray(row.listings) ? row.listings[0] : row.listings;
+    return {
+      id: String(row.id),
+      listingId: String(row.listing_id),
+      listingTitle: String(listing?.title || "Proprietate CABN"),
+      claimantEmail: String(row.claimant_email || ""),
+      message: row.message ? String(row.message) : null,
+      status: (row.status || "pending") as OwnerClaimItem["status"],
+      createdAt: row.created_at ? String(row.created_at) : null,
+      reviewedAt: row.reviewed_at ? String(row.reviewed_at) : null,
+    };
+  });
 }
 
 function mapLeads(rows: any[]): LeadItem[] {

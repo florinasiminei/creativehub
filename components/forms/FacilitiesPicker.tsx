@@ -20,61 +20,64 @@ export default function FacilitiesPicker({ facilities, selected, onToggle }: Fac
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-          Facilitati <span className="font-normal text-gray-500 dark:text-gray-400">(optional)</span>
+          Facilități <span className="font-normal text-gray-500 dark:text-gray-400">(opțional)</span>
         </div>
-        <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-900/20 dark:text-emerald-200">
-          {selectedCount} selectate
+        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+          {selectedCount} {selectedCount === 1 ? "selectată" : "selectate"}
         </span>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
+        {facilities.length === 0 && (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Lista facilităților nu este disponibilă momentan. Reîncarcă pagina pentru a încerca din nou.
+          </p>
+        )}
         {groupedFacilities.map((group) => (
-          <section
-            key={group.key}
-            className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/80"
-          >
-            <div className="mb-2 flex items-center justify-between">
-              <h4 className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">
+          <section key={group.key}>
+            <div className="mb-2 flex items-center gap-2">
+              <h4 className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
                 {group.label}
               </h4>
               <span className="text-xs text-gray-400 dark:text-gray-500">{group.facilities.length}</span>
             </div>
 
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
               {group.facilities.map((facility) => {
                 const isSelected = selected.includes(facility.id);
                 return (
-                  <button
+                  <label
                     key={facility.id}
-                    type="button"
-                    aria-pressed={isSelected}
-                    onClick={() => onToggle(facility.id)}
-                    className={`group flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition ${
+                    className={`relative flex min-h-12 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-left transition-colors focus-within:ring-2 focus-within:ring-emerald-500 ${
                       isSelected
-                        ? "border-emerald-400 bg-emerald-50 text-emerald-900 dark:border-emerald-500/80 dark:bg-emerald-900/25 dark:text-emerald-100"
-                        : "border-gray-200 bg-white text-gray-800 hover:border-emerald-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-200 dark:hover:border-emerald-500/70"
+                        ? "border-zinc-900 bg-zinc-50 text-zinc-950 ring-1 ring-inset ring-zinc-900 dark:border-zinc-200 dark:bg-zinc-800 dark:text-white dark:ring-zinc-200"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-400"
                     }`}
                   >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => onToggle(facility.id)}
+                      className="sr-only"
+                    />
                     <span
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                        isSelected
-                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-200"
-                          : "bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-gray-300"
-                      }`}
+                      className="inline-flex shrink-0 items-center justify-center [&_svg]:h-5 [&_svg]:w-5"
+                      aria-hidden="true"
                     >
                       {resolveFacilityIcon(facility.name)}
                     </span>
-                    <span className="min-w-0 flex-1 text-sm font-medium">{facility.name}</span>
+                    <span className="min-w-0 flex-1 text-xs font-medium leading-5 sm:text-sm">{facility.name}</span>
                     <span
-                      className={`inline-flex h-5 w-5 items-center justify-center rounded-md border ${
+                      className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${
                         isSelected
-                          ? "border-emerald-500 bg-emerald-500 text-white"
-                          : "border-gray-300 bg-transparent text-transparent dark:border-zinc-600"
+                          ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                          : "text-transparent"
                       }`}
+                      aria-hidden="true"
                     >
                       <Check size={12} />
                     </span>
-                  </button>
+                  </label>
                 );
               })}
             </div>

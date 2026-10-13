@@ -1,16 +1,16 @@
 "use client";
 
-import SearchModal from "./SearchModal";
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { AiOutlineSearch } from "react-icons/ai";
-import { FiSliders } from "react-icons/fi";
+import dynamic from "next/dynamic";
+import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   Globe2,
   Home,
   Map as MapIcon,
   MapPin,
   Search,
+  SlidersHorizontal,
   Sparkles,
+  X,
 } from "lucide-react";
 import type {
   FacilityOption,
@@ -18,8 +18,9 @@ import type {
   SearchSuggestion,
   SearchSuggestionType,
 } from "@/lib/types";
-import { IoClose } from "react-icons/io5";
 import { resolveFacilityIcon } from "@/lib/facilityIcons";
+
+const SearchModal = dynamic(() => import("./SearchModal"));
 
 type TopSearchBarProps = {
   filters: Filters;
@@ -35,6 +36,7 @@ type TopSearchBarProps = {
   persoaneRange: { min: number; max: number };
   resetFiltre: () => void;
   facilitiesList: FacilityOption[];
+  availableTypes: string[];
   resultsCount?: number;
 };
 
@@ -94,7 +96,7 @@ function highlightText(
         nodes.push(text.slice(cursor, start));
       }
       nodes.push(
-        <strong key={`match-${key++}`} className="text-emerald-600">
+        <strong key={`match-${key++}`} className="text-emerald-700 dark:text-emerald-300">
           {text.slice(start, end + 1)}
         </strong>
       );
@@ -125,7 +127,7 @@ function highlightText(
 
     const match = text.slice(matchIndex, matchIndex + lowerQuery.length);
     parts.push(
-      <strong key={`match-${key++}`} className="text-emerald-600">
+      <strong key={`match-${key++}`} className="text-emerald-700 dark:text-emerald-300">
         {match}
       </strong>
     );
@@ -142,6 +144,7 @@ function highlightText(
 }
 
 const TopSearchBar = ({
+  availableTypes,
   filters,
   setFilters,
   locatiiSugestii,
@@ -158,6 +161,7 @@ const TopSearchBar = ({
   resultsCount,
 }: TopSearchBarProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const suggestionsId = useId();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const dropdownRef = useRef<HTMLUListElement | null>(null);
 
@@ -222,7 +226,7 @@ const TopSearchBar = ({
           {/* Destination Search */}
           <div className="relative min-w-0 flex-1">
             <div className="relative">
-              <AiOutlineSearch className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 transform text-xl text-gray-400" />
+              <Search aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 transform text-gray-400" />
               <input
                 ref={inputRef}
                 type="text"
@@ -232,8 +236,11 @@ const TopSearchBar = ({
                 onKeyDown={handleLocatieKeyDown}
                 className="h-[48px] w-full rounded-full border border-gray-300 bg-white pl-12 pr-12 text-sm transition-all duration-200 hover:border-emerald-400 hover:ring hover:ring-emerald-300 focus:border-emerald-400 focus:outline-none focus:ring focus:ring-emerald-300 dark:border-zinc-600 dark:bg-zinc-900 dark:text-white"
                 role="combobox"
+                aria-label="Caută locație, proprietate sau facilitate"
+                aria-autocomplete="list"
                 aria-expanded={locatiiSugestii.length > 0}
-                aria-controls="locatii-sugestii"
+                aria-controls={locatiiSugestii.length > 0 ? suggestionsId : undefined}
+                aria-activedescendant={sugestieIndex >= 0 && sugestieIndex < locatiiSugestii.length ? `${suggestionsId}-${sugestieIndex}` : undefined}
               />
               {filters.keyword && (
                 <button
@@ -243,9 +250,9 @@ const TopSearchBar = ({
                     setLocatiiSugestii([]);
                   }}
                   className="absolute right-4 top-1/2 -translate-y-1/2 transform rounded-full p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-zinc-700"
-                  aria-label="Clear search"
+                  aria-label="Șterge căutarea"
                 >
-                  <IoClose className="h-5 w-5" />
+                  <X aria-hidden="true" className="h-5 w-5" />
                 </button>
               )}
             </div>
@@ -253,7 +260,8 @@ const TopSearchBar = ({
             {locatiiSugestii.length > 0 && (
               <ul
                 ref={dropdownRef}
-                id="locatii-sugestii"
+                id={suggestionsId}
+                aria-label="Sugestii de căutare"
                 className="absolute z-20 mt-2 w-full max-h-80 overflow-y-auto rounded-2xl border border-gray-200 bg-white py-1 shadow-xl dark:border-zinc-700 dark:bg-zinc-800"
                 role="listbox"
               >
@@ -263,7 +271,7 @@ const TopSearchBar = ({
                     <React.Fragment key={group.type}>
                       <li
                         role="presentation"
-                        className="px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500"
+                        className="px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-400"
                       >
                         {typeLabels[group.type]}
                       </li>
@@ -283,6 +291,7 @@ const TopSearchBar = ({
                         return (
                           <li
                             key={suggestie.id}
+                            id={`${suggestionsId}-${globalIndex}`}
                             className={`flex cursor-pointer items-center gap-3 px-4 py-3 transition ${
                               isActive
                                 ? "bg-emerald-50 dark:bg-emerald-900/30"
@@ -328,16 +337,19 @@ const TopSearchBar = ({
             <button
               type="button"
               onClick={() => setIsModalOpen(true)}
+              aria-label="Deschide filtrele de căutare"
+              aria-haspopup="dialog"
+              aria-expanded={isModalOpen}
               className={`flex h-[48px] items-center gap-2 rounded-full border px-6 transition-all duration-200 hover:border-emerald-400 hover:ring hover:ring-emerald-300 dark:hover:border-emerald-300 dark:hover:ring dark:hover:ring-emerald-200 ${
                 hasActiveFilters
-                  ? "border-emerald-500 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                  ? "border-emerald-500 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
                   : "border-gray-300 hover:bg-gray-50 dark:border-zinc-600 dark:hover:bg-zinc-800"
               }`}
             >
-              <FiSliders className="text-xl" />
+              <SlidersHorizontal className="h-5 w-5" aria-hidden="true" />
               <span className="hidden sm:inline">Filtre</span>
               {hasActiveFilters && (
-                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-xs font-medium text-emerald-600">
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-xs font-medium text-emerald-700">
                   {filters.facilities.length +
                     filters.tipuri.length +
                     (filters.pretMin > minPrice || filters.pretMax < maxPrice ? 1 : 0) +
@@ -358,7 +370,7 @@ const TopSearchBar = ({
                   resetFiltre();
                   setLocatiiSugestii([]);
                 }}
-                className="flex h-[48px] items-center rounded-full border border-transparent px-5 text-sm font-medium text-emerald-600 transition hover:bg-emerald-50 hover:text-emerald-500 dark:hover:bg-emerald-900/30"
+                className="flex h-[48px] items-center rounded-full border border-transparent px-5 text-sm font-medium text-emerald-700 transition hover:bg-emerald-50 hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200 dark:hover:bg-emerald-900/30"
               >
                 Reseteaza
               </button>
@@ -367,18 +379,21 @@ const TopSearchBar = ({
         </div>
       </div>
 
-      <SearchModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        filters={filters}
-        setFilters={setFilters}
-        minPrice={minPrice}
-        maxPrice={maxPrice}
-        persoaneRange={persoaneRange}
-        resetFiltre={resetFiltre}
-        facilitiesList={facilitiesList}
-        resultsCount={resultsCount}
-      />
+      {isModalOpen && (
+        <SearchModal
+          availableTypes={availableTypes}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          filters={filters}
+          setFilters={setFilters}
+          minPrice={minPrice}
+          maxPrice={maxPrice}
+          persoaneRange={persoaneRange}
+          resetFiltre={resetFiltre}
+          facilitiesList={facilitiesList}
+          resultsCount={resultsCount}
+        />
+      )}
     </>
   );
 };

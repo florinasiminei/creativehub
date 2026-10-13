@@ -23,6 +23,7 @@ type SearchModalProps = {
   persoaneRange: { min: number; max: number };
   resetFiltre: () => void;
   facilitiesList: FacilityOption[];
+  availableTypes: string[];
   resultsCount?: number;
 };
 
@@ -43,6 +44,7 @@ const formatCounterSubtitle = (value: number) => {
 };
 
 const SearchModal: React.FC<SearchModalProps> = ({
+  availableTypes,
   isOpen,
   onClose,
   filters,
@@ -292,7 +294,7 @@ const SearchModal: React.FC<SearchModalProps> = ({
                     <div className="space-y-4">
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Tip cazare</h3>
                       <div className="flex flex-wrap gap-2">
-                        {LISTING_TYPES.map((type) => {
+                        {LISTING_TYPES.filter((type) => availableTypes.includes(type.value)).map((type) => {
                           const selected = filters.tipuri.includes(type.value);
                           return (
                             <button

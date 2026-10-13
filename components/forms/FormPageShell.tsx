@@ -51,7 +51,7 @@ export default function FormPageShell({
             {highlights.map((highlight) => (
               <div
                 key={`${highlight.label}-${highlight.value}`}
-                className="rounded-2xl border border-white/80 bg-white/78 px-4 py-3 shadow-[0_16px_36px_-28px_rgba(15,23,42,0.6)] backdrop-blur dark:border-zinc-700 dark:bg-zinc-900/70 dark:shadow-[0_16px_36px_-28px_rgba(0,0,0,0.75)]"
+                className="rounded-2xl border border-white/80 bg-white/[0.78] px-4 py-3 shadow-[0_16px_36px_-28px_rgba(15,23,42,0.6)] backdrop-blur dark:border-zinc-700 dark:bg-zinc-900/70 dark:shadow-[0_16px_36px_-28px_rgba(0,0,0,0.75)]"
               >
                 <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-gray-500 dark:text-gray-400">
                   {highlight.label}

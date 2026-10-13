@@ -4,7 +4,7 @@ import { getDraftRoleFromRequest } from "@/lib/draftsAuth";
 
 export async function GET(req: Request) {
   try {
-    const role = getDraftRoleFromRequest(req);
+    const role = await getDraftRoleFromRequest(req);
     if (role !== "admin" && role !== "staff") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -20,7 +20,7 @@ export async function GET(req: Request) {
   } catch (err: any) {
     console.error("GET /api/calendar/blocks:", err);
     return NextResponse.json(
-      { error: err?.message || "Internal server error" },
+      { error: "Cererea nu a putut fi procesata. Incearca din nou." },
       { status: 500 }
     );
   }
@@ -28,7 +28,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const role = getDraftRoleFromRequest(req);
+    const role = await getDraftRoleFromRequest(req);
     if (role !== "admin" && role !== "staff") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
   } catch (err: any) {
     console.error("POST /api/calendar/blocks:", err);
     return NextResponse.json(
-      { error: err?.message || "Internal server error" },
+      { error: "Cererea nu a putut fi procesata. Incearca din nou." },
       { status: 500 }
     );
   }
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const role = getDraftRoleFromRequest(req);
+    const role = await getDraftRoleFromRequest(req);
     if (role !== "admin" && role !== "staff") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -122,7 +122,7 @@ export async function PATCH(req: Request) {
   } catch (err: any) {
     console.error("PATCH /api/calendar/blocks:", err);
     return NextResponse.json(
-      { error: err?.message || "Internal server error" },
+      { error: "Cererea nu a putut fi procesata. Incearca din nou." },
       { status: 500 }
     );
   }

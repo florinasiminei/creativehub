@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import LoadingLogo from "@/components/LoadingLogo";
 import SubtleBackLink from "@/components/SubtleBackLink";
 import PropertyImageGrid from "@/components/listing/PropertyImageGrid";
@@ -404,6 +405,12 @@ export default function ListingClient({ data }: Props) {
                       <p className="text-center text-xs text-gray-500 dark:text-gray-400">
                         Nu păstrăm istoricul apelurilor.
                       </p>
+                      <Link
+                        href={`/proprietari?listing=${encodeURIComponent(data.slug ? listingUrl : data.id)}`}
+                        className="block text-center text-xs font-medium text-gray-500 underline decoration-gray-300 underline-offset-4 transition hover:text-emerald-700 dark:text-gray-400 dark:decoration-zinc-600 dark:hover:text-emerald-300"
+                      >
+                        Administrezi această proprietate?
+                      </Link>
                     </div>
                   </div>
                 </section>

@@ -20,6 +20,7 @@ export type LocationData = {
   longitude: number;
   county: string;
   city: string;
+  village?: string;
 };
 
 export type ExistingImage = {

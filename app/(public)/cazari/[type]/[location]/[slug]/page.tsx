@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
-import ListingsGrid from "@/components/listing/ListingGrid";
+import JsonLdScripts from "@/components/seo/JsonLdScripts";
+import ListingCollectionResults from "@/components/seo/ListingCollectionResults";
 import SeoRelatedLinks from "@/components/seo/SeoRelatedLinks";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { mapListingSummary } from "@/lib/transformers";
 import { getTypeBySlug } from "@/lib/listingTypes";
 import { getCanonicalSiteUrl } from "@/lib/siteUrl";
 import { resolveListingsRouteIndexability } from "@/lib/seoRouteIndexing";
@@ -13,9 +13,9 @@ import { normalizeRegionText } from "@/lib/regions";
 import { buildBreadcrumbJsonLd, buildListingPageJsonLd } from "@/lib/jsonLd";
 import type { CountyDefinition } from "@/lib/counties";
 import {
+  fetchSeoFacilities,
   fetchTypeFacilityCountyCombos,
   findSeoFacilityBySlug,
-  toSeoFacilities,
   type SeoFacility,
 } from "@/lib/typeFacilityCountySeo";
 import {
@@ -26,32 +26,23 @@ import {
   normalizeFacilitySlug,
   parseListingLocationSegment,
 } from "@/lib/locationRoutes";
-import type { ListingRaw } from "@/lib/types";
+import {
+  fetchPublishedListingSummaries,
+  mapListingsToJsonLdItems,
+} from "@/lib/publicListingCollections";
 import type { Cazare } from "@/lib/utils";
+import { getCategoryPhoto, getDestinationPhoto } from "@/lib/exploreCards";
 
-export const revalidate = 60 * 60 * 6;
+export const revalidate = 21600;
 
 const siteUrl = getCanonicalSiteUrl();
 
 type PageProps = {
-  params: {
+  params: Promise<{
     type: string;
     location: string;
     slug: string;
-  };
-};
-
-type FacilityRow = {
-  id: string;
-  name: string;
-};
-
-type ListingFacilityRaw = {
-  facilities?: { id?: unknown; name?: unknown } | Array<{ id?: unknown; name?: unknown }> | null;
-};
-
-type ListingRawFlexible = Omit<ListingRaw, "listing_facilities"> & {
-  listing_facilities?: ListingFacilityRaw[] | null;
+  }>;
 };
 
 type ResolvedTypeFacilityCountyRoute = {
@@ -62,41 +53,6 @@ type ResolvedTypeFacilityCountyRoute = {
   isCanonical: boolean;
 };
 
-function normalizeListingRows(rows: ListingRawFlexible[]): ListingRaw[] {
-  return rows.map((row) => {
-    const normalizedFacilities = (row.listing_facilities || []).flatMap((entry) => {
-      const facilities = Array.isArray(entry?.facilities)
-        ? entry.facilities
-        : entry?.facilities
-        ? [entry.facilities]
-        : [];
-
-      return facilities
-        .map((facility) => ({
-          facilities: {
-            id: String(facility?.id || "").trim(),
-            name: String(facility?.name || "").trim(),
-          },
-        }))
-        .filter((facility) => facility.facilities.id && facility.facilities.name);
-    });
-
-    return {
-      ...row,
-      listing_facilities: normalizedFacilities,
-    } as ListingRaw;
-  });
-}
-
-async function getSeoFacilities(): Promise<SeoFacility[]> {
-  const supabaseAdmin = getSupabaseAdmin();
-  const { data, error } = await supabaseAdmin.from("facilities").select("id, name");
-  if (error || !data) return [];
-  return toSeoFacilities(
-    (data as FacilityRow[]).map((item) => ({ id: String(item.id), name: String(item.name) }))
-  );
-}
-
 function resolveFacilityFromSegment(facilities: SeoFacility[], segment: string): SeoFacility | null {
   const lookupSlug = normalizeFacilitySlug(segment);
   if (!lookupSlug) return null;
@@ -104,12 +60,12 @@ function resolveFacilityFromSegment(facilities: SeoFacility[], segment: string):
 }
 
 async function resolveTypeFacilityCountyRoute(
-  params: PageProps["params"]
+  params: Awaited<PageProps["params"]>
 ): Promise<ResolvedTypeFacilityCountyRoute | null> {
   const listingType = getTypeBySlug(params.type);
   if (!listingType) return null;
 
-  const facilities = await getSeoFacilities();
+  const facilities = await fetchSeoFacilities(getSupabaseAdmin());
   if (facilities.length === 0) return null;
 
   const countyFromLocation = parseListingLocationSegment(params.location);
@@ -205,22 +161,25 @@ async function getPublishedListingsCountForCombination(
   return listingIds.length;
 }
 
-export async function generateMetadata({ params }: PageProps) {
+export async function generateMetadata({ params: paramsPromise }: PageProps) {
+  const params = await paramsPromise;
   const resolved = await resolveTypeFacilityCountyRoute(params);
   if (!resolved) return {};
 
   const { listingType, county, facility, canonicalPath } = resolved;
   const seoTypeLabel = getSeoTypeLabel(listingType.slug, listingType.label);
   const title = buildSeoTypeTitle(seoTypeLabel, `cu ${facility.name} în județul ${county.name}`);
-  const description = buildSeoTypeDescription(
-    seoTypeLabel,
-    `cu ${facility.name} în județul ${county.name}`
-  );
   const canonical = new URL(canonicalPath, siteUrl).toString();
   const publishedListingsCount = await getPublishedListingsCountForCombination(
     listingType.value,
     county.name,
     facility.id
+  );
+  const description = buildSeoTypeDescription(
+    seoTypeLabel,
+    `cu ${facility.name} în județul ${county.name}`,
+    0,
+    publishedListingsCount
   );
   const shouldIndex = await resolveListingsRouteIndexability(canonicalPath, publishedListingsCount);
 
@@ -238,52 +197,11 @@ async function getFacilityCountyTypeListings(
   facilityId: string
 ): Promise<Cazare[]> {
   const listingIds = await getMatchingListingIds(typeValue, countyName, facilityId);
-  if (listingIds.length === 0) return [];
-
-  const supabaseAdmin = getSupabaseAdmin();
-  const baseSelect = `
-    id, title, slug, type, judet, city, sat, capacity, price, phone, is_published, display_order,
-    camere, paturi, bai,
-    listing_images(image_url, display_order),
-    listing_facilities(
-      facilities(id, name)
-    )
-  `;
-
-  const withOrder = await supabaseAdmin
-    .from("listings")
-    .select(baseSelect)
-    .eq("is_published", true)
-    .eq("type", typeValue)
-    .in("id", listingIds)
-    .order("display_order", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false })
-    .order("display_order", { foreignTable: "listing_images", ascending: true })
-    .limit(1, { foreignTable: "listing_images" });
-
-  let data = withOrder.data;
-  let error = withOrder.error;
-
-  if (error && String(error.message || "").includes("display_order")) {
-    const fallback = await supabaseAdmin
-      .from("listings")
-      .select(baseSelect)
-      .eq("is_published", true)
-      .eq("type", typeValue)
-      .in("id", listingIds)
-      .order("created_at", { ascending: false })
-      .order("display_order", { foreignTable: "listing_images", ascending: true })
-      .limit(1, { foreignTable: "listing_images" });
-    data = fallback.data;
-    error = fallback.error;
-  }
-
-  if (error) throw error;
-  const normalizedRows = normalizeListingRows((data || []) as ListingRawFlexible[]);
-  return normalizedRows.map((row) => mapListingSummary(row));
+  return fetchPublishedListingSummaries({ typeValue, listingIds });
 }
 
-export default async function TypeFacilityCountyPage({ params }: PageProps) {
+export default async function TypeFacilityCountyPage({ params: paramsPromise }: PageProps) {
+  const params = await paramsPromise;
   const resolved = await resolveTypeFacilityCountyRoute(params);
   if (!resolved || !resolved.county) return notFound();
 
@@ -294,7 +212,11 @@ export default async function TypeFacilityCountyPage({ params }: PageProps) {
 
   const listings = await getFacilityCountyTypeListings(listingType.value, county.name, facility.id);
   const pageUrl = `${siteUrl}${canonicalPath}`;
-  const description = `Descoperă ${listings.length} ${listingType.label.toLowerCase()} cu ${facility.name} în județul ${county.name}. Compară proprietăți verificate și contactează direct proprietarul.`;
+  const resultLabel =
+    listings.length === 1
+      ? `1 proprietate publicată din categoria ${listingType.singular.toLowerCase()}`
+      : `${listings.length} ${listingType.label.toLowerCase()}`;
+  const description = `Descoperă ${resultLabel} cu ${facility.name} în județul ${county.name}. Compară proprietăți verificate și contactează direct proprietarul.`;
   const typeCountyHref = buildTypeLocationPath(
     listingType.slug,
     buildCountySegment(county.slug)
@@ -304,15 +226,17 @@ export default async function TypeFacilityCountyPage({ params }: PageProps) {
       href: typeCountyHref,
       label: `${listingType.label} în județul ${county.name}`,
       description: `Vezi toate proprietățile de acest tip, indiferent de facilitățile selectate.`,
+      ...getCategoryPhoto(listingType.slug),
     },
     {
       href: `/judet/${county.slug}`,
       label: `Toate cazările din județul ${county.name}`,
       description: "Compară și alte categorii de proprietăți disponibile în același județ.",
+      ...getDestinationPhoto(county.slug),
     },
     {
       href: `/cazari/${listingType.slug}`,
-      label: `Toate ${listingType.label.toLowerCase()} din România`,
+      label: `${listingType.label} în România`,
       description: "Explorează categoria completă și descoperă proprietăți din alte zone.",
     },
   ];
@@ -326,14 +250,7 @@ export default async function TypeFacilityCountyPage({ params }: PageProps) {
     locationSlug: `${county.slug}-${facility.slug}`,
     description,
     includeBreadcrumb: false,
-    items: listings.map((listing) => ({
-      name: listing.title,
-      url: `${siteUrl}/cazare/${listing.slug}`,
-      image: listing.image,
-      addressLocality: listing.locatie,
-      addressRegion: county.name,
-      priceRange: String(listing.price || ""),
-    })),
+    items: mapListingsToJsonLdItems(listings, siteUrl, county.name),
   });
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { name: "Acasă", item: siteUrl },
@@ -352,16 +269,10 @@ export default async function TypeFacilityCountyPage({ params }: PageProps) {
 
   return (
     <>
-      {jsonLdScripts.map((obj, index) => (
-        <script
-          key={index}
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(obj) }}
-        />
-      ))}
-      <main className="min-h-screen px-4 py-10 lg:px-6">
-        <header className="mx-auto max-w-4xl text-center">
-          <nav aria-label="Breadcrumb" className="text-sm text-emerald-800/80">
+      <JsonLdScripts scripts={jsonLdScripts} />
+      <main className="min-h-screen py-6 sm:py-10">
+        <header className="max-w-3xl">
+          <nav aria-label="Breadcrumb" className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">
             <Link href="/" className="hover:underline">
               Acasă
             </Link>
@@ -370,37 +281,27 @@ export default async function TypeFacilityCountyPage({ params }: PageProps) {
               {listingType.label}
             </Link>
             <span className="mx-2">/</span>
-            <Link href={`/judet/${county.slug}`} className="hover:underline">
+            <Link href={typeCountyHref} className="hover:underline">
               {county.name}
             </Link>
             <span className="mx-2">/</span>
             <span>{facility.name}</span>
           </nav>
-          <h1 className="mt-3 text-3xl font-semibold sm:text-4xl">
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-4xl">
             {listingType.label} cu {facility.name} în județul {county.name}
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-gray-600">{description}</p>
-          <p className="mx-auto mt-2 max-w-2xl text-sm text-emerald-900/80">
-            Selecția este actualizată din proprietățile publicate care oferă această facilitate.
-          </p>
+          <p className="mt-4 max-w-2xl leading-7 text-zinc-600 dark:text-zinc-400">{description}</p>
         </header>
 
-        <section className="mt-12">
-          {listings.length === 0 ? (
-            <div className="rounded-3xl border border-emerald-100 bg-emerald-50/60 px-6 py-10 text-center">
-              <h2 className="mb-2 text-2xl font-semibold text-emerald-900">
-                Momentan nu avem {listingType.label.toLowerCase()} cu {facility.name} în {county.name}
-              </h2>
-              <p className="mx-auto max-w-2xl text-emerald-800/80">
-                Publicăm treptat proprietăți reale, atent verificate. Revino în curând.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-x-2 gap-y-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-              <ListingsGrid cazari={listings} />
-            </div>
-          )}
-        </section>
+        <ListingCollectionResults
+          listings={listings}
+          emptyTitle={
+            <>Momentan nu avem {listingType.label.toLowerCase()} cu {facility.name} în {county.name}</>
+          }
+          emptyDescription={
+            <>Publicăm treptat proprietăți reale, atent verificate. Revino în curând.</>
+          }
+        />
         <SeoRelatedLinks
           title={`Alternative pentru ${facility.name} în județul ${county.name}`}
           description="Extinde căutarea către toate proprietățile de același tip sau către întregul catalog al județului."

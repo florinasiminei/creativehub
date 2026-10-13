@@ -39,10 +39,27 @@ export type SeoPageItem = {
   uniqueVisitors1d: number;
   pageviews30d: number;
   uniqueVisitors30d: number;
+  pageviews90d: number;
+  uniqueVisitors90d: number;
+  pageviews180d: number;
+  uniqueVisitors180d: number;
+  pageviews365d: number;
+  uniqueVisitors365d: number;
   pageviews7d: number;
   uniqueVisitors7d: number;
   lastSeenViewMs: number | null;
   isInconsistent: boolean;
+};
+
+export type SeoTrafficPoint = {
+  timestampMs: number;
+  uniqueVisitors: number;
+};
+
+export type SeoTrafficSeries = {
+  tenMinutes: SeoTrafficPoint[];
+  hourly: SeoTrafficPoint[];
+  daily: SeoTrafficPoint[];
 };
 
 export type SortField =
@@ -56,7 +73,7 @@ export type SortField =
   | "lastSeenView";
 
 export type SortDir = "asc" | "desc";
-export type ViewsWindow = "1h" | "6h" | "1d" | "7d" | "30d";
+export type ViewsWindow = "1h" | "6h" | "1d" | "7d" | "30d" | "90d" | "180d" | "365d";
 export type IndexFilter = "all" | "index" | "noindex";
 export type PageKindFilter =
   | "all"
@@ -130,7 +147,10 @@ export const VIEWS_WINDOW_OPTIONS: Array<{ value: ViewsWindow; label: string }> 
   { value: "6h", label: "6h" },
   { value: "1d", label: "1z" },
   { value: "7d", label: "7z" },
-  { value: "30d", label: "30z" },
+  { value: "30d", label: "1 luna" },
+  { value: "90d", label: "3 luni" },
+  { value: "180d", label: "6 luni" },
+  { value: "365d", label: "1 an" },
 ];
 
 export function formatDate(timestamp: number | null) {
@@ -152,7 +172,10 @@ export function getViewsByWindow(row: SeoPageItem, viewsWindow: ViewsWindow) {
   if (viewsWindow === "6h") return row.pageviews6h;
   if (viewsWindow === "1d") return row.pageviews1d;
   if (viewsWindow === "7d") return row.pageviews7d;
-  return row.pageviews30d;
+  if (viewsWindow === "30d") return row.pageviews30d;
+  if (viewsWindow === "90d") return row.pageviews90d;
+  if (viewsWindow === "180d") return row.pageviews180d;
+  return row.pageviews365d;
 }
 
 export function getUniqueViewsByWindow(row: SeoPageItem, viewsWindow: ViewsWindow) {
@@ -160,15 +183,25 @@ export function getUniqueViewsByWindow(row: SeoPageItem, viewsWindow: ViewsWindo
   if (viewsWindow === "6h") return row.uniqueVisitors6h;
   if (viewsWindow === "1d") return row.uniqueVisitors1d;
   if (viewsWindow === "7d") return row.uniqueVisitors7d;
-  return row.uniqueVisitors30d;
+  if (viewsWindow === "30d") return row.uniqueVisitors30d;
+  if (viewsWindow === "90d") return row.uniqueVisitors90d;
+  if (viewsWindow === "180d") return row.uniqueVisitors180d;
+  return row.uniqueVisitors365d;
 }
 
 export function getViewsWindowLabel(viewsWindow: ViewsWindow) {
-  if (viewsWindow === "1h") return "1h";
-  if (viewsWindow === "6h") return "6h";
-  if (viewsWindow === "1d") return "1z";
-  if (viewsWindow === "7d") return "7z";
-  return "30z";
+  return VIEWS_WINDOW_OPTIONS.find((option) => option.value === viewsWindow)?.label || viewsWindow;
+}
+
+export function getTrafficPointsByWindow(series: SeoTrafficSeries, viewsWindow: ViewsWindow) {
+  if (viewsWindow === "1h") return series.tenMinutes.slice(-6);
+  if (viewsWindow === "6h") return series.tenMinutes;
+  if (viewsWindow === "1d") return series.hourly;
+  if (viewsWindow === "7d") return series.daily.slice(-7);
+  if (viewsWindow === "30d") return series.daily.slice(-30);
+  if (viewsWindow === "90d") return series.daily.slice(-90);
+  if (viewsWindow === "180d") return series.daily.slice(-180);
+  return series.daily;
 }
 
 export function compareRows(a: SeoPageItem, b: SeoPageItem, sortField: SortField, viewsWindow: ViewsWindow) {

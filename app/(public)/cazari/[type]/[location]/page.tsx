@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
-import ListingsGrid from "@/components/listing/ListingGrid";
+import JsonLdScripts from "@/components/seo/JsonLdScripts";
+import ListingCollectionResults from "@/components/seo/ListingCollectionResults";
 import SeoRelatedLinks from "@/components/seo/SeoRelatedLinks";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { mapListingSummary } from "@/lib/transformers";
 import { getTypeBySlug, LISTING_TYPES } from "@/lib/listingTypes";
 import { getCounties } from "@/lib/counties";
 import { getCanonicalSiteUrl } from "@/lib/siteUrl";
@@ -15,9 +15,9 @@ import {
 } from "@/lib/seoListingsCounts";
 import { buildSeoTypeDescription, buildSeoTypeTitle, getSeoTypeLabel } from "@/lib/seoCopy";
 import { buildPageMetadata } from "@/lib/seoMetadata";
-import { allRegions, normalizeRegionText } from "@/lib/regions";
+import { allRegions } from "@/lib/regions";
 import { buildBreadcrumbJsonLd, buildListingPageJsonLd } from "@/lib/jsonLd";
-import { toSeoFacilities, type SeoFacility } from "@/lib/typeFacilityCountySeo";
+import { fetchSeoFacilities } from "@/lib/typeFacilityCountySeo";
 import {
   buildCountySegment,
   buildRegionSegment,
@@ -25,18 +25,24 @@ import {
   buildTypeLocationPath,
   parseListingLocationSegment,
 } from "@/lib/locationRoutes";
-import type { ListingRaw } from "@/lib/types";
+import {
+  distinctListingCollections,
+  fetchPublishedRegionListingSummaries,
+  fetchPublishedListingSummaries,
+  mapListingsToJsonLdItems,
+} from "@/lib/publicListingCollections";
 import type { Cazare } from "@/lib/utils";
+import { getCategoryPhoto, getDestinationPhoto } from "@/lib/exploreCards";
 
-export const revalidate = 60 * 60 * 6;
+export const revalidate = 21600;
 
 const siteUrl = getCanonicalSiteUrl();
 
 type PageProps = {
-  params: {
+  params: Promise<{
     type: string;
     location: string;
-  };
+  }>;
 };
 
 type RegionInput = {
@@ -44,15 +50,6 @@ type RegionInput = {
   type: string;
   coreCities?: string[];
 };
-
-const baseSelect = `
-  id, title, slug, type, judet, city, sat, capacity, price, phone, is_published, display_order,
-  camere, paturi, bai,
-  listing_images(image_url, display_order),
-  listing_facilities(
-    facilities(id, name)
-  )
-`;
 
 function getLocationLabel(location: NonNullable<ReturnType<typeof parseListingLocationSegment>>): string {
   if (location.kind === "judet" && location.county) return `județul ${location.county.name}`;
@@ -72,19 +69,25 @@ function getLocationTitle(
 function getLocationDescription(
   typeSlug: string,
   typeLabel: string,
-  location: NonNullable<ReturnType<typeof parseListingLocationSegment>>
+  location: NonNullable<ReturnType<typeof parseListingLocationSegment>>,
+  publishedCount?: number
 ): string {
   const seoTypeLabel = getSeoTypeLabel(typeSlug, typeLabel);
   if (location.kind === "judet" && location.county) {
-    return buildSeoTypeDescription(seoTypeLabel, `în județul ${location.county.name}`);
+    return buildSeoTypeDescription(
+      seoTypeLabel,
+      `în județul ${location.county.name}`,
+      0,
+      publishedCount
+    );
   }
   if (location.kind === "localitate" && location.region) {
-    return buildSeoTypeDescription(seoTypeLabel, `în ${location.region.name}`);
+    return buildSeoTypeDescription(seoTypeLabel, `în ${location.region.name}`, 0, publishedCount);
   }
   if (location.region) {
-    return buildSeoTypeDescription(seoTypeLabel, `în ${location.region.name}`);
+    return buildSeoTypeDescription(seoTypeLabel, `în ${location.region.name}`, 0, publishedCount);
   }
-  return buildSeoTypeDescription(seoTypeLabel, "în România");
+  return buildSeoTypeDescription(seoTypeLabel, "în România", 0, publishedCount);
 }
 
 function getLocationBadge(location: NonNullable<ReturnType<typeof parseListingLocationSegment>>): string {
@@ -112,7 +115,8 @@ export async function generateStaticParams() {
   return params;
 }
 
-export async function generateMetadata({ params }: PageProps) {
+export async function generateMetadata({ params: paramsPromise }: PageProps) {
+  const params = await paramsPromise;
   const listingType = getTypeBySlug(params.type);
   const location = parseListingLocationSegment(params.location);
   if (!listingType || !location) return {};
@@ -120,7 +124,6 @@ export async function generateMetadata({ params }: PageProps) {
   const canonicalPath = buildTypeLocationPath(listingType.slug, location.canonicalSegment);
   const canonical = new URL(canonicalPath, siteUrl).toString();
   const title = getLocationTitle(listingType.slug, listingType.label, location);
-  const description = getLocationDescription(listingType.slug, listingType.label, location);
 
   const supabaseAdmin = getSupabaseAdmin();
   const publishedListingsCount =
@@ -129,6 +132,12 @@ export async function generateMetadata({ params }: PageProps) {
       : location.region
       ? await countPublishedListingsByTypeAndRegion(supabaseAdmin, listingType.value, location.region)
       : 0;
+  const description = getLocationDescription(
+    listingType.slug,
+    listingType.label,
+    location,
+    publishedListingsCount
+  );
   const shouldIndex = await resolveListingsRouteIndexability(canonicalPath, publishedListingsCount);
 
   return buildPageMetadata({
@@ -140,103 +149,21 @@ export async function generateMetadata({ params }: PageProps) {
 }
 
 async function getTypeCountyListings(typeValue: string, countyName: string): Promise<Cazare[]> {
-  const supabaseAdmin = getSupabaseAdmin();
-
-  const withOrder = await supabaseAdmin
-    .from("listings")
-    .select(baseSelect)
-    .eq("is_published", true)
-    .eq("type", typeValue)
-    .eq("judet", countyName)
-    .order("display_order", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false })
-    .order("display_order", { foreignTable: "listing_images", ascending: true })
-    .limit(1, { foreignTable: "listing_images" });
-
-  let data = withOrder.data;
-  let error = withOrder.error;
-
-  if (error && String(error.message || "").includes("display_order")) {
-    const fallback = await supabaseAdmin
-      .from("listings")
-      .select(baseSelect)
-      .eq("is_published", true)
-      .eq("type", typeValue)
-      .eq("judet", countyName)
-      .order("created_at", { ascending: false })
-      .order("display_order", { foreignTable: "listing_images", ascending: true })
-      .limit(1, { foreignTable: "listing_images" });
-    data = fallback.data;
-    error = fallback.error;
-  }
-
-  if (error) throw error;
-  return ((data as unknown as ListingRaw[]) || []).map((row) => mapListingSummary(row));
-}
-
-async function getSeoFacilities(): Promise<SeoFacility[]> {
-  const supabaseAdmin = getSupabaseAdmin();
-  const { data, error } = await supabaseAdmin.from("facilities").select("id, name");
-  if (error || !data) return [];
-  return toSeoFacilities(
-    (data as Array<{ id: string; name: string }>).map((facility) => ({
-      id: String(facility.id),
-      name: String(facility.name),
-    }))
-  );
+  return fetchPublishedListingSummaries({ typeValue, countyName });
 }
 
 async function getTypeRegionListings(typeValue: string, region: RegionInput): Promise<Cazare[]> {
   const countyNames = resolveRegionCountyNames(region.counties);
-  const supabaseAdmin = getSupabaseAdmin();
-
-  const withOrder = await supabaseAdmin
-    .from("listings")
-    .select(baseSelect)
-    .eq("is_published", true)
-    .eq("type", typeValue)
-    .in("judet", countyNames)
-    .order("display_order", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false })
-    .order("display_order", { foreignTable: "listing_images", ascending: true })
-    .limit(1, { foreignTable: "listing_images" });
-
-  let data = withOrder.data;
-  let error = withOrder.error;
-
-  if (error && String(error.message || "").includes("display_order")) {
-    const fallback = await supabaseAdmin
-      .from("listings")
-      .select(baseSelect)
-      .eq("is_published", true)
-      .eq("type", typeValue)
-      .in("judet", countyNames)
-      .order("created_at", { ascending: false })
-      .order("display_order", { foreignTable: "listing_images", ascending: true })
-      .limit(1, { foreignTable: "listing_images" });
-    data = fallback.data;
-    error = fallback.error;
-  }
-
-  if (error) throw error;
-
-  const rows = (data as unknown as ListingRaw[]) || [];
-  const normalizedMetroCities = region.coreCities
-    ? new Set(region.coreCities.map((city) => normalizeRegionText(city)))
-    : null;
-
-  const filtered =
-    region.type === "metro"
-      ? rows.filter((row) => {
-          const cityNorm = normalizeRegionText(String((row as any).city || ""));
-          return normalizedMetroCities ? normalizedMetroCities.has(cityNorm) : false;
-        })
-      : rows;
-
-  return filtered.map((row) => mapListingSummary(row));
+  return fetchPublishedRegionListingSummaries({
+    countyNames,
+    typeValue,
+    restrictToCoreCities: region.type === "metro",
+    coreCities: region.coreCities,
+  });
 }
 
-export default async function CazariLocationPage({ params }: PageProps) {
+export default async function CazariLocationPage({ params: paramsPromise }: PageProps) {
+  const params = await paramsPromise;
   const listingType = getTypeBySlug(params.type);
   const location = parseListingLocationSegment(params.location);
 
@@ -256,8 +183,8 @@ export default async function CazariLocationPage({ params }: PageProps) {
 
   const pageUrl = `${siteUrl}${canonicalPath}`;
   const locationName = getLocationMetaLabel(location);
-  const title = getLocationTitle(listingType.slug, listingType.label, location);
-  const description = getLocationDescription(listingType.slug, listingType.label, location);
+  const title = `${listingType.label} în ${getLocationLabel(location)}`;
+  const description = getLocationDescription(listingType.slug, listingType.label, location, listings.length);
   const locationParentHref =
     location.kind === "judet" && location.county
       ? `/judet/${location.county.slug}`
@@ -273,10 +200,12 @@ export default async function CazariLocationPage({ params }: PageProps) {
     }
   }
   const seoFacilities =
-    location.kind === "judet" && location.county ? await getSeoFacilities() : [];
+    location.kind === "judet" && location.county
+      ? await fetchSeoFacilities(getSupabaseAdmin())
+      : [];
   const facilityLinks =
     location.kind === "judet" && location.county
-      ? seoFacilities
+      ? distinctListingCollections(seoFacilities
           .filter((facility) => (facilityCounts.get(facility.id) || 0) >= 3)
           .map((facility) => ({
             href: buildTypeFacilityCountyPath(
@@ -286,18 +215,23 @@ export default async function CazariLocationPage({ params }: PageProps) {
             ),
             label: `${listingType.label} cu ${facility.name}`,
             description: `${facilityCounts.get(facility.id)} proprietăți publicate în județul ${location.county!.name}.`,
-          }))
+            listingIds: listings.filter((listing) => listing.facilities.includes(facility.id)).map((listing) => listing.id),
+          })), listings.map((listing) => listing.id))
       : [];
   const relatedLinks = [
     {
       href: `/cazari/${listingType.slug}`,
-      label: `Toate ${listingType.label.toLowerCase()}`,
+      label: `${listingType.label} în România`,
       description: "Revino la categoria națională și compară proprietăți din toate zonele.",
+      ...getCategoryPhoto(listingType.slug),
     },
     {
       href: locationParentHref,
       label: `Toate cazările din ${locationName}`,
       description: "Explorează și celelalte tipuri de proprietăți disponibile în această zonă.",
+      ...(location.county
+        ? getDestinationPhoto(location.county.slug)
+        : {}),
     },
     {
       href: "/cazari",
@@ -321,14 +255,7 @@ export default async function CazariLocationPage({ params }: PageProps) {
         : "",
     description,
     includeBreadcrumb: false,
-    items: listings.map((listing) => ({
-      name: listing.title,
-      url: `${siteUrl}/cazare/${listing.slug}`,
-      image: listing.image,
-      addressLocality: listing.locatie,
-      addressRegion: locationName,
-      priceRange: String(listing.price || ""),
-    })),
+    items: mapListingsToJsonLdItems(listings, siteUrl, locationName),
   });
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { name: "Acasă", item: siteUrl },
@@ -343,19 +270,15 @@ export default async function CazariLocationPage({ params }: PageProps) {
 
   return (
     <>
-      {jsonLdScripts.map((obj, index) => (
-        <script
-          key={index}
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(obj) }}
-        />
-      ))}
-      <main className="min-h-screen px-4 py-10 lg:px-6">
-        <header className="mx-auto max-w-4xl text-center">
-          <nav aria-label="Breadcrumb" className="text-sm text-emerald-800/80">
+      <JsonLdScripts scripts={jsonLdScripts} />
+      <main className="min-h-screen py-6 sm:py-10">
+        <header className="max-w-3xl">
+          <nav aria-label="Breadcrumb" className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">
             <Link href="/" className="hover:underline">
               Acasă
             </Link>
+            <span className="mx-2">/</span>
+            <Link href="/cazari" className="hover:underline">Cazări</Link>
             <span className="mx-2">/</span>
             <Link href={`/cazari/${listingType.slug}`} className="hover:underline">
               {listingType.label}
@@ -363,46 +286,22 @@ export default async function CazariLocationPage({ params }: PageProps) {
             <span className="mx-2">/</span>
             <span>{locationName}</span>
           </nav>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
             {getLocationBadge(location)}
           </p>
-          <h1 className="mt-3 text-3xl font-semibold sm:text-4xl">{title}</h1>
-          <p className="mx-auto mt-4 max-w-2xl text-gray-600">{description}</p>
-          <p className="mx-auto mt-2 max-w-2xl text-sm text-emerald-900/80">
-            Selecția include {listings.length} proprietăți publicate pentru această combinație de tip și locație.
-          </p>
-          <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              href="/add-property"
-              className="rounded-full bg-emerald-700 px-6 py-2.5 text-white transition hover:bg-emerald-800"
-            >
-              Înscrie proprietatea ta
-            </Link>
-            <Link
-              href="/contact"
-              className="rounded-full border border-emerald-300 px-6 py-2.5 text-emerald-900 transition hover:bg-emerald-100"
-            >
-              Contactează-ne
-            </Link>
-          </div>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-4xl">{title}</h1>
+          <p className="mt-4 max-w-2xl leading-7 text-zinc-600 dark:text-zinc-400">{description}</p>
         </header>
 
-        <section className="mt-12">
-          {listings.length === 0 ? (
-            <div className="rounded-3xl border border-emerald-100 bg-emerald-50/60 px-6 py-10 text-center">
-              <h2 className="mb-2 text-2xl font-semibold text-emerald-900">
-                Momentan nu avem {listingType.label.toLowerCase()} în {locationName}
-              </h2>
-              <p className="mx-auto max-w-2xl text-emerald-800/80">
-                Publicăm treptat locații reale, atent verificate. Revino în curând sau înscrie o proprietate dacă știi una.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-x-2 gap-y-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-              <ListingsGrid cazari={listings} />
-            </div>
-          )}
-        </section>
+        <ListingCollectionResults
+          listings={listings}
+          emptyTitle={
+            <>Momentan nu avem {listingType.label.toLowerCase()} în {locationName}</>
+          }
+          emptyDescription={
+            <>Publicăm treptat locații reale, atent verificate. Revino în curând sau înscrie o proprietate dacă știi una.</>
+          }
+        />
         <SeoRelatedLinks
           title={`Continuă explorarea din ${locationName}`}
           description="Navighează către categoria principală sau descoperă toate tipurile de cazare din aceeași zonă."

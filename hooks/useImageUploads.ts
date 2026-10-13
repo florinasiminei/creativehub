@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { uploadListingFile } from '@/lib/api/listings';
+import { uploadOwnerListingFile } from '@/lib/api/ownerListings';
 import { uploadImageBatch } from '@/lib/imageUploadFlow';
 
 type UseImageUploadsOptions = {
   onError?: (message: string) => void;
   listingToken?: string | null;
+  expectedOwnerId?: string;
 };
 
-export default function useImageUploads({ onError, listingToken }: UseImageUploadsOptions = {}) {
+export default function useImageUploads({ onError, listingToken, expectedOwnerId }: UseImageUploadsOptions = {}) {
   const [uploading, setUploading] = useState(false);
   const [uploadedCount, setUploadedCount] = useState(0);
 
@@ -22,7 +24,9 @@ export default function useImageUploads({ onError, listingToken }: UseImageUploa
       return await uploadImageBatch({
         files,
         startIndex,
-        uploadFile: (file, displayOrder) => uploadListingFile(listingId, file, displayOrder, activeToken),
+        uploadFile: (file, displayOrder) => expectedOwnerId
+          ? uploadOwnerListingFile(listingId, file, displayOrder, expectedOwnerId)
+          : uploadListingFile(listingId, file, displayOrder, activeToken),
         onUploaded: () => setUploadedCount((prev) => prev + 1),
       });
     } catch (error: any) {

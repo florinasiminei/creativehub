@@ -8,9 +8,21 @@ export type DraftItem = Cazare & {
   isDraftSeed?: boolean;
   isEmptyDraftSeed?: boolean;
   publishedAt?: string | null;
+  submittedAt?: string | null;
+  createdAt?: string | null;
+  createdByActor?: string | null;
   publicationExpiresAt?: string | null;
   renewalDueAt?: string | null;
-  publicationStatus?: "draft" | "active" | "expiring" | "expired" | "suspended" | null;
+  publicationStatus?:
+    | "draft"
+    | "submitted"
+    | "needs_changes"
+    | "rejected"
+    | "active"
+    | "expiring"
+    | "expired"
+    | "suspended"
+    | null;
   leadId?: string | null;
   leadStatus?: LeadStatus | null;
 };
@@ -67,12 +79,23 @@ export type PublicationPeriodItem = {
   createdAt: string | null;
 };
 
+export type OwnerClaimItem = {
+  id: string;
+  listingId: string;
+  listingTitle: string;
+  claimantEmail: string;
+  message: string | null;
+  status: "pending" | "approved" | "rejected" | "cancelled";
+  createdAt: string | null;
+  reviewedAt: string | null;
+};
+
 export type BackofficeSection =
   | "catalog"
   | "leads-calendar"
   | "settings";
 
-export type PropertyViewFilter = "all" | "client_unpublished" | "draft_seed";
+export type PropertyViewFilter = "all" | "submitted" | "client_unpublished" | "draft";
 export type AttractionViewFilter = "all" | "published" | "draft";
 export type RenewalViewFilter = "all" | "active" | "expiring" | "expired";
 
@@ -115,8 +138,16 @@ export function countClientUnpublishedListings(items: DraftItem[]) {
   return items.filter((item) => Boolean(item.termsAccepted) && !item.isPublished).length;
 }
 
-export function countDraftSeedListings(items: DraftItem[]) {
-  return items.filter((item) => Boolean(item.isDraftSeed)).length;
+export function countSubmittedListings(items: DraftItem[]) {
+  return items.filter((item) => item.publicationStatus === "submitted").length;
+}
+
+export function countDraftListings(items: DraftItem[]) {
+  return items.filter(
+    (item) =>
+      item.publicationStatus === "draft" ||
+      (!item.publicationStatus && item.status === "draft")
+  ).length;
 }
 
 export function countEmptyDraftSeedListings(items: DraftItem[]) {
@@ -128,11 +159,18 @@ export function countPublishedAttractions(items: AttractionItem[]) {
 }
 
 export function filterVisibleListings(items: DraftItem[], filter: PropertyViewFilter) {
+  if (filter === "submitted") {
+    return items.filter((item) => item.publicationStatus === "submitted");
+  }
   if (filter === "client_unpublished") {
     return items.filter((item) => Boolean(item.termsAccepted) && !item.isPublished);
   }
-  if (filter === "draft_seed") {
-    return items.filter((item) => Boolean(item.isDraftSeed));
+  if (filter === "draft") {
+    return items.filter(
+      (item) =>
+        item.publicationStatus === "draft" ||
+        (!item.publicationStatus && item.status === "draft")
+    );
   }
 
   return items;

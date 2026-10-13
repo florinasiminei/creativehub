@@ -7,10 +7,11 @@ import { slugify } from "@/lib/utils";
 
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  { params: paramsPromise }: { params: Promise<{ id: string }> }
 ) {
+  const params = await paramsPromise;
   try {
-    const role = getDraftRoleFromRequest(req);
+    const role = await getDraftRoleFromRequest(req);
     if (role !== "admin" && role !== "staff") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -72,7 +73,7 @@ export async function POST(
     return NextResponse.json({ listingId: listing.id });
   } catch (err: any) {
     console.error("POST /api/backoffice/leads/[id]/create-listing:", err);
-    return NextResponse.json({ error: err?.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
   }
 }
 

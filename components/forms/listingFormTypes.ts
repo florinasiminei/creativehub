@@ -12,7 +12,17 @@ export type {
   LocationData,
 };
 
+export type ListingFormSectionId =
+  | "all"
+  | "identity"
+  | "capacity"
+  | "description"
+  | "location"
+  | "gallery"
+  | "contact";
+
 export type ListingFormProps = {
+  activeSection?: ListingFormSectionId;
   formData: ListingFormFields;
   onChange: (key: keyof ListingFormFields, value: string) => void;
   facilities: FacilityOption[];
@@ -20,17 +30,22 @@ export type ListingFormProps = {
   onToggleFacility: (id: string) => void;
   onLocationSelect: (location: LocationData) => void;
   onLocationConfirmChange?: (confirmed: boolean) => void;
+  onAdministrativeLocationValidityChange?: (valid: boolean) => void;
   autoLocate?: boolean;
   initialCounty: string;
   initialCity: string;
   initialLat?: number | null;
   initialLng?: number | null;
+  initialLocationConfirmed?: boolean;
   dropzoneTitle: string;
   dropzoneSubtitle: string;
   dropzoneHelper: string;
   showValidation: boolean;
   invalidFields: string[];
   imagesInvalid: boolean;
+  imagesError?: string | null;
+  locationInvalid?: boolean;
+  minimumImagesRequired?: number;
   validationAttempt?: number;
   isDropActive: boolean;
   onDropActiveChange: (active: boolean) => void;

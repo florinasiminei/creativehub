@@ -4,14 +4,14 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getCanonicalSiteUrl, toCanonicalUrl } from "@/lib/siteUrl";
 import { buildPageMetadata } from "@/lib/seoMetadata";
 import { clampMetaDescription, clampMetaTitle } from "@/lib/seoCopy";
-import { buildBreadcrumbJsonLd, buildTouristAttractionJsonLd } from "@/lib/jsonLd";
+import { buildBreadcrumbJsonLd, buildTouristAttractionJsonLd, serializeJsonLd } from "@/lib/jsonLd";
 import PropertyImageGrid from "@/components/listing/PropertyImageGrid";
 import SubtleBackLink from "@/components/SubtleBackLink";
 
-export const revalidate = 60 * 30;
+export const revalidate = 1800;
 
 type PageProps = {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 };
 
 type AttractionRow = {
@@ -116,7 +116,8 @@ async function fetchAttraction(slug: string): Promise<AttractionData | null> {
   }
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params: paramsPromise }: PageProps): Promise<Metadata> {
+  const params = await paramsPromise;
   const attraction = await fetchAttraction(params.slug);
   if (!attraction) return {};
 
@@ -135,7 +136,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   });
 }
 
-export default async function AtractiePage({ params }: PageProps) {
+export default async function AtractiePage({ params: paramsPromise }: PageProps) {
+  const params = await paramsPromise;
   const attraction = await fetchAttraction(params.slug);
   if (!attraction) notFound();
 
@@ -173,11 +175,11 @@ export default async function AtractiePage({ params }: PageProps) {
     <div className="min-h-screen bg-white text-zinc-900 dark:bg-transparent dark:text-white">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbJsonLd) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(attractionJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(attractionJsonLd) }}
       />
       <main className="mx-auto max-w-6xl px-4 pt-3 pb-10 sm:px-6 lg:px-8">
         <div className="mb-2">

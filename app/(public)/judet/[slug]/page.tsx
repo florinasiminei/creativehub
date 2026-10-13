@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
-import ListingsGrid from "@/components/listing/ListingGrid";
+import JsonLdScripts from "@/components/seo/JsonLdScripts";
+import ListingCollectionResults from "@/components/seo/ListingCollectionResults";
 import SeoRelatedLinks from "@/components/seo/SeoRelatedLinks";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { mapListingSummary } from "@/lib/transformers";
 import { LISTING_TYPES, type ListingTypeValue } from "@/lib/listingTypes";
 import { getCanonicalSiteUrl } from "@/lib/siteUrl";
 import { resolveListingsRouteIndexability } from "@/lib/seoRouteIndexing";
@@ -11,34 +11,44 @@ import { countPublishedListingsByCounty } from "@/lib/seoListingsCounts";
 import { buildSeoCollectionDescription, buildSeoCollectionTitle } from "@/lib/seoCopy";
 import { buildPageMetadata } from "@/lib/seoMetadata";
 import { buildBreadcrumbJsonLd, buildListingPageJsonLd } from "@/lib/jsonLd";
-import { findCountyBySlug, getCounties } from "@/lib/counties";
+import { findCountyBySlug, getCounties, type CountyDefinition } from "@/lib/counties";
 import { buildTypeCountyPath } from "@/lib/typeCountyRoutes";
-import { buildRegionPagePath } from "@/lib/locationRoutes";
 import { normalizeRegionText, touristRegions } from "@/lib/regions";
-import TypeFilterIcon from "./TypeFilterIcon";
-import type { ListingRaw } from "@/lib/types";
+import {
+  fetchPublishedListingSummaries,
+  mapListingsToJsonLdItems,
+} from "@/lib/publicListingCollections";
 import type { Cazare } from "@/lib/utils";
+import Image from "next/image";
+import ExploreCard from "@/components/explore/ExploreCard";
+import { getCategoryPhoto, getDestinationPhoto } from "@/lib/exploreCards";
+import { hasMinimumPublishedListings } from "@/lib/seoIndexing";
 
-export const revalidate = 60 * 60 * 6;
+export const revalidate = 21600;
 
 const siteUrl = getCanonicalSiteUrl();
 
 type PageProps = {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 };
 
 export async function generateStaticParams() {
   return getCounties().map((county) => ({ slug: county.slug }));
 }
 
-export async function generateMetadata({ params }: PageProps) {
+export async function generateMetadata({ params: paramsPromise }: PageProps) {
+  const params = await paramsPromise;
   const county = findCountyBySlug(params.slug);
   if (!county) return {};
   const title = buildSeoCollectionTitle(`în județul ${county.name}`);
-  const description = buildSeoCollectionDescription(`în județul ${county.name}`);
   const canonical = new URL(`/judet/${county.slug}`, siteUrl).toString();
   const supabaseAdmin = getSupabaseAdmin();
   const publishedListingsCount = await countPublishedListingsByCounty(supabaseAdmin, county.name);
+  const description = buildSeoCollectionDescription(
+    `în județul ${county.name}`,
+    0,
+    publishedListingsCount
+  );
   const shouldIndex = await resolveListingsRouteIndexability(
     `/judet/${county.slug}`,
     publishedListingsCount
@@ -53,68 +63,55 @@ export async function generateMetadata({ params }: PageProps) {
 }
 
 async function getCountyListings(countyName: string): Promise<Cazare[]> {
-  const supabaseAdmin = getSupabaseAdmin();
-  const baseSelect = `
-    id, title, slug, type, judet, city, sat, capacity, price, phone, is_published, display_order,
-    camere, paturi, bai,
-    listing_images(image_url, display_order),
-    listing_facilities(
-      facilities(id, name)
-    )
-  `;
+  return fetchPublishedListingSummaries({ countyName });
+}
 
-  const withOrder = await supabaseAdmin
+async function getOtherDestinationLinks(county: CountyDefinition) {
+  const countyKey = normalizeRegionText(county.name);
+  const regionalCountyKeys = new Set(
+    touristRegions
+      .filter((region) => region.counties.some((name) => normalizeRegionText(name) === countyKey))
+      .flatMap((region) => region.counties.map(normalizeRegionText))
+  );
+  const candidates = getCounties().filter(
+    (item) => item.slug !== county.slug && regionalCountyKeys.has(normalizeRegionText(item.name))
+  );
+  if (candidates.length === 0) return [];
+
+  const { data, error } = await getSupabaseAdmin()
     .from("listings")
-    .select(baseSelect)
+    .select("judet")
     .eq("is_published", true)
-    .eq("judet", countyName)
-    .order("display_order", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false })
-    .order("display_order", { foreignTable: "listing_images", ascending: true })
-    .limit(1, { foreignTable: "listing_images" });
+    .in("publication_status", ["active", "expiring"])
+    .or(`publication_expires_at.is.null,publication_expires_at.gt.${new Date().toISOString()}`)
+    .in("judet", candidates.map((item) => item.name));
+  if (error || !data) return [];
 
-  let data = withOrder.data;
-  let error = withOrder.error;
-
-  if (error && String(error.message || "").includes("display_order")) {
-    const fallback = await supabaseAdmin
-      .from("listings")
-      .select(baseSelect)
-      .eq("is_published", true)
-      .eq("judet", countyName)
-      .order("created_at", { ascending: false })
-      .order("display_order", { foreignTable: "listing_images", ascending: true })
-      .limit(1, { foreignTable: "listing_images" });
-    data = fallback.data;
-    error = fallback.error;
-  }
-
-  if (error) throw error;
-  return (data as unknown as ListingRaw[]).map((row) => mapListingSummary(row));
+  const counts = new Map<string, number>();
+  data.forEach((row) => {
+    const key = normalizeRegionText(String(row.judet || ""));
+    counts.set(key, (counts.get(key) || 0) + 1);
+  });
+  return candidates
+    .map((item) => ({ ...item, count: counts.get(normalizeRegionText(item.name)) || 0 }))
+    .filter((item) => hasMinimumPublishedListings(item.count))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "ro"))
+    .slice(0, 4)
+    .map((item) => ({
+      href: `/judet/${item.slug}`,
+      label: `Cazări în județul ${item.name}`,
+      description: `${item.count} proprietăți de descoperit într-o altă destinație.`,
+      ...getDestinationPhoto(item.slug),
+    }));
 }
 
 type TypeLinkItem = {
   typeValue: ListingTypeValue;
   typeSlug: string;
   typeLabel: string;
-  typeCtaLabel: string;
   href: string;
-  typeHref: string;
   count: number;
 };
-
-function getTypeCtaLabel(typeSlug: string, typeLabel: string): string {
-  const map: Record<string, string> = {
-    cabane: "Vezi cabane",
-    "a-frame": "Vezi A-Frame-uri",
-    pensiuni: "Vezi pensiuni",
-    apartamente: "Vezi apartamente",
-    "tiny-house": "Vezi tiny house-uri",
-    "case-de-vacanta": "Vezi case de vacanță",
-  };
-
-  return map[typeSlug] || `Vezi ${typeLabel}`;
-}
 
 async function getCountyTypeLinks(countySlug: string, countyName: string): Promise<TypeLinkItem[]> {
   const supabaseAdmin = getSupabaseAdmin();
@@ -122,6 +119,8 @@ async function getCountyTypeLinks(countySlug: string, countyName: string): Promi
     .from("listings")
     .select("type")
     .eq("is_published", true)
+    .in("publication_status", ["active", "expiring"])
+    .or(`publication_expires_at.is.null,publication_expires_at.gt.${new Date().toISOString()}`)
     .eq("judet", countyName);
 
   if (error || !data) return [];
@@ -138,36 +137,29 @@ async function getCountyTypeLinks(countySlug: string, countyName: string): Promi
       typeValue: type.value,
       typeSlug: type.slug,
       typeLabel: type.label,
-      typeCtaLabel: getTypeCtaLabel(type.slug, type.label),
       href: buildTypeCountyPath(type.slug, countySlug),
-      typeHref: `/cazari/${type.slug}`,
       count: countsByType.get(type.value) || 0,
     }))
     .filter((item) => item.count > 0)
     .sort((a, b) => (b.count - a.count) || a.typeLabel.localeCompare(b.typeLabel, "ro"));
 }
 
-export default async function CountyPage({ params }: PageProps) {
+export default async function CountyPage({ params: paramsPromise }: PageProps) {
+  const params = await paramsPromise;
   const county = findCountyBySlug(params.slug);
   if (!county) return notFound();
   if (params.slug !== county.slug) {
     permanentRedirect(`/judet/${county.slug}`);
   }
 
-  const [listings, typeLinks] = await Promise.all([
+  const [listings, typeLinks, destinationLinks] = await Promise.all([
     getCountyListings(county.name),
     getCountyTypeLinks(county.slug, county.name),
+    getOtherDestinationLinks(county),
   ]);
   const pageUrl = `${siteUrl}/judet/${county.slug}`;
+  const destinationPhoto = getDestinationPhoto(county.slug);
   const description = `Descoperă ${listings.length} cazări publicate în județul ${county.name}. Compară tipul proprietății, capacitatea și facilitățile, cu rezervare directă la gazdă.`;
-  const countyKey = normalizeRegionText(county.name);
-  const regionLinks = touristRegions
-    .filter((region) => region.counties.some((name) => normalizeRegionText(name) === countyKey))
-    .map((region) => ({
-      href: buildRegionPagePath(region),
-      label: `Cazări în ${region.name}`,
-      description: `${county.name} face parte din aria turistică acoperită de această pagină.`,
-    }));
 
   const listingJsonLd = buildListingPageJsonLd({
     siteUrl,
@@ -178,14 +170,7 @@ export default async function CountyPage({ params }: PageProps) {
     locationSlug: county.slug,
     description,
     includeBreadcrumb: false,
-    items: listings.map((l) => ({
-      name: l.title,
-      url: `${siteUrl}/cazare/${l.slug}`,
-      image: l.image,
-      addressLocality: l.locatie,
-      addressRegion: county.name,
-      priceRange: String(l.price || ""),
-    })),
+    items: mapListingsToJsonLdItems(listings, siteUrl, county.name),
   });
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { name: "Acasă", item: siteUrl },
@@ -198,97 +183,70 @@ export default async function CountyPage({ params }: PageProps) {
 
   return (
     <>
-      {jsonLdScripts.map((obj, i) => (
-        <script
-          key={i}
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(obj) }}
-        />
-      ))}
-      <main className="min-h-screen px-4 py-10 lg:px-6">
-        <header className="mx-auto max-w-4xl text-center">
-          <nav aria-label="Breadcrumb" className="text-sm text-emerald-800/80">
-            <Link href="/" className="hover:underline">
-              Acasă
-            </Link>
-            <span className="mx-2">/</span>
-            <span>{county.name}</span>
-          </nav>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-700">Județ</p>
-          <h1 className="mt-3 text-3xl font-semibold sm:text-4xl">Cazare în județul {county.name}</h1>
-          <p className="mx-auto mt-4 max-w-2xl text-gray-600">{description}</p>
-          <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              href="/add-property"
-              className="rounded-full bg-emerald-700 px-6 py-2.5 text-white transition hover:bg-emerald-800"
-            >
-              Înscrie proprietatea ta
-            </Link>
-            <Link
-              href="/contact"
-              className="rounded-full border border-emerald-300 px-6 py-2.5 text-emerald-900 transition hover:bg-emerald-100"
-            >
-              Contactează-ne
-            </Link>
+      <JsonLdScripts scripts={jsonLdScripts} />
+      <main className="min-h-screen py-6 sm:py-10">
+        <header className={destinationPhoto.image ? "grid items-center gap-8 lg:grid-cols-2" : "max-w-3xl"}>
+          <div>
+            <nav aria-label="Breadcrumb" className="mb-6 text-sm text-zinc-500 dark:text-zinc-400">
+              <Link href="/" className="hover:underline">
+                Acasă
+              </Link>
+              <span className="mx-2">/</span>
+              <Link href="/cazari" className="hover:underline">Cazări</Link>
+              <span className="mx-2">/</span>
+              <span>{county.name}</span>
+            </nav>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">Descoperă destinația</p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-4xl">Cazări în județul {county.name}</h1>
+            <p className="mt-4 max-w-2xl leading-7 text-zinc-600 dark:text-zinc-400">{description}</p>
           </div>
+          {destinationPhoto.image && (
+            <figure>
+              <div className="relative aspect-[4/3] overflow-hidden rounded-3xl bg-zinc-100 dark:bg-zinc-800">
+                <Image src={destinationPhoto.image} alt={destinationPhoto.imageAlt || county.name} fill sizes="(max-width: 1023px) 90vw, 45vw" className="object-cover" style={{ objectPosition: destinationPhoto.imagePosition }} />
+              </div>
+            </figure>
+          )}
         </header>
 
-        <section className="mt-12">
-          {listings.length === 0 ? (
-            <div className="rounded-3xl border border-emerald-100 bg-emerald-50/60 px-6 py-10 text-center">
-              <h2 className="mb-2 text-2xl font-semibold text-emerald-900">
-                Momentan nu avem cazări publicate în județul {county.name}
-              </h2>
-              <p className="mx-auto max-w-2xl text-emerald-800/80">
-                Publicăm treptat locații reale, atent verificate. Revino în curând sau înscrie o proprietate.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-x-2 gap-y-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-              <ListingsGrid cazari={listings} />
-            </div>
-          )}
-        </section>
-
         {typeLinks.length > 0 && (
-          <section className="mt-12 rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-6 sm:p-8">
-            <h2 className="text-xl font-semibold text-emerald-900">
-              Cazări populare în județul {county.name}
+          <section className="mt-12" aria-labelledby="categorii-judet">
+            <h2 id="categorii-judet" className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+              Ce fel de cazare cauți în {county.name}?
             </h2>
-            <p className="mt-2 text-sm text-emerald-800/80">
-              Alege categoria potrivită și intră direct pe paginile locale cu rezultate relevante pentru {county.name}.
+            <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+              Alege un tip de proprietate. Vei vedea doar cazările din județul {county.name}.
             </p>
-            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {typeLinks.map((item) => (
-                <article
+                <ExploreCard
                   key={item.typeSlug}
-                  className="rounded-2xl border border-emerald-200/70 bg-white/90 p-3 shadow-sm"
-                >
-                  <Link
-                    href={item.href}
-                    title={`${item.typeLabel} în județul ${county.name}`}
-                    aria-label={`${item.typeLabel} în județul ${county.name}`}
-                    className="flex flex-col items-center justify-center rounded-xl bg-emerald-50 py-4 hover:bg-emerald-100"
-                  >
-                    <TypeFilterIcon typeValue={item.typeValue} />
-                    <span className="mt-2 text-xs font-semibold text-emerald-900">{item.count} proprietati</span>
-                    <span className="sr-only">{item.typeLabel}</span>
-                  </Link>
-                  <Link
-                    href={item.typeHref}
-                    className="mt-2 inline-flex w-full items-center justify-center rounded-full border border-emerald-200 px-3 py-1.5 text-[11px] font-semibold text-emerald-900 hover:bg-emerald-100"
-                  >
-                    {item.typeCtaLabel}
-                  </Link>
-                </article>
+                  href={item.href}
+                  title={item.typeLabel}
+                  eyebrow={county.name}
+                  subtitle={`${item.typeLabel} în județul ${county.name}`}
+                  count={item.count}
+                  {...getCategoryPhoto(item.typeSlug)}
+                />
               ))}
             </div>
           </section>
         )}
+        <h2 className="mt-14 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+          Toate cazările din {county.name}
+        </h2>
+        <ListingCollectionResults
+          listings={listings}
+          className="mt-6"
+          emptyTitle={<>Momentan nu avem cazări publicate în județul {county.name}</>}
+          emptyDescription={
+            <>Publicăm treptat locații reale, atent verificate. Revino în curând sau înscrie o proprietate.</>
+          }
+        />
         <SeoRelatedLinks
-          title={`Regiuni turistice asociate județului ${county.name}`}
-          description="Explorează și paginile regionale care includ acest județ pentru a descoperi proprietăți și în zonele apropiate."
-          links={regionLinks}
+          title="Alte destinații de explorat"
+          description={`Descoperă alte județe din regiunile turistice de care aparține ${county.name}, fiecare cu o selecție diferită de cazări.`}
+          links={destinationLinks}
         />
       </main>
     </>

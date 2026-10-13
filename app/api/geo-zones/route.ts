@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 
-export const revalidate = 60 * 60;
+export const revalidate = 3600;
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
@@ -24,14 +24,14 @@ export async function GET(request: Request) {
 
     if (error) {
       console.error('[geo-zones]', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
     }
 
     return NextResponse.json(data || []);
   } catch (err: unknown) {
     console.error('[geo-zones]', err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Unknown error' },
+      { error: "Cererea nu a putut fi procesata. Incearca din nou." },
       { status: 500 }
     );
   }

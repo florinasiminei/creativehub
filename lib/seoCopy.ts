@@ -100,6 +100,15 @@ const SEO_TYPE_LABELS_BY_SLUG: Record<string, string> = {
   "case-de-vacanta": "Case de vacanță premium",
 };
 
+const SEO_TYPE_SINGULAR_LABELS: Record<string, string> = {
+  "Cabane premium": "cabană premium",
+  [A_FRAME_LABEL]: "cazare A-Frame",
+  "Pensiuni premium": "pensiune premium",
+  "Apartamente premium": "apartament premium",
+  "Tiny houses premium": "tiny house premium",
+  "Case de vacanță premium": "casă de vacanță premium",
+};
+
 export function getSeoTypeLabel(typeSlug: string, fallbackLabel: string): string {
   const slug = sanitizeText(typeSlug).toLowerCase();
   const fallback = sanitizeText(fallbackLabel);
@@ -123,8 +132,23 @@ const COLLECTION_DESCRIPTIONS = [
     `Alege dintre cabane premium, tiny houses și retreat-uri ${scopeTxt}, selectate cu grijă pentru experiențe autentice. Toate locațiile sunt verificate.`,
 ];
 
-export function buildSeoCollectionDescription(scope?: string, variant = 0): string {
+export function buildSeoCollectionDescription(
+  scope?: string,
+  variant = 0,
+  publishedCount?: number
+): string {
   const scopeTxt = withPreposition(scope);
+  if (
+    typeof publishedCount === "number" &&
+    Number.isFinite(publishedCount) &&
+    publishedCount > 0
+  ) {
+    return clampMetaDescription(
+      `Descoperă ${publishedCount} ${
+        publishedCount === 1 ? "cazare publicată" : "cazări publicate"
+      } ${scopeTxt}. Compară locația, capacitatea și facilitățile, cu contact direct la proprietar.`
+    );
+  }
   const pick = COLLECTION_DESCRIPTIONS[variant] || COLLECTION_DESCRIPTIONS[0];
   return clampMetaDescription(pick(scopeTxt));
 }
@@ -144,9 +168,29 @@ const TYPE_DESCRIPTIONS = [
     `Alege ${label} ${scopeTxt}, din colecția CABN - spații verificate și curatoriate pentru momente de neuitat.`,
 ];
 
-export function buildSeoTypeDescription(typeLabel: string, scope?: string, variant = 0): string {
+export function buildSeoTypeDescription(
+  typeLabel: string,
+  scope?: string,
+  variant = 0,
+  publishedCount?: number
+): string {
   const label = sanitizeText(typeLabel);
   const scopeTxt = withPreposition(scope);
+  if (
+    typeof publishedCount === "number" &&
+    Number.isFinite(publishedCount) &&
+    publishedCount > 0
+  ) {
+    const countLabel =
+      publishedCount === 1
+        ? SEO_TYPE_SINGULAR_LABELS[label] || "cazare"
+        : label
+          ? `${label.charAt(0).toLocaleLowerCase("ro-RO")}${label.slice(1)}`
+          : "cazări";
+    return clampMetaDescription(
+      `Descoperă ${publishedCount} ${countLabel} ${scopeTxt}, cu informații verificate despre preț, capacitate și facilități. Contact direct la proprietar.`
+    );
+  }
   const pick = TYPE_DESCRIPTIONS[variant] || TYPE_DESCRIPTIONS[0];
   return clampMetaDescription(pick(label, scopeTxt));
 }

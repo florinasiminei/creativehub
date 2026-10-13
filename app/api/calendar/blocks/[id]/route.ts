@@ -4,10 +4,11 @@ import { getDraftRoleFromRequest } from "@/lib/draftsAuth";
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params: paramsPromise }: { params: Promise<{ id: string }> }
 ) {
+  const params = await paramsPromise;
   try {
-    const role = getDraftRoleFromRequest(req);
+    const role = await getDraftRoleFromRequest(req);
     if (role !== "admin" && role !== "staff") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -23,7 +24,7 @@ export async function DELETE(
   } catch (err: any) {
     console.error("DELETE /api/calendar/blocks/[id]:", err);
     return NextResponse.json(
-      { error: err?.message || "Internal server error" },
+      { error: "Cererea nu a putut fi procesata. Incearca din nou." },
       { status: 500 }
     );
   }

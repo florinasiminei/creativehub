@@ -46,7 +46,7 @@ export async function fetchBookingRequest(id: string): Promise<BookingRequest> {
   return res.json();
 }
 
-export async function createBookingRequest(data: BookingRequestSubmission): Promise<BookingRequest> {
+export async function createBookingRequest(data: BookingRequestSubmission): Promise<Pick<BookingRequest, 'id' | 'status' | 'preferred_date'>> {
   const res = await fetch(`${API_BASE}/booking-requests`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

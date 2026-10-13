@@ -15,10 +15,11 @@ const LEAD_STATUSES: LeadStatus[] = [
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params: paramsPromise }: { params: Promise<{ id: string }> }
 ) {
+  const params = await paramsPromise;
   try {
-    const role = getDraftRoleFromRequest(req);
+    const role = await getDraftRoleFromRequest(req);
     if (role !== "admin" && role !== "staff") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -38,7 +39,7 @@ export async function PATCH(
     return NextResponse.json(data);
   } catch (err: any) {
     console.error("PATCH /api/backoffice/leads/[id]:", err);
-    return NextResponse.json({ error: err?.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
   }
 }
 

@@ -23,7 +23,7 @@ const ACTIVE_DAY_STATUSES: BookingRequestStatus[] = [
 
 export async function GET(req: Request) {
   try {
-    const role = getDraftRoleFromRequest(req);
+    const role = await getDraftRoleFromRequest(req);
     if (role !== "admin" && role !== "staff") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -39,7 +39,7 @@ export async function GET(req: Request) {
   } catch (err: any) {
     console.error("GET /api/calendar/booking-requests:", err);
     return NextResponse.json(
-      { error: err?.message || "Internal server error" },
+      { error: "Cererea nu a putut fi procesata. Incearca din nou." },
       { status: 500 }
     );
   }
@@ -175,17 +175,27 @@ export async function POST(req: Request) {
 
     await markLeadAsBookingRequest(supabase, leadId, listingId);
     await sendInternalNotification(newRequest.id, "new_request", supabase);
-    return NextResponse.json(newRequest, { status: 201 });
+    return NextResponse.json(
+      { id: newRequest.id, status: newRequest.status, preferred_date: newRequest.preferred_date },
+      { status: 201, headers: { 'Cache-Control': 'private, no-store' } }
+    );
   } catch (err: any) {
     console.error("POST /api/calendar/booking-requests:", err);
     return NextResponse.json(
-      { error: err?.message || "Internal server error" },
+      { error: "Cererea nu a putut fi procesata. Incearca din nou." },
       { status: 500 }
     );
   }
 }
 
 function validateSubmission(body: BookingRequestSubmission) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return 'Cerere invalida.';
+  const limits = { property_name: 160, contact_name: 120, phone: 32, judet: 120, city: 120, sat: 120, preferred_date: 10, notes: 5000 };
+  for (const [field, maximum] of Object.entries(limits)) {
+    const value = body[field as keyof BookingRequestSubmission];
+    if (value !== undefined && (typeof value !== 'string' || value.length > maximum)) return 'Datele introduse sunt prea lungi sau invalide.';
+  }
+  if (body.external_links !== undefined && (!Array.isArray(body.external_links) || body.external_links.length > 10 || body.external_links.some((link) => !link || typeof link.url !== 'string' || link.url.length > 2000))) return 'Linkuri invalide.';
   if (!body?.property_name?.trim()) return "Numele cazarii este obligatoriu.";
   if (!body?.contact_name?.trim()) return "Numele persoanei de contact este obligatoriu.";
   if (!body?.phone?.trim()) return "Telefonul este obligatoriu.";

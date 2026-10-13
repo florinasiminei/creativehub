@@ -5,7 +5,7 @@ import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
 
 export async function POST(request: Request) {
   try {
-    const role = getDraftRoleFromRequest(request);
+    const role = await getDraftRoleFromRequest(request);
     if (role !== 'admin' && role !== 'staff') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
       .eq('title', 'Draft proprietate');
 
     if (error) {
-      return NextResponse.json({ error: error.message || 'Nu am putut incarca drafturile seed.' }, { status: 500 });
+      return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
     }
 
     const seedIds = (rows || []).map((row: any) => String(row.id)).filter(Boolean);
@@ -67,6 +67,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, deletedCount: deletableIds.length, deletedIds: deletableIds });
   } catch (err: any) {
     console.error(err);
-    return NextResponse.json({ error: err?.message || 'unknown' }, { status: 500 });
+    return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
   }
 }

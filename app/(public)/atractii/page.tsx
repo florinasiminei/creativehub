@@ -5,9 +5,9 @@ import type { Metadata } from "next";
 import { getCanonicalSiteUrl } from "@/lib/siteUrl";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { buildPageMetadata } from "@/lib/seoMetadata";
-import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd } from "@/lib/jsonLd";
+import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd, serializeJsonLd } from "@/lib/jsonLd";
 
-export const revalidate = 60 * 30;
+export const revalidate = 1800;
 
 const siteUrl = getCanonicalSiteUrl();
 const pagePath = "/atractii";
@@ -136,16 +136,16 @@ export default async function AtractiiPage() {
     <div className="min-h-screen bg-white text-zinc-900 dark:bg-transparent dark:text-white">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbJsonLd) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(collectionJsonLd) }}
       />
       {itemListJsonLd ? (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(itemListJsonLd) }}
         />
       ) : null}
       <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">

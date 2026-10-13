@@ -22,8 +22,9 @@ function SettingsLink({ href, title, description }: { href: string; title: strin
 export default function SettingsSection({ role }: Props) {
   const router = useRouter();
 
-  function handleLogout() {
-    document.cookie = "drafts_auth=; Path=/; Max-Age=0";
+  async function handleLogout() {
+    const response = await fetch("/api/drafts-login", { method: "DELETE" });
+    if (!response.ok) return;
     router.push("/drafts-login");
   }
 

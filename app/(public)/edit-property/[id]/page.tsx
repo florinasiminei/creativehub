@@ -2,12 +2,13 @@
 
 import { FormEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import ClientListingConsentPanel from '@/components/forms/ClientListingConsentPanel';
 import ListingForm from '@/components/forms/ListingForm';
 import FormPageShell, { FormPageState } from '@/components/forms/FormPageShell';
 import FormSubmitBar from '@/components/forms/FormSubmitBar';
 import ListingSubmitFeedback from '@/components/forms/ListingSubmitFeedback';
+import OwnerOtpGate from '@/components/forms/OwnerOtpGate';
 import LoadingLogo from '@/components/LoadingLogo';
 import { supabase } from '@/lib/supabaseClient';
 import useImageSelection from '@/hooks/useImageSelection';
@@ -16,8 +17,21 @@ import useListingForm from '@/hooks/useListingForm';
 import useSubmissionFeedback from '@/hooks/useSubmissionFeedback';
 import useStoredAccessToken from '@/hooks/useStoredAccessToken';
 import { markPageModified } from '@/hooks/useRefreshOnNavigation';
-import { deleteListingImage, reorderListingImages, updateListing } from '@/lib/api/listings';
+import {
+  deleteListingImage,
+  getOwnerAuthHeaders,
+  reorderListingImages,
+  submitListing,
+  updateListing,
+} from '@/lib/api/listings';
 import { sortFacilitiesByPriority } from '@/lib/facilitiesCatalog';
+import { fetchOwnerApi, getOwnerSession } from '@/lib/api/ownerSession';
+import {
+  deleteOwnerListingImage,
+  reorderOwnerListingImages,
+  submitOwnerListing,
+  updateOwnerListing,
+} from '@/lib/api/ownerListings';
 import {
   buildListingPayloadBase,
   createEmptyListingFormFields,
@@ -30,7 +44,9 @@ import {
   withClientListingMeta,
 } from '@/lib/listings/listingForm';
 
-export default function EditPropertyPage({ params }: any) {
+const MAX_LISTING_IMAGES = 30;
+
+function EditPropertyPageContent({ params, expectedOwnerId }: { params: { id: string }; expectedOwnerId?: string }) {
   const { id } = params;
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -38,9 +54,9 @@ export default function EditPropertyPage({ params }: any) {
   const tokenParam = searchParams.get('token');
   const { token: listingToken, tokenReady } = useStoredAccessToken({
     queryToken: tokenParam,
-    storageKey: 'listing_token',
+    storageKey: `listing_token:${id}`,
     cleanupPath: `/edit-property/${id}`,
-    stripQueryToken: !isClient,
+    stripQueryToken: true,
   });
   const [initializing, setInitializing] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
@@ -55,6 +71,7 @@ export default function EditPropertyPage({ params }: any) {
   const [validationAttempt, setValidationAttempt] = useState(0);
   const [acceptedTerms, setAcceptedTerms] = useState(!isClient);
   const [newsletterOptIn, setNewsletterOptIn] = useState(false);
+  const [listingIsPublished, setListingIsPublished] = useState(false);
   const { message, tone, clearFeedback, setError, setSuccess, setErrorFromUnknown } = useSubmissionFeedback();
 
   const { uploading, uploadedCount, upload } = useImageUploads({
@@ -62,6 +79,7 @@ export default function EditPropertyPage({ params }: any) {
       setError(nextMessage);
     },
     listingToken,
+    expectedOwnerId,
   });
 
   const {
@@ -70,7 +88,7 @@ export default function EditPropertyPage({ params }: any) {
     draggingIdx: draggingNewIdx,
     isDropActive,
     setIsDropActive,
-    appendFiles,
+    appendFiles: appendSelectedFiles,
     moveFile,
     removeFile,
     handleDragStart: handleNewDragStart,
@@ -78,11 +96,31 @@ export default function EditPropertyPage({ params }: any) {
     handleDragEnd: handleNewDragEnd,
     resetFiles,
   } = useImageSelection({
-    maxFiles: Number.POSITIVE_INFINITY,
+    maxFiles: Math.max(0, MAX_LISTING_IMAGES - images.length),
     onLimit: (nextMessage) => {
       setError(nextMessage);
     },
   });
+
+  const handleFilesSelected = (incoming: File[]) => {
+    if (incoming.length === 0) return;
+    clearFeedback();
+
+    const remainingSlots = Math.max(
+      0,
+      MAX_LISTING_IMAGES - (images.length + files.length)
+    );
+    if (remainingSlots <= 0) {
+      setError(`Poti incarca maximum ${MAX_LISTING_IMAGES} imagini.`);
+      return;
+    }
+
+    const acceptedFiles = incoming.slice(0, remainingSlots);
+    if (acceptedFiles.length < incoming.length) {
+      setError(`Poti incarca maximum ${MAX_LISTING_IMAGES} imagini.`);
+    }
+    appendSelectedFiles(acceptedFiles);
+  };
 
   useEffect(() => {
     setAcceptedTerms(!isClient);
@@ -94,20 +132,19 @@ export default function EditPropertyPage({ params }: any) {
     async function loadListing() {
       if (!tokenReady) return;
 
-      if (isClient && !listingToken) {
-        if (mounted) {
-          setInitializing(false);
-          setAccessDenied(true);
-        }
-        return;
-      }
-
       try {
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+          ...(!expectedOwnerId ? await getOwnerAuthHeaders() : {}),
+        };
         if (listingToken) headers['x-listing-token'] = listingToken;
 
         const [listingResponse, facilitiesResponse] = await Promise.all([
-          fetch('/api/listing-get', {
+          expectedOwnerId ? fetchOwnerApi(expectedOwnerId, '/api/listing-get', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ id }),
+          }) : fetch('/api/listing-get', {
             method: 'POST',
             headers,
             body: JSON.stringify({ id }),
@@ -121,7 +158,9 @@ export default function EditPropertyPage({ params }: any) {
           if (!mounted) return;
           if (listingResponse.status === 401) {
             setAccessDenied(true);
-            setError('Linkul de acces este invalid sau a expirat.');
+            setError(expectedOwnerId
+              ? 'Nu ai acces la această proprietate. Verifică adresa de email a contului.'
+              : 'Linkul de acces este invalid sau a expirat.');
             return;
           }
           throw new Error(listingBody?.error || 'Nu am putut incarca proprietatea.');
@@ -135,6 +174,7 @@ export default function EditPropertyPage({ params }: any) {
           setLocationData(mapListingToLocationData(listing));
           setNewsletterOptIn(Boolean((listing as any).newsletter_opt_in));
           setAcceptedTerms(Boolean((listing as any).terms_accepted));
+          setListingIsPublished((listing as any).is_published === true);
         }
 
         if (facilitiesResponse.data) {
@@ -157,7 +197,7 @@ export default function EditPropertyPage({ params }: any) {
     return () => {
       mounted = false;
     };
-  }, [clearFeedback, id, isClient, listingToken, setError, tokenReady]);
+  }, [clearFeedback, id, isClient, listingToken, setError, tokenReady, expectedOwnerId]);
 
   const handleChange = (key: keyof ListingFormFields, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -187,7 +227,7 @@ export default function EditPropertyPage({ params }: any) {
     phoneKey: 'telefon',
     imagesCount: images.length + files.length,
     minImages: isClient ? 5 : 0,
-    maxImages: 20,
+    maxImages: MAX_LISTING_IMAGES,
     description: formData.descriere,
     descriptionKey: 'descriere',
     descriptionMin: 200,
@@ -265,20 +305,31 @@ export default function EditPropertyPage({ params }: any) {
         { isClient, newsletterOptIn, acceptedTerms }
       );
 
-      await updateListing(payload, listingToken);
+      if (expectedOwnerId) await updateOwnerListing(payload, expectedOwnerId);
+      else await updateListing(payload, listingToken);
 
       if (updatedImages.length > 0) {
-        await reorderListingImages(
-          id,
-          updatedImages.map((image) => image.id),
-          listingToken
-        );
+        const imageIds = updatedImages.map((image) => image.id);
+        if (expectedOwnerId) await reorderOwnerListingImages(id, imageIds, expectedOwnerId);
+        else await reorderListingImages(id, imageIds, listingToken);
       }
 
-      setSuccess('Modificarile au fost salvate.');
+      if (isClient && !listingIsPublished) {
+        if (expectedOwnerId) await submitOwnerListing(id, expectedOwnerId);
+        else await submitListing(id, listingToken);
+      }
+
+      if (expectedOwnerId) await getOwnerSession(expectedOwnerId);
+
+      setSuccess(
+        isClient && !listingIsPublished
+          ? 'Proprietatea a fost trimisa spre verificare.'
+          : 'Modificarile au fost salvate.'
+      );
       markPageModified();
 
-      if (isClient) router.push('/?updated=1');
+      if (isClient && !listingIsPublished) router.push('/proprietari?trimis=1');
+      else if (isClient) router.push('/proprietari?actualizat=1');
       else router.push('/drafts?updated=1');
     } catch (error: any) {
       if (Array.isArray(error?.failed)) {
@@ -293,7 +344,8 @@ export default function EditPropertyPage({ params }: any) {
 
   const handleDeleteExistingImage = async (image: ListingImage) => {
     try {
-      await deleteListingImage(image.id, listingToken);
+      if (expectedOwnerId) await deleteOwnerListingImage(image.id, expectedOwnerId);
+      else await deleteListingImage(image.id, listingToken);
       setImages((prev) => prev.filter((item) => item.id !== image.id));
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Nu am putut sterge imaginea.');
@@ -372,7 +424,11 @@ export default function EditPropertyPage({ params }: any) {
           initialCity={formData.localitate}
           initialLat={locationData?.latitude ?? null}
           initialLng={locationData?.longitude ?? null}
-          dropzoneTitle={isClient ? 'Incarca imagini noi (minim 5, maxim 20 total)' : 'Incarca imagini noi (maxim 20 total)'}
+          dropzoneTitle={
+            isClient
+              ? `Incarca imagini noi (minim 5, maxim ${MAX_LISTING_IMAGES} total)`
+              : `Incarca imagini noi (maxim ${MAX_LISTING_IMAGES} total)`
+          }
           dropzoneSubtitle={
             isClient
               ? 'Selecteaza fisierele si ordoneaza-le inainte de publicare'
@@ -385,7 +441,7 @@ export default function EditPropertyPage({ params }: any) {
           validationAttempt={validationAttempt}
           isDropActive={isDropActive}
           onDropActiveChange={setIsDropActive}
-          onFilesSelected={appendFiles}
+          onFilesSelected={handleFilesSelected}
           files={files}
           previews={filePreviews}
           draggingIdx={draggingNewIdx}
@@ -397,10 +453,10 @@ export default function EditPropertyPage({ params }: any) {
           selectedImagesTitle="Ordinea imaginilor noi"
           selectedImagesSubtitle={
             isClient
-              ? 'Stabileste ordinea pentru incarcare (5-20 imagini total)'
-              : 'Stabileste ordinea pentru incarcare (maxim 20 imagini total)'
+              ? `Stabileste ordinea pentru incarcare (5-${MAX_LISTING_IMAGES} imagini total)`
+              : `Stabileste ordinea pentru incarcare (maxim ${MAX_LISTING_IMAGES} imagini total)`
           }
-          maxImagesWarning={20}
+          maxImagesWarning={MAX_LISTING_IMAGES}
           existingImages={images}
           existingTitle="Galeria actuala"
           existingSubtitle="Reordoneaza sau sterge imaginile deja salvate"
@@ -427,7 +483,7 @@ export default function EditPropertyPage({ params }: any) {
 
         <div className="flex justify-end">
           <Link
-            href={isClient ? '/' : '/drafts'}
+            href={isClient ? '/proprietari' : '/drafts'}
             className="inline-flex items-center justify-center rounded-full border border-gray-200 px-5 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-zinc-700 dark:text-gray-200 dark:hover:bg-zinc-900"
           >
             Anuleaza
@@ -439,9 +495,13 @@ export default function EditPropertyPage({ params }: any) {
           uploadedCount={uploadedCount}
           totalFiles={files.length}
           loading={loading}
-          submitLabel="Salveaza modificari"
-          loadingLabel="Se salveaza..."
-          idleLabel="Verifica datele, galeria si apoi salveaza modificarile."
+          submitLabel={isClient && !listingIsPublished ? 'Trimite spre verificare' : 'Salveaza modificari'}
+          loadingLabel={isClient && !listingIsPublished ? 'Se trimite...' : 'Se salveaza...'}
+          idleLabel={
+            isClient && !listingIsPublished
+              ? 'Verifica datele si galeria, apoi trimite proprietatea spre verificare.'
+              : 'Verifica datele, galeria si apoi salveaza modificarile.'
+          }
         />
 
         <ListingSubmitFeedback
@@ -450,5 +510,21 @@ export default function EditPropertyPage({ params }: any) {
         />
       </form>
     </FormPageShell>
+  );
+}
+
+export default function EditPropertyPage() {
+  const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
+  const isClient =
+    searchParams.get('client') === '1' ||
+    searchParams.get('role') === 'client';
+
+  if (!isClient) return <EditPropertyPageContent params={params} />;
+
+  return (
+    <OwnerOtpGate>
+      {({ session }) => <EditPropertyPageContent params={params} expectedOwnerId={session.user.id} />}
+    </OwnerOtpGate>
   );
 }

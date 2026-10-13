@@ -1,6 +1,10 @@
 // NOTE: The code is based on the recommendations provided.
 // It might need adjustments to fit the actual data structures of the application.
 
+export function serializeJsonLd(data: Record<string, unknown>): string {
+  return JSON.stringify(data).replace(/</g, '\\u003c');
+}
+
 export function buildListingPageJsonLd({
   siteUrl,
   pageUrl,

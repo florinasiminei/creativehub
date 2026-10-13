@@ -1,0 +1,29 @@
+# CABN — Cazări autentice în România
+
+> CABN este un catalog de cazări din România, cu informații despre proprietăți, locații, capacitate, prețuri și facilități, pentru contact direct cu proprietarul.
+
+Site canonic: https://www.cabn.ro/
+Limba principală: română.
+
+## Cazări și destinații
+
+- [Pagina principală](https://www.cabn.ro/): caută proprietăți și filtrează după locație, tip, preț, capacitate și facilități.
+- [Catalog de cazări](https://www.cabn.ro/cazari): descoperă categoriile de cazare și destinațiile disponibile; urmează linkurile din catalog pentru paginile proprietăților.
+- [Atracții turistice](https://www.cabn.ro/atractii): descoperă atracțiile prezentate pe site.
+
+## Informații despre CABN
+
+- [Despre noi](https://www.cabn.ro/about-us): prezentarea CABN.
+- [Servicii](https://www.cabn.ro/servicii): serviciile prezentate de CABN.
+- [Contact](https://www.cabn.ro/contact): informații de contact.
+
+## Politici
+
+- [Politica de confidențialitate](https://www.cabn.ro/politica-confidentialitate): informații privind prelucrarea datelor personale.
+- [Politica de cookie-uri](https://www.cabn.ro/politica-cookie): informații privind utilizarea cookie-urilor.
+
+## Utilizarea informațiilor
+
+Prețurile, facilitățile și datele de contact trebuie verificate în pagina curentă a proprietății. Confirmă disponibilitatea și condițiile rezervării direct cu proprietarul; nu presupune că un preț afișat confirmă disponibilitatea.
+
+Acest fișier descrie paginile publice ale site-ului. Regulile pentru crawlere sunt publicate separat în [robots.txt](https://www.cabn.ro/robots.txt).

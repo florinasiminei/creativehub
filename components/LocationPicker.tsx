@@ -2,15 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MapPin } from "lucide-react";
+import type { LocationData } from "@/lib/listings/listingForm";
 
 interface LocationPickerProps {
-  onLocationSelect: (location: { latitude: number; longitude: number; county: string; city: string }) => void;
+  onLocationSelect: (location: LocationData) => void;
   initialCounty?: string;
   initialCity?: string;
   geocodeCounty?: string;
   geocodeCity?: string;
   initialLat?: number | null;
   initialLng?: number | null;
+  initialConfirmed?: boolean;
   onConfirmChange?: (confirmed: boolean) => void;
   autoLocate?: boolean;
 }
@@ -159,28 +161,36 @@ export default function LocationPicker({
   geocodeCity,
   initialLat,
   initialLng,
+  initialConfirmed = false,
   onConfirmChange,
   autoLocate = true,
 }: LocationPickerProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
+  const onConfirmChangeRef = useRef(onConfirmChange);
 
   const [isLoaded, setIsLoaded] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationName, setLocationName] = useState("");
   const [searchValue, setSearchValue] = useState("");
   const [predictions, setPredictions] = useState<Prediction[]>([]);
-  const [isConfirmed, setIsConfirmed] = useState(false);
+  const [isConfirmed, setIsConfirmed] = useState(initialConfirmed);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
   const lastGeocodeKeyRef = useRef("");
+  const appliedInitialCoordinatesRef = useRef("");
   const hasSelection = Boolean(selectedLocation);
 
   useEffect(() => {
-    onConfirmChange?.(isConfirmed);
-  }, [isConfirmed, onConfirmChange]);
+    onConfirmChangeRef.current = onConfirmChange;
+  }, [onConfirmChange]);
+
+  const updateConfirmation = useCallback((confirmed: boolean) => {
+    setIsConfirmed(confirmed);
+    onConfirmChangeRef.current?.(confirmed);
+  }, []);
 
   const updateLocationName = useCallback((lat: number, lng: number) => {
     if (!hasGoogleMapsCore()) return;
@@ -210,12 +220,12 @@ export default function LocationPicker({
       const nextLng = event.latLng?.lng();
       if (nextLat === undefined || nextLng === undefined) return;
       setSelectedLocation({ lat: nextLat, lng: nextLng });
-      setIsConfirmed(false);
+      updateConfirmation(false);
     });
 
     markerRef.current = marker;
     map.setCenter({ lat, lng });
-  }, []);
+  }, [updateConfirmation]);
 
   useEffect(() => {
     const getIsDark = () => document.documentElement.classList.contains("dark");
@@ -262,19 +272,34 @@ export default function LocationPicker({
     if (!Number.isFinite(initialLat) || !Number.isFinite(initialLng)) return;
     if (initialLat === 0 && initialLng === 0) return;
 
+    const coordinatesKey = `${initialLat}|${initialLng}`;
+    if (appliedInitialCoordinatesRef.current === coordinatesKey) return;
+    appliedInitialCoordinatesRef.current = coordinatesKey;
     setSelectedLocation({ lat: initialLat, lng: initialLng });
-    setIsConfirmed(true);
-  }, [initialLat, initialLng]);
+    if (initialConfirmed) updateConfirmation(true);
+  }, [initialConfirmed, initialLat, initialLng, updateConfirmation]);
 
   useEffect(() => {
     if (!isLoaded || !hasGoogleMapsCore()) return;
 
     const city = (geocodeCity || "").trim();
     const county = (geocodeCounty || "").trim();
+    const key = `${city}|${county}`.toLowerCase();
+    const hasConfirmedInitialCoordinates =
+      initialConfirmed &&
+      typeof initialLat === "number" &&
+      typeof initialLng === "number" &&
+      Number.isFinite(initialLat) &&
+      Number.isFinite(initialLng) &&
+      (initialLat !== 0 || initialLng !== 0);
+    if (hasConfirmedInitialCoordinates) {
+      lastGeocodeKeyRef.current = key;
+      return;
+    }
+
     if (!city && !county) return;
     if (city.length < 2 && county.length < 2) return;
 
-    const key = `${city}|${county}`.toLowerCase();
     if (lastGeocodeKeyRef.current === key) return;
     lastGeocodeKeyRef.current = key;
 
@@ -286,10 +311,10 @@ export default function LocationPicker({
 
       const location = results[0].geometry.location;
       setSelectedLocation({ lat: location.lat(), lng: location.lng() });
-      setIsConfirmed(false);
+      updateConfirmation(false);
       setLocationName(results[0].formatted_address || query);
     });
-  }, [geocodeCity, geocodeCounty, isLoaded]);
+  }, [geocodeCity, geocodeCounty, initialConfirmed, initialLat, initialLng, isLoaded, updateConfirmation]);
 
   useEffect(() => {
     const hasInitialCoords =
@@ -298,15 +323,18 @@ export default function LocationPicker({
       Number.isFinite(initialLat) &&
       Number.isFinite(initialLng) &&
       (initialLat !== 0 || initialLng !== 0);
+    const hasAdministrativeLocation = Boolean(
+      (geocodeCity || "").trim() || (geocodeCounty || "").trim(),
+    );
 
-    if (hasInitialCoords || !autoLocate) return;
+    if (hasInitialCoords || hasAdministrativeLocation || !autoLocate) return;
 
     let didSet = false;
 
     const setLocation = (lat: number, lng: number) => {
       didSet = true;
       setSelectedLocation({ lat, lng });
-      setIsConfirmed(false);
+      updateConfirmation(false);
     };
 
     const getIpLocation = async () => {
@@ -331,7 +359,7 @@ export default function LocationPicker({
       () => getIpLocation(),
       { enableHighAccuracy: false, timeout: 4000, maximumAge: 5 * 60 * 1000 }
     );
-  }, [autoLocate, initialLat, initialLng]);
+  }, [autoLocate, geocodeCity, geocodeCounty, initialLat, initialLng, updateConfirmation]);
 
   useEffect(() => {
     if (!isLoaded || !mapContainerRef.current || !hasGoogleMapsCore()) return;
@@ -356,7 +384,7 @@ export default function LocationPicker({
         if (lat === undefined || lng === undefined) return;
 
         setSelectedLocation({ lat, lng });
-        setIsConfirmed(false);
+        updateConfirmation(false);
       });
 
       mapRef.current = map;
@@ -365,7 +393,7 @@ export default function LocationPicker({
         updateMarker(map, selectedLocation.lat, selectedLocation.lng);
       }
     }
-  }, [isDarkMode, isLoaded, selectedLocation, updateMarker]);
+  }, [isDarkMode, isLoaded, selectedLocation, updateConfirmation, updateMarker]);
 
   useEffect(() => {
     if (!isLoaded || !searchValue || !hasGoogleMapsPlaces()) {
@@ -407,7 +435,7 @@ export default function LocationPicker({
       const lng = location.lng();
 
       setSelectedLocation({ lat, lng });
-      setIsConfirmed(false);
+      updateConfirmation(false);
       setLocationName(results[0].formatted_address || prediction.description || "");
       setPredictions([]);
 
@@ -436,7 +464,7 @@ export default function LocationPicker({
       const lng = location.lng();
 
       setSelectedLocation({ lat, lng });
-      setIsConfirmed(false);
+      updateConfirmation(false);
       setLocationName(results[0].formatted_address || query);
       setPredictions([]);
 
@@ -444,7 +472,7 @@ export default function LocationPicker({
       mapRef.current.setCenter({ lat, lng });
       mapRef.current.setZoom(15);
     });
-  }, [searchValue]);
+  }, [searchValue, updateConfirmation]);
 
   const handleUseMyLocation = () => {
     if (!navigator.geolocation) {
@@ -458,7 +486,7 @@ export default function LocationPicker({
         const lng = position.coords.longitude;
 
         setSelectedLocation({ lat, lng });
-        setIsConfirmed(false);
+        updateConfirmation(false);
 
         if (!mapRef.current) return;
         mapRef.current.setCenter({ lat, lng });
@@ -479,6 +507,7 @@ export default function LocationPicker({
 
     let county = initialCounty || "";
     let city = initialCity || "";
+    let village: string | undefined;
 
     try {
       if (!hasGoogleMapsCore()) throw new Error("Google Maps nu este inca disponibil.");
@@ -487,24 +516,14 @@ export default function LocationPicker({
       await new Promise<void>((resolve) => {
         geocoder.geocode({ location: { lat: selectedLocation.lat, lng: selectedLocation.lng } }, (results, status) => {
           if (status === google.maps.GeocoderStatus.OK && results?.[0]) {
-            for (const component of results[0].address_components || []) {
-              if (
-                !county &&
-                (component.types.includes("administrative_area_level_1") ||
-                  component.types.includes("administrative_area_level_2"))
-              ) {
-                county = component.long_name;
-              }
-
-              if (
-                !city &&
-                (component.types.includes("locality") ||
-                  component.types.includes("postal_town") ||
-                  component.types.includes("administrative_area_level_3"))
-              ) {
-                city = component.long_name;
-              }
-            }
+            const components: Array<{ long_name: string; types: string[] }> = results[0].address_components || [];
+            const nameFor = (type: string) => components.find((item) => item.types.includes(type))?.long_name || "";
+            const locality = nameFor("locality") || nameFor("postal_town");
+            const administrativeCity = nameFor("administrative_area_level_3") || nameFor("administrative_area_level_2");
+            county = nameFor("administrative_area_level_1") || county;
+            city = administrativeCity && administrativeCity !== county ? administrativeCity : locality || city;
+            const normalizeName = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/^(municipiul|orasul|oras|comuna)\s+/, "");
+            village = locality && normalizeName(locality) !== normalizeName(city) ? locality : "";
           }
 
           resolve();
@@ -519,9 +538,10 @@ export default function LocationPicker({
       longitude: selectedLocation.lng,
       county,
       city,
+      village,
     });
 
-    setIsConfirmed(true);
+    updateConfirmation(true);
   };
 
   return (

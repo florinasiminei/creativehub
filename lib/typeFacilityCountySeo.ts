@@ -89,6 +89,18 @@ export function findSeoFacilityBySlug(facilities: SeoFacility[], slug: string): 
   return facilities.find((facility) => facility.slug === normalized) || null;
 }
 
+export async function fetchSeoFacilities(supabaseAdmin: any): Promise<SeoFacility[]> {
+  const { data, error } = await supabaseAdmin.from("facilities").select("id, name");
+  if (error || !data) return [];
+
+  return toSeoFacilities(
+    (data as Array<Record<string, unknown>>).map((facility) => ({
+      id: String(facility["id"] || ""),
+      name: String(facility["name"] || ""),
+    }))
+  );
+}
+
 export async function fetchTypeFacilityCountyCombos(
   supabaseAdmin: any,
   options?: { publishedOnly?: boolean }

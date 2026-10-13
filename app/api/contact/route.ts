@@ -17,10 +17,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = await request.json();
-    const name = String(body?.name || "").trim();
-    const contact = String(body?.contact || "").trim();
-    const message = String(body?.message || "").trim();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== 'object' || Array.isArray(body) ||
+      typeof body.name !== 'string' || typeof body.contact !== 'string' || typeof body.message !== 'string') {
+      return NextResponse.json({ error: 'Cerere invalida.' }, { status: 400 });
+    }
+    const name = body.name.trim();
+    const contact = body.contact.trim();
+    const message = body.message.trim();
+
+    if (name.length > 120 || contact.length > 254 || message.length > 5000 || /[\r\n]/.test(name + contact)) {
+      return NextResponse.json({ error: 'Datele introduse sunt prea lungi sau invalide.' }, { status: 400 });
+    }
 
     if (!name || !contact || !message) {
       return NextResponse.json({ error: "Completeaza toate campurile." }, { status: 400 });
@@ -50,7 +58,7 @@ export async function POST(request: Request) {
     const subject = `Mesaj nou contact - ${name}`;
     const text = `Nume: ${name}\nContact: ${contact}\n\nMesaj:\n${message}\n`;
 
-    const replyTo = /\S+@\S+\.\S+/.test(contact) ? contact : undefined;
+    const replyTo = /^[^\s@<>(),;]+@[^\s@<>(),;]+\.[^\s@<>(),;]+$/.test(contact) ? contact : undefined;
 
     await transporter.sendMail({
       from,

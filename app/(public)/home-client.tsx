@@ -15,8 +15,8 @@ import { sortFacilitiesByPriority } from "@/lib/facilitiesCatalog";
 import { getTypeLabel } from "@/lib/listingTypes";
 import { Cazare } from "@/lib/utils";
 import type { FacilityOption, Filters, ListingRaw, SearchSuggestion } from "@/lib/types";
-import { supabase } from "@/lib/supabaseClient";
 import { normalizeRegionText, parseLocationLabel, resolveRegionForLocation } from "@/lib/regions";
+import { HOME_LISTING_IMAGE_SIZES } from "@/lib/imageConfig";
 
 function parseCapacity(capacity: string | number): { min: number; max: number } {
   const str = String(capacity).trim();
@@ -80,16 +80,11 @@ function getHomepageEagerCount(viewportWidth: number) {
   return 1;
 }
 
-function getHomepagePriorityCount(_viewportWidth: number) {
-  return 1;
-}
-
 type HomeClientProps = {
   initialCazari?: Cazare[];
   initialFacilities?: FacilityOption[];
   pageTitle?: string;
   allowClientBootstrapFetch?: boolean;
-  initialSubmittedMessage?: string;
 };
 
 export default function HomeClient({
@@ -97,24 +92,12 @@ export default function HomeClient({
   initialFacilities = [],
   pageTitle,
   allowClientBootstrapFetch = true,
-  initialSubmittedMessage = "",
 }: HomeClientProps) {
   const [cazari, setCazari] = useState<Cazare[]>(initialCazari);
+  const availableTypes = useMemo(() => Array.from(new Set(cazari.map((cazare) => cazare.tip))), [cazari]);
   const [facilitiesList, setFacilitiesList] = useState<FacilityOption[]>(initialFacilities);
   const [currentPage, setCurrentPage] = useState(1);
-  const [filters, setFiltersState] = useState<Filters>({
-    locatie: "",
-    keyword: "",
-    pretMin: 0,
-    pretMax: 10000,
-    tipuri: [],
-    facilities: [],
-    persoaneMin: 1,
-    persoaneMax: 15,
-    camere: 0,
-    paturi: 0,
-    bai: 0,
-  });
+  const [filters, setFiltersState] = useState<Filters>(() => getInitialFilters(initialCazari));
   const setFilters = useCallback((updater: SetStateAction<Filters>) => {
     setFiltersState((prev) => {
       const next =
@@ -142,37 +125,23 @@ export default function HomeClient({
       return next;
     });
   }, [setCurrentPage, setFiltersState]);
-  const [persoaneRange, setPersoaneRange] = useState({ min: 1, max: 10 });
+  const [persoaneRange, setPersoaneRange] = useState(() => {
+    const initialFilters = getInitialFilters(initialCazari);
+    return { min: initialFilters.persoaneMin, max: initialFilters.persoaneMax };
+  });
   const [locatiiSugestii, setLocatiiSugestii] = useState<SearchSuggestion[]>([]);
   const [sugestieIndex, setSugestieIndex] = useState(-1);
   const [loading, setLoading] = useState(allowClientBootstrapFetch && initialCazari.length === 0);
   const [error, setError] = useState<string | null>(null);
-  const [showSubmittedNotice, setShowSubmittedNotice] = useState(Boolean(initialSubmittedMessage));
-  const [submittedMessage, setSubmittedMessage] = useState(initialSubmittedMessage);
   const [eagerCount, setEagerCount] = useState(1);
-  const [priorityCount, setPriorityCount] = useState(1);
 
   // Refresh page when returning from drafts/edit-property
   useRefreshOnNavigation('home');
 
   useEffect(() => {
-    setSubmittedMessage(initialSubmittedMessage);
-    setShowSubmittedNotice(Boolean(initialSubmittedMessage));
-  }, [initialSubmittedMessage]);
-
-  useEffect(() => {
-    if (!showSubmittedNotice) return;
-    const timer = window.setTimeout(() => {
-      setShowSubmittedNotice(false);
-    }, 10_000);
-    return () => window.clearTimeout(timer);
-  }, [showSubmittedNotice]);
-
-  useEffect(() => {
     const updateEagerCount = () => {
       const viewportWidth = window.innerWidth;
       setEagerCount(getHomepageEagerCount(viewportWidth));
-      setPriorityCount(getHomepagePriorityCount(viewportWidth));
     };
 
     updateEagerCount();
@@ -213,6 +182,8 @@ export default function HomeClient({
       try {
         setLoading(true);
         setError(null);
+        const { supabase } = await import("@/lib/supabaseClient");
+        if (cancelled) return;
 
         const baseSelect = `
             id, title, slug, type, judet, city, sat, capacity, price, is_published, display_order,
@@ -282,12 +253,18 @@ export default function HomeClient({
   useEffect(() => {
     if (initialFacilities.length > 0) return;
     let mounted = true;
-    supabase
-      .from("facilities")
-      .select("id, name")
-      .then(({ data }) => {
+    async function fetchFacilities() {
+      try {
+        const { supabase } = await import("@/lib/supabaseClient");
+        if (!mounted) return;
+        const { data, error } = await supabase.from("facilities").select("id, name");
+        if (error) throw error;
         if (mounted) setFacilitiesList(sortFacilitiesByPriority((data || []) as FacilityOption[]));
-      });
+      } catch (error) {
+        if (mounted) console.error("Home facilities fetch failed:", error);
+      }
+    }
+    fetchFacilities();
     return () => {
       mounted = false;
     };
@@ -798,21 +775,8 @@ export default function HomeClient({
 
   return (
     <div className="min-h-screen bg-transparent text-black dark:text-white relative">
-      {showSubmittedNotice && (
-        <div className="fixed bottom-4 right-4 z-40 w-[min(360px,calc(100vw-2rem))] rounded-2xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50 dark:bg-emerald-950/40 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200 shadow-lg flex items-start justify-between gap-3">
-          <span>{submittedMessage || "Proprietatea a fost salvata cu succes."}</span>
-          <button
-            type="button"
-            onClick={() => setShowSubmittedNotice(false)}
-            className="text-emerald-700 dark:text-emerald-300 hover:text-emerald-900"
-            aria-label="Inchide"
-          >
-            ×
-          </button>
-        </div>
-      )}
-
       <TopSearchBar
+        availableTypes={availableTypes}
         filters={filters}
         setFilters={setFilters}
         locatiiSugestii={locatiiSugestii}
@@ -837,7 +801,7 @@ export default function HomeClient({
         </div>
       )}
 
-      <main className="w-full px-4 lg:px-6">
+      <div className="w-full px-4 lg:px-6">
         <section id="cazari" className="py-8">
           <h2 className="text-xl font-medium mb-6">Cazări autentice, atent alese</h2>
           <p className="mb-6 max-w-3xl text-sm text-gray-600 dark:text-gray-300">
@@ -874,10 +838,10 @@ export default function HomeClient({
               </p>
               <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Link
-                  href="/servicii"
+                  href="/add-property"
                   className="px-6 py-2.5 rounded-full bg-emerald-700 text-white hover:bg-emerald-800 transition"
                 >
-                  Înscrie proprietatea ta
+                  Adaugă o proprietate
                 </Link>
                 <Link
                   href="/contact"
@@ -898,7 +862,9 @@ export default function HomeClient({
                     currentPage * ITEMS_PER_PAGE
                   )}
                   eagerCount={eagerCount}
-                  priorityCount={priorityCount}
+                  priorityCount={1}
+                  highFetchPriorityCount={eagerCount}
+                  imageSizes={HOME_LISTING_IMAGE_SIZES}
                 />
               </div>
               <div className="text-center">
@@ -927,14 +893,14 @@ export default function HomeClient({
                 </p>
                 <button
                   onClick={resetFiltre}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-full transition"
+                  className="bg-emerald-700 hover:bg-emerald-800 text-white px-6 py-2 rounded-full transition"
                 >
                   Resetează filtrele
                 </button>
               </div>
             )}
           </section>
-      </main>
+      </div>
 
     </div>
   );

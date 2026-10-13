@@ -5,8 +5,11 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { Camera } from 'lucide-react';
 import { toListingCardVariantUrl } from '@/lib/listingImagePaths';
+import { CARD_IMAGE_QUALITY } from '@/lib/imageConfig';
 
 const ImageGallery = dynamic(() => import('./ImageGallery'), { ssr: false });
+const mainImageSizes = '(max-width: 767px) 85vw, (max-width: 1023px) calc(50vw - 45px), (max-width: 1215px) calc(50vw - 53px), 555px';
+const previewImageSizes = '(max-width: 767px) 85vw, (max-width: 1023px) calc(25vw - 26.5px), (max-width: 1215px) calc(25vw - 30.5px), 274px';
 
 interface PropertyImageGridProps {
   images: string[];
@@ -71,7 +74,9 @@ const PropertyImageGrid: React.FC<PropertyImageGridProps> = ({ images, title, cl
             alt={title ? `${title} - Imagine principala` : 'Imagine principala'}
             fill
             priority
-            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 60vw, 640px"
+            sizes={mainImageSizes}
+            quality={CARD_IMAGE_QUALITY}
+            fetchPriority="high"
             className="object-cover"
             onError={() => handlePreviewError(gridImages[0].original, gridImages[0].preview)}
           />
@@ -89,7 +94,8 @@ const PropertyImageGrid: React.FC<PropertyImageGridProps> = ({ images, title, cl
               src={preview}
               alt={`${title || 'Proprietate'} - Imagine ${index + 2}`}
               fill
-              sizes="(max-width: 768px) 50vw, (max-width: 1280px) 30vw, 320px"
+              sizes={previewImageSizes}
+              quality={CARD_IMAGE_QUALITY}
               className="object-cover"
               onError={() => handlePreviewError(original, preview)}
             />
@@ -121,7 +127,8 @@ const PropertyImageGrid: React.FC<PropertyImageGridProps> = ({ images, title, cl
                 src={preview}
                 alt={`${title || 'Locatie'} - Imagine ${index + 1}`}
                 fill
-                sizes="90vw"
+                sizes={index === 0 ? mainImageSizes : '85vw'}
+                quality={CARD_IMAGE_QUALITY}
                 className="object-cover"
                 priority={index === 0}
                 loading={index === 0 ? 'eager' : 'lazy'}

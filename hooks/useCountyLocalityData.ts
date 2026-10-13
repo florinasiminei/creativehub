@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 type LocationsData = Record<string, Array<{ nume: string }>>;
 
@@ -6,7 +6,10 @@ const normalize = (value: string) =>
   value
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
+    .toLowerCase()
+    .replace(/^(judetul|judet|municipiul|municipiu|orasul|oras|comuna|satul)\s+/, '')
+    .replace(/\s+county$/, '')
+    .trim();
 
 export default function useCountyLocalityData(judet: string, localitate: string) {
   const [locationsData, setLocationsData] = useState<LocationsData | null>(null);
@@ -71,7 +74,16 @@ export default function useCountyLocalityData(judet: string, localitate: string)
   const countyHasMatch = !judet || Boolean(resolvedCounty);
   const localityHasMatch = !localitate || Boolean(resolvedLocality);
 
+  const resolveAdministrativeLocation = useCallback((county: string, city: string) => {
+    const matchedCounty = counties.find((item) => normalize(item) === normalize(county));
+    const matchedCity = matchedCounty
+      ? locationsData?.[matchedCounty]?.find((item) => normalize(item.nume) === normalize(city))?.nume
+      : null;
+    return { county: matchedCounty || county, city: matchedCity || city };
+  }, [counties, locationsData]);
+
   return {
+    locationsReady: locationsData !== null,
     locationsError,
     countyQuery,
     cityQuery,
@@ -83,5 +95,6 @@ export default function useCountyLocalityData(judet: string, localitate: string)
     resolvedLocality,
     countyHasMatch,
     localityHasMatch,
+    resolveAdministrativeLocation,
   };
 }

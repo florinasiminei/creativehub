@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
 import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
@@ -6,7 +7,7 @@ import { deleteStoredImageUrls } from '@/lib/server/r2';
 
 export async function POST(request: Request) {
   try {
-    const role = getDraftRoleFromRequest(request);
+    const role = await getDraftRoleFromRequest(request);
     const requiredToken = process.env.INVITE_TOKEN;
     const inviteToken = request.headers.get('x-invite-token');
     const hasInvite = requiredToken && inviteToken && inviteToken === requiredToken;
@@ -35,10 +36,11 @@ export async function POST(request: Request) {
     await supabaseAdmin.from('listing_images').delete().eq('listing_id', id);
     await supabaseAdmin.from('listing_facilities').delete().eq('listing_id', id);
     const { error } = await supabaseAdmin.from('listings').delete().eq('id', id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
+    revalidatePath('/', 'layout');
     return NextResponse.json({ ok: true });
   } catch (err: any) {
     console.error(err);
-    return NextResponse.json({ error: err?.message || 'unknown' }, { status: 500 });
+    return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
   }
 }

@@ -17,7 +17,7 @@ try {
   ];
   for (const file of rushstackFiles) {
     if (fs.existsSync(file)) {
-      fs.writeFileSync(file, 'module.exports = {};\\n', 'utf-8');
+      fs.writeFileSync(file, 'module.exports = {};\n', 'utf-8');
     }
   }
 

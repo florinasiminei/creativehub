@@ -17,7 +17,7 @@ type AllowedAction = "toggle_publish" | "toggle_noindex";
 
 export async function POST(request: Request) {
   try {
-    const role = getDraftRoleFromRequest(request);
+    const role = await getDraftRoleFromRequest(request);
     if (role !== "admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -101,6 +101,6 @@ export async function POST(request: Request) {
       },
     });
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message || "Unknown error" }, { status: 500 });
+    return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
   }
 }

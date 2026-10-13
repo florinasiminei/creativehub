@@ -15,7 +15,7 @@ const LEAD_STATUSES: LeadStatus[] = [
 
 export async function GET(req: Request) {
   try {
-    const role = getDraftRoleFromRequest(req);
+    const role = await getDraftRoleFromRequest(req);
     if (role !== "admin" && role !== "staff") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -30,13 +30,13 @@ export async function GET(req: Request) {
     return NextResponse.json(data || []);
   } catch (err: any) {
     console.error("GET /api/backoffice/leads:", err);
-    return NextResponse.json({ error: err?.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const role = getDraftRoleFromRequest(req);
+    const role = await getDraftRoleFromRequest(req);
     if (role !== "admin" && role !== "staff") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -92,7 +92,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ lead: data, bookingRequest }, { status: 201 });
   } catch (err: any) {
     console.error("POST /api/backoffice/leads:", err);
-    return NextResponse.json({ error: err?.message || "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
   }
 }
 

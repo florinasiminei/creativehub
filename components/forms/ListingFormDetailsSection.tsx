@@ -9,8 +9,10 @@ import type { FacilityOption, ListingFormFields } from "./listingFormTypes";
 import { validateCapacity, validateDescriptionLength, validatePhone } from "@/lib/validation/listing";
 
 type LocalityOption = { nume: string };
+type ListingDetailsSection = "all" | "identity" | "capacity" | "description" | "contact" | "location";
 
 type ListingFormDetailsSectionProps = {
+  section?: ListingDetailsSection;
   formData: ListingFormFields;
   onChange: (key: keyof ListingFormFields, value: string) => void;
   facilities: FacilityOption[];
@@ -33,6 +35,7 @@ type ListingFormDetailsSectionProps = {
 };
 
 export default function ListingFormDetailsSection({
+  section = "all",
   formData,
   onChange,
   facilities,
@@ -102,32 +105,56 @@ export default function ListingFormDetailsSection({
   const capacityInvalid = isInvalid("capacitate") || Boolean(liveCapacityError);
   const phoneInvalid = isInvalid("telefon") || Boolean(livePhoneError);
   const descriptionInvalid = isInvalid("descriere") || Boolean(liveDescriptionError);
+  const showIdentity = section === "all" || section === "identity";
+  const showCapacity = section === "all" || section === "identity" || section === "capacity";
+  const showDescription = section === "all" || section === "identity" || section === "description";
+  const showContact = section === "all" || section === "contact";
+  const showAdministrativeLocation = section === "all" || section === "location";
+  const sectionMeta = {
+    all: { step: "pas 1", label: "Detalii principale", title: "Identitate si contact" },
+    identity: { step: "pas 1 din 4", label: "Proprietate", title: "Detaliile proprietății" },
+    capacity: { step: "pas 1 din 4", label: "Capacitate și tarif", title: "Cum poate fi rezervată" },
+    description: { step: "pas 1 din 4", label: "Prezentare", title: "Descriere și facilități" },
+    contact: { step: "pas 4 din 4", label: "Contact și verificare", title: "Ultimele detalii" },
+    location: { step: "pas 2 din 4", label: "Adresă", title: "Județ, localitate și sat" },
+  }[section];
 
-  return (
-    <ListingFormSection step="pas 1" label="Detalii principale" title="Identitate si contact" mobileFlat>
-      <div className="rounded-[24px] border border-emerald-100 bg-emerald-50/50 px-4 py-3 text-sm text-emerald-950 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100">
-        Completeaza profilul proprietatii cat mai clar. Titlul, locatia si descrierea sunt elementele care
-        influenteaza cel mai mult aprobarea si prezentarea finala.
-      </div>
+  const content = (
+    <>
+      {showIdentity && (
+        <div className="rounded-[24px] border border-emerald-100 bg-emerald-50/50 px-4 py-3 text-sm text-emerald-950 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100">
+          {section === "all"
+            ? "Completeaza profilul proprietatii cat mai clar. Titlul, locatia si descrierea sunt elementele care influenteaza cel mai mult aprobarea si prezentarea finala."
+            : "Prezintă proprietatea, capacitatea și tariful, apoi selectează dotările disponibile. Vei adăuga adresa în pasul următor."}
+        </div>
+      )}
 
-      <label className={labelClass(isInvalid("titlu"))}>
-        <span className="text-sm font-medium">Titlu</span>
-        <input
-          value={formData.titlu}
-          onChange={(event) => onChange("titlu", event.target.value)}
-          required
-          autoComplete="off"
-          maxLength={90}
-          className={inputClass(isInvalid("titlu"))}
-          aria-invalid={isInvalid("titlu")}
-        />
-        {isInvalid("titlu") && (
-          <FormMessage inline variant="error">
-            Camp obligatoriu.
-          </FormMessage>
-        )}
-      </label>
+      {showIdentity && (
+        <label className={labelClass(isInvalid("titlu"))}>
+          <span className="text-sm font-medium">
+            {section === "all" ? "Titlu" : "Denumirea proprietății"}
+          </span>
+          <input
+            value={formData.titlu}
+            onChange={(event) => onChange("titlu", event.target.value)}
+            required
+            autoComplete="off"
+            maxLength={90}
+            className={inputClass(isInvalid("titlu"))}
+            aria-invalid={isInvalid("titlu")}
+          />
+          {isInvalid("titlu") && (
+            <FormMessage inline variant="error">
+              {section === "all" ? "Camp obligatoriu." : "Completează denumirea proprietății."}
+            </FormMessage>
+          )}
+          {section !== "all" && (
+            <span className="mt-1 text-xs text-gray-500 dark:text-gray-400">Maximum 90 de caractere.</span>
+          )}
+        </label>
+      )}
 
+      {showAdministrativeLocation && (
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className={labelClass(showCountyError)}>
           <span className="text-sm font-medium">Judet</span>
@@ -302,7 +329,9 @@ export default function ListingFormDetailsSection({
           />
         </label>
       </div>
+      )}
 
+      {showCapacity && (
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <label className={labelClass(isInvalid("pret"))}>
           <span className="text-sm font-medium">Pret (lei/noapte)</span>
@@ -311,14 +340,14 @@ export default function ListingFormDetailsSection({
             onChange={(event) => onChange("pret", event.target.value)}
             type="number"
             inputMode="numeric"
-            min={0}
+            min={1}
             required
             className={inputClass(isInvalid("pret"))}
             aria-invalid={isInvalid("pret")}
           />
           {isInvalid("pret") && (
             <FormMessage inline variant="error">
-              Camp obligatoriu.
+              Introdu un preț mai mare decât zero.
             </FormMessage>
           )}
         </label>
@@ -343,12 +372,14 @@ export default function ListingFormDetailsSection({
           )}
           {!liveCapacityError && isInvalid("capacitate") && (
             <FormMessage inline variant="error">
-              Camp obligatoriu.
+              Folosește valori mai mari decât zero, de exemplu 4, 2-4 sau 4+.
             </FormMessage>
           )}
         </label>
       </div>
+      )}
 
+      {showCapacity && (
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <label className={labelClass(isInvalid("camere"))}>
           <span className="text-sm font-medium">Numar camere</span>
@@ -358,9 +389,15 @@ export default function ListingFormDetailsSection({
             type="number"
             inputMode="numeric"
             min={0}
+            required
             className={inputClass(isInvalid("camere"))}
             aria-invalid={isInvalid("camere")}
           />
+          {isInvalid("camere") && (
+            <FormMessage inline variant="error">
+              Introdu un număr întreg, minimum zero.
+            </FormMessage>
+          )}
         </label>
 
         <label className={labelClass(isInvalid("paturi"))}>
@@ -371,9 +408,15 @@ export default function ListingFormDetailsSection({
             type="number"
             inputMode="numeric"
             min={0}
+            required
             className={inputClass(isInvalid("paturi"))}
             aria-invalid={isInvalid("paturi")}
           />
+          {isInvalid("paturi") && (
+            <FormMessage inline variant="error">
+              Introdu un număr întreg, minimum zero.
+            </FormMessage>
+          )}
         </label>
 
         <label className={labelClass(isInvalid("bai"))}>
@@ -384,12 +427,20 @@ export default function ListingFormDetailsSection({
             type="number"
             inputMode="numeric"
             min={0}
+            required
             className={inputClass(isInvalid("bai"))}
             aria-invalid={isInvalid("bai")}
           />
+          {isInvalid("bai") && (
+            <FormMessage inline variant="error">
+              Introdu un număr întreg, minimum zero.
+            </FormMessage>
+          )}
         </label>
       </div>
+      )}
 
+      {showContact && (
       <label className={labelClass(phoneInvalid)}>
         <span className="text-sm font-medium">Telefon</span>
         <input
@@ -409,12 +460,14 @@ export default function ListingFormDetailsSection({
         )}
         {!livePhoneError && isInvalid("telefon") && (
           <FormMessage inline variant="error">
-            Camp obligatoriu.
+            Introdu un număr de telefon valid.
           </FormMessage>
         )}
         <span className="mt-1 text-xs text-gray-500 dark:text-gray-400">Ex: 07xx xxx xxx sau +40 7xx xxx xxx</span>
       </label>
+      )}
 
+      {showIdentity && (
       <label className={labelClass(isInvalid("tip"))}>
         <span className="text-sm font-medium">Tip</span>
         <select
@@ -431,7 +484,9 @@ export default function ListingFormDetailsSection({
           <option value="casa de vacanta">Casa de vacanta</option>
         </select>
       </label>
+      )}
 
+      {showDescription && (
       <label className={labelClass(descriptionInvalid)}>
         <span className="text-sm font-medium">Descriere</span>
         <textarea
@@ -460,8 +515,26 @@ export default function ListingFormDetailsSection({
           </span>
         )}
       </label>
+      )}
 
-      <FacilitiesPicker facilities={facilities} selected={selectedFacilities} onToggle={onToggleFacility} />
+      {showDescription && (
+        <>
+          {section !== "all" && (
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Facilitățile sunt opționale. Selectează doar dotările disponibile în mod real la proprietate.
+            </p>
+          )}
+          <FacilitiesPicker facilities={facilities} selected={selectedFacilities} onToggle={onToggleFacility} />
+        </>
+      )}
+    </>
+  );
+
+  if (section === "location") return content;
+
+  return (
+    <ListingFormSection step={sectionMeta.step} label={sectionMeta.label} title={sectionMeta.title} mobileFlat>
+      {content}
     </ListingFormSection>
   );
 }

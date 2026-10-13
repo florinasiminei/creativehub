@@ -1,6 +1,7 @@
 import {
   DeleteObjectsCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
@@ -143,13 +144,15 @@ export function getR2ObjectKeyFromUrl(rawUrl: string) {
 export async function createSignedUploadUrl(
   key: string,
   contentType: string,
-  expiresInSeconds = 900
+  expiresInSeconds = 900,
+  contentLength?: number
 ): Promise<SignedUpload> {
   const { bucket } = getR2Config();
   const command = new PutObjectCommand({
     Bucket: bucket,
     Key: key,
     ContentType: contentType,
+    ...(typeof contentLength === "number" ? { ContentLength: contentLength } : {}),
   });
   const uploadUrl = await getSignedUrl(getR2Client(), command, { expiresIn: expiresInSeconds });
   return {
@@ -157,6 +160,19 @@ export async function createSignedUploadUrl(
     headers: {
       "Content-Type": contentType,
     },
+  };
+}
+
+export async function getR2ObjectMetadata(key: string) {
+  const { bucket } = getR2Config();
+  const response = await getR2Client().send(new HeadObjectCommand({
+    Bucket: bucket,
+    Key: key,
+  }));
+
+  return {
+    contentLength: response.ContentLength ?? null,
+    contentType: response.ContentType ?? null,
   };
 }
 

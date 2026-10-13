@@ -1,8 +1,17 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
-import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
-import { isListingTokenValid } from '@/lib/listingTokens';
+import {
+  invalidateSubmittedOwnerListing,
+  resolveListingAccess,
+} from '@/lib/server/ownerAuth';
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
 
 export async function POST(req: Request) {
   try {
@@ -19,48 +28,60 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing listingId or ids' }, { status: 400 });
     }
     const normalizedIds = ids.map((id) => String(id)).filter(Boolean);
-    if (normalizedIds.length === 0) {
-      return NextResponse.json({ error: 'Missing image ids' }, { status: 400 });
+    if (
+      !isUuid(String(listingId)) ||
+      normalizedIds.length === 0 ||
+      normalizedIds.length > 30 ||
+      normalizedIds.some((id) => !isUuid(id))
+    ) {
+      return NextResponse.json({ error: 'Invalid image ids' }, { status: 400 });
     }
 
-    const role = getDraftRoleFromRequest(req);
-    const hasRole = role === 'admin' || role === 'staff';
-    if (!hasRole) {
-      const listingToken = req.headers.get('x-listing-token');
-      const ok = await isListingTokenValid(String(listingId), listingToken, supabaseAdmin);
-      if (!ok) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
+    const access = await resolveListingAccess(req, String(listingId), supabaseAdmin);
+    if (!access.authorized) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const uniqueIds = Array.from(new Set(normalizedIds));
-    const { data: ownedRows, error: ownedErr } = await supabaseAdmin
-      .from('listing_images')
-      .select('id')
-      .eq('listing_id', String(listingId))
-      .in('id', uniqueIds);
-    if (ownedErr) {
-      return NextResponse.json({ error: ownedErr.message }, { status: 500 });
-    }
-    if ((ownedRows || []).length !== uniqueIds.length) {
-      return NextResponse.json({ error: 'Invalid image ids for listing' }, { status: 400 });
+    if (uniqueIds.length !== normalizedIds.length) {
+      return NextResponse.json({ error: 'Duplicate image ids' }, { status: 400 });
     }
 
-    for (let i = 0; i < uniqueIds.length; i++) {
-      const id = uniqueIds[i];
-      const { error } = await supabaseAdmin
-        .from('listing_images')
-        .update({ display_order: i })
-        .eq('id', id)
-        .eq('listing_id', String(listingId));
-      if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
-      }
+    if (access.kind === 'owner') {
+      await invalidateSubmittedOwnerListing(supabaseAdmin, String(listingId), access.ownerId);
     }
 
+    const { error } = await supabaseAdmin.rpc('reorder_listing_images', {
+      p_listing_id: String(listingId),
+      p_image_ids: uniqueIds,
+      p_expected_owner_id:
+        access.kind === 'owner' ? access.ownerId : null,
+    });
+    if (error) {
+      const conflict = /proprietarul s-a schimbat/i.test(error.message || '');
+      const invalid = /lista .* invalida|duplicate|nu apartin|toate imaginile/i.test(
+        error.message || ''
+      );
+      return NextResponse.json(
+        {
+          error: conflict
+            ? 'Accesul la proprietate s-a schimbat. Reincarca pagina.'
+            : invalid
+              ? 'Ordinea imaginilor este invalida. Reincarca pagina.'
+              : 'Nu am putut salva ordinea imaginilor.',
+        },
+        { status: conflict ? 409 : invalid ? 400 : 500 }
+      );
+    }
+
+    if (access.kind === 'owner') {
+      await invalidateSubmittedOwnerListing(supabaseAdmin, String(listingId), access.ownerId);
+    }
+
+    revalidatePath('/', 'layout');
     return NextResponse.json({ ok: true });
   } catch (err: any) {
     console.error(err);
-    return NextResponse.json({ error: err?.message || 'Unknown error' }, { status: 500 });
+    return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
   }
 }

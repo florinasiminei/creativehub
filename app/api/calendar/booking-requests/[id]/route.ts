@@ -14,10 +14,11 @@ const STATUSES: BookingRequestStatus[] = [
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params: paramsPromise }: { params: Promise<{ id: string }> }
 ) {
+  const params = await paramsPromise;
   try {
-    const role = getDraftRoleFromRequest(req);
+    const role = await getDraftRoleFromRequest(req);
     if (role !== "admin" && role !== "staff") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -36,7 +37,7 @@ export async function GET(
   } catch (err: any) {
     console.error("GET /api/calendar/booking-requests/[id]:", err);
     return NextResponse.json(
-      { error: err?.message || "Internal server error" },
+      { error: "Cererea nu a putut fi procesata. Incearca din nou." },
       { status: 500 }
     );
   }
@@ -44,10 +45,11 @@ export async function GET(
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params: paramsPromise }: { params: Promise<{ id: string }> }
 ) {
+  const params = await paramsPromise;
   try {
-    const role = getDraftRoleFromRequest(req);
+    const role = await getDraftRoleFromRequest(req);
     if (role !== "admin" && role !== "staff") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -97,7 +99,7 @@ export async function PATCH(
   } catch (err: any) {
     console.error("PATCH /api/calendar/booking-requests/[id]:", err);
     return NextResponse.json(
-      { error: err?.message || "Internal server error" },
+      { error: "Cererea nu a putut fi procesata. Incearca din nou." },
       { status: 500 }
     );
   }
@@ -105,10 +107,11 @@ export async function PATCH(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params: paramsPromise }: { params: Promise<{ id: string }> }
 ) {
+  const params = await paramsPromise;
   try {
-    const role = getDraftRoleFromRequest(req);
+    const role = await getDraftRoleFromRequest(req);
     if (role !== "admin") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -124,7 +127,7 @@ export async function DELETE(
   } catch (err: any) {
     console.error("DELETE /api/calendar/booking-requests/[id]:", err);
     return NextResponse.json(
-      { error: err?.message || "Internal server error" },
+      { error: "Cererea nu a putut fi procesata. Incearca din nou." },
       { status: 500 }
     );
   }

@@ -10,7 +10,7 @@ import { resolveRegionCountyNames } from "@/lib/seoListingsCounts";
 import { buildTypeCountyPath } from "@/lib/typeCountyRoutes";
 import { buildRegionPagePath, buildTypeFacilityCountyPath, buildTypeRegionPath } from "@/lib/locationRoutes";
 
-export const revalidate = 60 * 60 * 12;
+export const revalidate = 43200;
 
 type ListingRow = {
   id?: string | null;
@@ -77,7 +77,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const { data } = await supabaseAdmin
       .from("listings")
       .select("id, slug, updated_at, created_at, type, judet, city")
-      .eq("is_published", true);
+      .eq("is_published", true)
+    .in("publication_status", ["active", "expiring"])
+    .or(`publication_expires_at.is.null,publication_expires_at.gt.${new Date().toISOString()}`);
 
     listingRows = (data || []) as ListingRow[];
     hasListingsData = true;

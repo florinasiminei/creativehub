@@ -32,7 +32,7 @@ async function ensureUniqueAttractionSlug(
 
 export async function POST(req: Request) {
   try {
-    const role = getDraftRoleFromRequest(req);
+    const role = await getDraftRoleFromRequest(req);
     const requiredToken = process.env.INVITE_TOKEN;
     const inviteToken = req.headers.get('x-invite-token');
     const hasInvite = requiredToken && inviteToken === requiredToken;
@@ -115,7 +115,7 @@ export async function POST(req: Request) {
     }
 
     if (error) {
-      return NextResponse.json({ error: error.message || 'Insert failed' }, { status: 500 });
+      return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
     }
 
     try {
@@ -128,7 +128,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, id: (data as any).id });
   } catch (err: any) {
     console.error(err);
-    return NextResponse.json({ error: err?.message || 'Unknown error' }, { status: 500 });
+    return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
   }
 }
 

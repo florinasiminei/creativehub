@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
 import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
-import { isListingTokenValid } from '@/lib/listingTokens';
+import { resolveListingAccess } from '@/lib/server/ownerAuth';
 
 const LISTING_SELECT_BASE =
   'id, title, slug, judet, city, sat, price, capacity, camere, paturi, bai, description, phone, type, lat, lng, is_published';
@@ -55,25 +55,21 @@ export async function POST(request: Request) {
     const requirePublished = body?.requirePublished === true;
     if (!id && !slug) return NextResponse.json({ error: 'Missing id or slug' }, { status: 400 });
 
-    const role = getDraftRoleFromRequest(request);
+    const role = await getDraftRoleFromRequest(request);
     const hasRole = role === 'admin' || role === 'staff';
-
-    if (!hasRole) {
-      // Public clients can only read by id using a valid listing token.
-      if (!id) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
-      const listingToken = request.headers.get('x-listing-token');
-      const tokenValid = await isListingTokenValid(id, listingToken, supabaseAdmin);
-      if (!tokenValid) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
+    if (!id && !hasRole) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const access = id ? await resolveListingAccess(request, id, supabaseAdmin) : null;
+    if (access && !access.authorized) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const runListingQuery = async (selectFields: string) => {
       const query = supabaseAdmin.from('listings').select(selectFields);
       if (id) {
         query.eq('id', id);
+        if (access?.kind === 'owner') query.eq('owner_id', access.ownerId);
       } else if (slug) {
         query.eq('slug', slug);
         if (!hasRole || requirePublished) {
@@ -90,7 +86,7 @@ export async function POST(request: Request) {
     if (error && /newsletter_opt_in/i.test(error.message || '')) {
       ({ data, error } = await runListingQuery(LISTING_SELECT_BASE));
     }
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
     const listing = asListingGetRow(data);
     if (!listing) return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
 
@@ -139,6 +135,6 @@ export async function POST(request: Request) {
     });
   } catch (err: any) {
     console.error(err);
-    return NextResponse.json({ error: err?.message || 'Unknown' }, { status: 500 });
+    return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
   }
 }

@@ -252,15 +252,15 @@ export default function UnifiedGalleryGrid({
             !onExistingDragStart || !onExistingDragOver || !onExistingDragEnd || !onExistingMove || !onExistingDelete;
 
           const canDrag = usesUnifiedOrder
-            ? Boolean(onReorderToken) && (!locked || isExisting)
+            ? Boolean(onReorderToken) && !locked
             : isExisting
-              ? !disabledExistingHandlers
+              ? !locked && !disabledExistingHandlers
               : !locked;
-          const canMoveUp = usesUnifiedOrder ? unifiedIndex > 0 : isExisting ? item.localIndex > 0 : !locked && item.localIndex > 0;
+          const canMoveUp = !locked && (usesUnifiedOrder ? unifiedIndex > 0 : item.localIndex > 0);
           const canMoveDown = usesUnifiedOrder
-            ? unifiedIndex < items.length - 1
+            ? !locked && unifiedIndex < items.length - 1
             : isExisting
-              ? item.localIndex < existingImages.length - 1
+              ? !locked && item.localIndex < existingImages.length - 1
               : !locked && item.localIndex < files.length - 1;
           const isDragging = usesUnifiedOrder
             ? draggingToken === item.token
@@ -389,7 +389,7 @@ export default function UnifiedGalleryGrid({
                       else if (isExisting) onExistingDelete?.(item.image);
                       else onRemove(item.localIndex);
                     }}
-                    disabled={usesUnifiedOrder ? !isExisting && locked : !isExisting && locked}
+                    disabled={locked}
                     aria-label="Sterge imaginea"
                     className="ml-auto flex h-8 w-8 items-center justify-center rounded-full border border-red-200 text-xs font-semibold text-red-600 disabled:opacity-40 dark:border-zinc-700"
                   >

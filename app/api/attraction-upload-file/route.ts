@@ -43,7 +43,7 @@ function buildAttractionPath(attractionId: string, fileName: string, mime?: stri
 }
 
 async function ensureAttractionUploadAccess(req: Request) {
-  const role = getDraftRoleFromRequest(req);
+  const role = await getDraftRoleFromRequest(req);
   const requiredToken = process.env.INVITE_TOKEN;
   const inviteToken = req.headers.get('x-invite-token');
   const hasInvite = requiredToken && inviteToken && inviteToken === requiredToken;
@@ -145,7 +145,7 @@ async function handleComplete(req: Request, body: any) {
   } catch (err: any) {
     await deleteR2Object(path);
     console.error(err);
-    return NextResponse.json({ error: err?.message || 'Unknown error' }, { status: 500 });
+    return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
   }
 }
 
@@ -200,7 +200,7 @@ async function handleLegacyUpload(req: Request) {
   } catch (err: any) {
     await deleteR2Object(path);
     console.error(err);
-    return NextResponse.json({ error: err?.message || 'Unknown error' }, { status: 500 });
+    return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
   }
 }
 
@@ -228,6 +228,6 @@ export async function POST(req: Request) {
     return handleLegacyUpload(req);
   } catch (err: any) {
     console.error(err);
-    return NextResponse.json({ error: err?.message || 'Unknown error' }, { status: 500 });
+    return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
   }
 }

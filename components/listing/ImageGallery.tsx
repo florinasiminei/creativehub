@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, MouseEvent, useCallback, useEffect, useMemo } from "react";
-import Image from "next/image";
+import Image, { getImageProps } from "next/image";
 import ReactImageGallery from "react-image-gallery";
 import { MoveLeft, MoveRight, X } from "lucide-react";
 import "react-image-gallery/styles/css/image-gallery.css";
+import "./image-gallery.css";
 
 interface ImageGalleryProps {
   images: string[];
@@ -23,17 +24,15 @@ type GalleryItemCustom = {
   description?: string;
 };
 
-const buildBlurUrl = (url: string) => {
-  if (!url || url.startsWith("data:") || url.startsWith("blob:")) return url;
-  return url;
-};
-
 const GallerySlide: React.FC<{ src: string; alt: string; eager?: boolean }> = ({
   src,
   alt,
   eager = false,
 }) => {
-  const blurSrc = useMemo(() => buildBlurUrl(src), [src]);
+  const blurSrc = useMemo(
+    () => getImageProps({ src, alt: "", width: 32, height: 24, quality: 30 }).props.src,
+    [src]
+  );
 
   return (
     <div className="relative isolate flex h-full w-full items-center justify-center bg-black overflow-hidden">
@@ -50,7 +49,7 @@ const GallerySlide: React.FC<{ src: string; alt: string; eager?: boolean }> = ({
           priority={eager}
           loading={eager ? "eager" : "lazy"}
           fetchPriority={eager ? "high" : "auto"}
-          sizes="(max-width: 768px) 100vw, (max-width: 1280px) 85vw, 1200px"
+          sizes="(max-width: 767px) 100vw, 1024px"
           className="object-contain"
         />
       </div>
@@ -120,6 +119,7 @@ const ImageGallery: React.FC<ImageGalleryProps> = ({
                 alt="Miniatura"
                 fill
                 sizes="96px"
+                quality={60}
                 className="object-cover"
                 loading="lazy"
               />

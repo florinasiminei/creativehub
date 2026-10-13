@@ -6,17 +6,15 @@ import { Analytics } from "@vercel/analytics/next";
 import Script from "next/script";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { getCanonicalSiteUrl } from "@/lib/siteUrl";
-import { buildOrganizationJsonLd, buildWebSiteJsonLd } from "@/lib/jsonLd";
+import { buildOrganizationJsonLd, buildWebSiteJsonLd, serializeJsonLd } from "@/lib/jsonLd";
 import {
   SEO_COLLECTION_DESCRIPTION,
   SEO_COLLECTION_HEADLINE,
   SEO_COLLECTION_META_TITLE,
 } from "@/lib/seoCopy";
-import "slick-carousel/slick/slick.css";
-import "slick-carousel/slick/slick-theme.css";
 
 const inter = Inter({ variable: "--font-geist-sans", subsets: ["latin"], display: "swap" });
-const jetbrainsMono = JetBrains_Mono({ variable: "--font-geist-mono", subsets: ["latin"], display: "swap" });
+const jetbrainsMono = JetBrains_Mono({ variable: "--font-geist-mono", subsets: ["latin"], display: "swap", preload: false });
 const siteUrl = getCanonicalSiteUrl();
 const defaultSocialImage = "/images/og-default.png";
 const twitterSiteHandle = process.env.NEXT_PUBLIC_TWITTER_SITE;
@@ -35,7 +33,7 @@ export const metadata: Metadata = {
     template: "%s | cabn.ro",
   },
   description: SEO_COLLECTION_DESCRIPTION,
-  referrer: "origin-when-cross-origin",
+  referrer: "strict-origin-when-cross-origin",
   category: "travel",
   keywords: [
     "cabane Romania",
@@ -125,25 +123,24 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script
           id="schema-org-organization"
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(organizationJsonLd) }}
         />
         <script
           id="schema-org-website"
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(webSiteJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(webSiteJsonLd) }}
         />
 
         <Script id="google-analytics" strategy="afterInteractive">
           {`window.dataLayer = window.dataLayer || [];
 window.gtag = function gtag(){window.dataLayer.push(arguments);};
 window.gtag('js', new Date());
-window.gtag('config', 'G-LSJTRY32B5');
-
-const gaScript = document.createElement('script');
-gaScript.src = 'https://www.googletagmanager.com/gtag/js?id=G-LSJTRY32B5';
-gaScript.async = true;
-document.head.appendChild(gaScript);`}
+window.gtag('config', 'G-LSJTRY32B5');`}
         </Script>
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-LSJTRY32B5"
+          strategy="lazyOnload"
+        />
 
         <Analytics />
       </body>

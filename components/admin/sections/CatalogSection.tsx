@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import ContentSection from "@/components/admin/sections/ContentSection";
 import PropertiesSection from "@/components/admin/sections/PropertiesSection";
 import {
@@ -12,6 +11,7 @@ import {
   countPublishedListings,
   type AttractionItem,
   type DraftItem,
+  type OwnerClaimItem,
   type PublicationPeriodItem,
 } from "@/lib/admin/draftsDashboard";
 
@@ -21,9 +21,10 @@ type Props = {
   listings: DraftItem[];
   attractions: AttractionItem[];
   publicationPeriods: PublicationPeriodItem[];
+  ownerClaims: OwnerClaimItem[];
   role: string;
-  inviteToken?: string | null;
   siteUrl?: string | null;
+  seoContent?: ReactNode;
   showUpdatedNotice: boolean;
   showCreatedNotice: boolean;
   createdId: string | null;
@@ -42,9 +43,10 @@ export default function CatalogSection({
   listings,
   attractions,
   publicationPeriods,
+  ownerClaims,
   role,
-  inviteToken = null,
   siteUrl = null,
+  seoContent = null,
   showUpdatedNotice,
   showCreatedNotice,
   createdId,
@@ -52,6 +54,7 @@ export default function CatalogSection({
   onDismissCreated,
   onStatusMessage,
 }: Props) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [activeView, setActiveView] = useState<CatalogView>(() => getCatalogView(searchParams.get("tab")));
 
@@ -71,6 +74,20 @@ export default function CatalogSection({
       attentionItems: countExpiringListings(listings) + countExpiredListings(listings),
     };
   }, [attractions, listings]);
+
+  const selectView = (view: CatalogView) => {
+    setActiveView(view);
+    const params = new URLSearchParams(searchParams.toString());
+
+    if (view === "properties") {
+      params.delete("tab");
+    } else {
+      params.set("tab", view);
+    }
+
+    const query = params.toString();
+    router.push(query ? `/drafts?${query}` : "/drafts", { scroll: false });
+  };
 
   return (
     <div className="space-y-5">
@@ -99,34 +116,38 @@ export default function CatalogSection({
 
       <nav
         aria-label="Secțiuni catalog"
-        className="grid gap-2 rounded-[22px] border border-gray-200 bg-white p-2 shadow-[0_14px_40px_-34px_rgba(15,23,42,0.7)] sm:grid-cols-3 dark:border-zinc-800 dark:bg-zinc-900"
+        className={`grid gap-2 rounded-[22px] border border-gray-200 bg-white p-2 shadow-[0_14px_40px_-34px_rgba(15,23,42,0.7)] dark:border-zinc-800 dark:bg-zinc-900 ${
+          role === "admin" ? "sm:grid-cols-3" : "sm:grid-cols-2"
+        }`}
       >
         <CatalogTab
           active={activeView === "properties"}
           label="Proprietăți"
           description={`${listings.length} în catalog`}
-          onClick={() => setActiveView("properties")}
+          onClick={() => selectView("properties")}
         />
         <CatalogTab
           active={activeView === "attractions"}
           label="Atracții"
           description={`${attractions.length} în catalog`}
-          onClick={() => setActiveView("attractions")}
+          onClick={() => selectView("attractions")}
         />
-        <CatalogTab
-          active={activeView === "seo"}
-          label="SEO"
-          description="Instrumente dedicate"
-          onClick={() => setActiveView("seo")}
-        />
+        {role === "admin" && (
+          <CatalogTab
+            active={activeView === "seo"}
+            label="SEO"
+            description="Instrumente dedicate"
+            onClick={() => selectView("seo")}
+          />
+        )}
       </nav>
 
       {activeView === "properties" && (
         <PropertiesSection
           listings={listings}
           publicationPeriods={publicationPeriods}
+          ownerClaims={ownerClaims}
           role={role}
-          inviteToken={inviteToken}
           siteUrl={siteUrl}
           showUpdatedNotice={showUpdatedNotice}
           showCreatedNotice={showCreatedNotice}
@@ -141,7 +162,13 @@ export default function CatalogSection({
         <ContentSection attractions={attractions} role={role} onStatusMessage={onStatusMessage} />
       )}
 
-      {activeView === "seo" && <SeoCatalogPanel />}
+      {activeView === "seo" && role === "admin" && (
+        seoContent ?? (
+          <div className="rounded-[28px] border border-gray-200 bg-white px-6 py-10 text-center text-sm text-gray-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-gray-400">
+            Se incarca dashboardul SEO...
+          </div>
+        )
+      )}
     </div>
   );
 }
@@ -182,30 +209,5 @@ function CatalogTab({
       <span className="block text-sm font-semibold">{label}</span>
       <span className={`mt-0.5 block text-xs ${active ? "text-emerald-100" : "text-gray-400"}`}>{description}</span>
     </button>
-  );
-}
-
-function SeoCatalogPanel() {
-  return (
-    <section className="overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-[0_18px_55px_-42px_rgba(15,23,42,0.7)] dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:p-8">
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-400">
-            Vizibilitate organică
-          </div>
-          <h3 className="mt-2 text-2xl font-semibold text-gray-950 dark:text-gray-100">Dashboard SEO dedicat</h3>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500 dark:text-gray-400">
-            Instrumentele SEO existente rămân într-un spațiu separat, iar accesul lor este centralizat acum în Catalog.
-          </p>
-        </div>
-        <Link
-          href="/admin-seo"
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-emerald-700 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800"
-        >
-          Deschide SEO
-          <span aria-hidden="true">↗</span>
-        </Link>
-      </div>
-    </section>
   );
 }

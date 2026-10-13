@@ -62,6 +62,7 @@ export async function prepareAndUploadDirectFile<TPreparePayload extends Record<
       action: 'prepare',
       fileName: file.name,
       contentType,
+      fileSize: file.size,
       ...preparePayload,
     }),
   });
@@ -79,6 +80,8 @@ export async function prepareAndUploadDirectFile<TPreparePayload extends Record<
     body: JSON.stringify({
       action: 'complete',
       path: prepared.path,
+      contentType,
+      fileSize: file.size,
       ...completePayload(prepared),
     }),
   });

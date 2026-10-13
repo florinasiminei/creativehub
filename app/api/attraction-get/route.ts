@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const role = getDraftRoleFromRequest(request);
+    const role = await getDraftRoleFromRequest(request);
     const requiredToken = process.env.INVITE_TOKEN;
     const inviteToken = request.headers.get('x-invite-token');
     const hasInvite = requiredToken && inviteToken === requiredToken;
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       .eq('id', id)
       .maybeSingle();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
     if (!data) return NextResponse.json({ error: 'Attraction not found' }, { status: 404 });
 
     const { data: images } = await supabaseAdmin
@@ -48,6 +48,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ attraction: data, images: images || [] });
   } catch (err: any) {
     console.error(err);
-    return NextResponse.json({ error: err?.message || 'Unknown' }, { status: 500 });
+    return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
   }
 }

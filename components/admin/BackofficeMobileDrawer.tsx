@@ -116,8 +116,9 @@ export default function BackofficeMobileDrawer({
           </div>
           <button
             type="button"
-            onClick={() => {
-              document.cookie = "drafts_auth=; Path=/; Max-Age=0";
+            onClick={async () => {
+              const response = await fetch("/api/drafts-login", { method: "DELETE" });
+              if (!response.ok) return;
               router.push("/drafts-login");
             }}
             className="mt-2 w-full text-left px-3 py-2 rounded-xl text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"

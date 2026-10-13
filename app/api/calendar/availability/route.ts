@@ -116,7 +116,7 @@ export async function GET(req: Request) {
   } catch (err: any) {
     console.error("GET /api/calendar/availability:", err);
     return NextResponse.json(
-      { error: err?.message || "Internal server error" },
+      { error: "Cererea nu a putut fi procesata. Incearca din nou." },
       { status: 500 }
     );
   }

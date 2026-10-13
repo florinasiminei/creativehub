@@ -7,7 +7,7 @@ import { deleteStoredImageUrls } from '@/lib/server/r2';
 
 export async function POST(request: Request) {
   try {
-    const role = getDraftRoleFromRequest(request);
+    const role = await getDraftRoleFromRequest(request);
     const requiredToken = process.env.INVITE_TOKEN;
     const inviteToken = request.headers.get('x-invite-token');
     const hasInvite = requiredToken && inviteToken && inviteToken === requiredToken;
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
     await supabaseAdmin.from('attraction_images').delete().eq('attraction_id', id);
     const { error } = await supabaseAdmin.from('attractions').delete().eq('id', id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
 
     try {
       revalidatePath('/drafts');
@@ -49,6 +49,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   } catch (err: any) {
     console.error(err);
-    return NextResponse.json({ error: err?.message || 'unknown' }, { status: 500 });
+    return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
   }
 }

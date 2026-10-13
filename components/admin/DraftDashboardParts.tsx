@@ -11,7 +11,20 @@ type DraftItem = Cazare & {
   editToken?: string | null;
   isDraftSeed?: boolean;
   isEmptyDraftSeed?: boolean;
-  publicationStatus?: "draft" | "active" | "expiring" | "expired" | "suspended" | null;
+  publishedAt?: string | null;
+  submittedAt?: string | null;
+  createdAt?: string | null;
+  createdByActor?: string | null;
+  publicationStatus?:
+    | "draft"
+    | "submitted"
+    | "needs_changes"
+    | "rejected"
+    | "active"
+    | "expiring"
+    | "expired"
+    | "suspended"
+    | null;
   publicationExpiresAt?: string | null;
   leadId?: string | null;
   leadStatus?: string | null;
@@ -34,6 +47,19 @@ const cardClassName =
   "overflow-hidden rounded-[28px] border bg-white shadow-[0_16px_45px_-34px_rgba(15,23,42,0.55)] transition dark:border-zinc-800 dark:bg-zinc-900";
 
 const sectionDividerClassName = "mt-4 border-t border-gray-100 pt-3 dark:border-zinc-800";
+
+function formatPublicationDate(value?: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return new Intl.DateTimeFormat("ro-RO", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "Europe/Bucharest",
+  }).format(date);
+}
 
 function StatusPill({
   children,
@@ -181,6 +207,15 @@ export function PropertyDraftCard({
   onRenew?: () => void;
   renewalLoading?: boolean;
 }) {
+  const activity = item.isPublished && item.publishedAt
+    ? { date: item.publishedAt, label: "Publicare" }
+    : item.submittedAt
+      ? { date: item.submittedAt, label: "Trimis" }
+      : item.publishedAt
+        ? { date: item.publishedAt, label: "Publicare" }
+        : { date: item.createdAt, label: "Creat" };
+  const activityDate = formatPublicationDate(activity.date);
+
   return (
     <div
       draggable={canReorder}
@@ -202,9 +237,14 @@ export function PropertyDraftCard({
         title={item.title}
         priority={index < 2}
         overlay={
-          <div className="absolute left-3 top-3 rounded-full bg-white/85 px-2.5 py-1 text-[11px] font-semibold text-gray-700 shadow">
-            #{index + 1}
-          </div>
+          <>
+            <div className="absolute left-3 top-3 rounded-full bg-white/85 px-2.5 py-1 text-[11px] font-semibold text-gray-700 shadow">
+              #{index + 1}
+            </div>
+            <div className="absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-semibold text-gray-700 shadow">
+              {activity.label}: {activityDate || "—"}
+            </div>
+          </>
         }
       />
 
@@ -212,6 +252,10 @@ export function PropertyDraftCard({
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <StatusPill tone="neutral">{item.tip}</StatusPill>
           {item.termsAccepted && <StatusPill tone="blue">Client OK</StatusPill>}
+          {item.publicationStatus === "submitted" && <StatusPill tone="blue">De verificat</StatusPill>}
+          {item.publicationStatus === "needs_changes" && <StatusPill tone="amber">Necesită modificări</StatusPill>}
+          {item.publicationStatus === "rejected" && <StatusPill tone="orange">Respins</StatusPill>}
+          {item.createdByActor === "client" && <StatusPill tone="blue">Trimis de proprietar</StatusPill>}
           {item.isEmptyDraftSeed && <StatusPill tone="amber">Seed gol</StatusPill>}
           {!item.isEmptyDraftSeed && item.isDraftSeed && <StatusPill tone="orange">Seed draft</StatusPill>}
           <StatusPill tone={item.status === "publicat" ? "emerald" : item.status === "inactiv" ? "amber" : "orange"}>
@@ -233,7 +277,7 @@ export function PropertyDraftCard({
           </div>
         </div>
 
-        <div className={sectionDividerClassName}>
+        <div className="mt-4 pt-3">
           <DraftActions
             id={item.id}
             isPublished={item.isPublished}

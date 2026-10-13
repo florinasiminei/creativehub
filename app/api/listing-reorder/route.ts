@@ -6,7 +6,7 @@ import { getDraftRoleFromRequest } from "@/lib/draftsAuth";
 
 export async function POST(request: Request) {
   try {
-    const role = getDraftRoleFromRequest(request);
+    const role = await getDraftRoleFromRequest(request);
     const hasRole = role === "admin" || role === "staff";
     if (!hasRole) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -44,7 +44,7 @@ export async function POST(request: Request) {
         if (String(error.message || "").includes("display_order")) {
           return NextResponse.json({ error: "display_order column missing." }, { status: 409 });
         }
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
       }
       revalidateListingCollections();
       return NextResponse.json({ ok: true });
@@ -64,13 +64,13 @@ export async function POST(request: Request) {
         if (String(error.message || "").includes("display_order")) {
           return NextResponse.json({ error: "display_order column missing." }, { status: 409 });
         }
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
       }
     }
     revalidateListingCollections();
     return NextResponse.json({ ok: true });
   } catch (err: any) {
     console.error(err);
-    return NextResponse.json({ error: err?.message || "Unknown error" }, { status: 500 });
+    return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
   }
 }
