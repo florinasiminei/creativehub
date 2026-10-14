@@ -13,7 +13,7 @@ import {
   SEO_COLLECTION_META_TITLE,
 } from "@/lib/seoCopy";
 
-const inter = Inter({ variable: "--font-geist-sans", subsets: ["latin"], display: "swap" });
+const inter = Inter({ variable: "--font-geist-sans", subsets: ["latin", "latin-ext"], display: "swap" });
 const jetbrainsMono = JetBrains_Mono({ variable: "--font-geist-mono", subsets: ["latin"], display: "swap", preload: false });
 const siteUrl = getCanonicalSiteUrl();
 const defaultSocialImage = "/images/og-default.png";
