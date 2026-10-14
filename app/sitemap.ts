@@ -9,6 +9,7 @@ import { resolveListingsRouteIndexability } from "@/lib/seoRouteIndexing";
 import { resolveRegionCountyNames } from "@/lib/seoListingsCounts";
 import { buildTypeCountyPath } from "@/lib/typeCountyRoutes";
 import { buildRegionPagePath, buildTypeFacilityCountyPath, buildTypeRegionPath } from "@/lib/locationRoutes";
+import { getPublishedFacilityCollections } from "@/lib/server/facilityCollections";
 
 export const revalidate = 43200;
 
@@ -312,6 +313,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     typeFacilityCountyEntries = [];
   }
 
+  const facilityCollectionEntries: MetadataRoute.Sitemap = [];
+  try {
+    const collections = await getPublishedFacilityCollections();
+    for (const collection of collections) {
+      const routePath = `/cazari/${collection.slug}`;
+      if (!(await resolveListingsRouteIndexability(routePath, collection.count))) continue;
+      const collectionLastModified = collection.listings.reduce<Date | undefined>((latestDate, listing) => {
+        const candidate = listingLastModifiedById.get(listing.id);
+        if (!candidate) return latestDate;
+        return !latestDate || candidate > latestDate ? candidate : latestDate;
+      }, undefined);
+      facilityCollectionEntries.push({
+        url: `${siteUrl}${routePath}`,
+        lastModified: collectionLastModified || latestPublishedListingsDate || lastModified,
+        changeFrequency: "weekly",
+        priority: 0.7,
+      });
+    }
+  } catch {
+    // Omit facility collections when their public listings cannot be loaded.
+  }
+
   const shouldIncludeCazariIndex = await resolveListingsRouteIndexability(
     "/cazari",
     totalPublishedListings
@@ -335,6 +358,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         ]
       : []),
     ...listingTypeEntries,
+    ...facilityCollectionEntries,
     {
       url: `${siteUrl}/about-us`,
       lastModified,

@@ -287,7 +287,7 @@ export default function HomeClient({
 
   type SearchRecord = SearchSuggestion & { aliases: string[] };
 
-  const searchRecords = useMemo<SearchRecord[]>(() => {
+  const createSearchRecords = useCallback((): SearchRecord[] => {
     type LocationEntry = {
       label: string;
       ids: Set<string>;
@@ -480,28 +480,41 @@ export default function HomeClient({
     return records;
   }, [cazari, facilityNameMap]);
 
-  const suggestionFuse = useMemo(() => {
-    if (!searchRecords.length) return null;
-    return new Fuse(searchRecords, {
-      keys: [
-        { name: "label", weight: 0.7 },
-        { name: "context", weight: 0.2 },
-        { name: "aliases", weight: 0.1 },
-      ],
-      includeMatches: true,
-      includeScore: true,
-      threshold: 0.4,
-      ignoreLocation: true,
-      minMatchCharLength: 1,
-    });
-  }, [searchRecords]);
+  const getSuggestionFuse = useMemo(() => {
+    let index: Fuse<SearchRecord> | null = null;
+
+    return () => {
+      if (index) return index;
+      const searchRecords = createSearchRecords();
+      if (!searchRecords.length) return null;
+      index = new Fuse(searchRecords, {
+        keys: [
+          { name: "label", weight: 0.7 },
+          { name: "context", weight: 0.2 },
+          { name: "aliases", weight: 0.1 },
+        ],
+        includeMatches: true,
+        includeScore: true,
+        threshold: 0.4,
+        ignoreLocation: true,
+        minMatchCharLength: 1,
+      });
+      return index;
+    };
+  }, [createSearchRecords]);
 
   const handleLocatieChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setFilters((prev) => ({ ...prev, locatie: val, keyword: val }));
     setSugestieIndex(-1);
 
-    if (!val.trim() || !suggestionFuse) {
+    if (!val.trim()) {
+      setLocatiiSugestii([]);
+      return;
+    }
+
+    const suggestionFuse = getSuggestionFuse();
+    if (!suggestionFuse) {
       setLocatiiSugestii([]);
       return;
     }

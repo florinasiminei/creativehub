@@ -16,7 +16,7 @@ type OwnerOtpGateContext = {
 type OwnerOtpGateProps = {
   children: ReactNode | ((context: OwnerOtpGateContext) => ReactNode);
   nextPath?: string | null;
-  purpose?: "portal" | "listing-create";
+  purpose?: "portal" | "listing-create" | "promotion";
 };
 
 const RESEND_COOLDOWN_SECONDS = 60;
@@ -66,6 +66,7 @@ export default function OwnerOtpGate({ children, nextPath, purpose = "portal" }:
   const authRequestIdRef = useRef(0);
   const safeNextPath = useMemo(() => getSafeNextPath(nextPath), [nextPath]);
   const isListingCreation = purpose === "listing-create";
+  const isPromotion = purpose === "promotion";
 
   const resetLoginState = useCallback(() => {
     authRequestIdRef.current += 1;
@@ -282,8 +283,8 @@ export default function OwnerOtpGate({ children, nextPath, purpose = "portal" }:
     return (
       <FormPageShell
         eyebrow="Cont proprietar"
-        title="Spațiul tău CABN"
-        description="Verificăm sesiunea și pregătim proprietățile asociate contului."
+        title={isPromotion ? "Promovarea ta pe Instagram" : "Spațiul tău CABN"}
+        description={isPromotion ? "Verificăm accesul și pregătim postarea cazării tale." : "Verificăm sesiunea și pregătim proprietățile asociate contului."}
       >
         <FormPageState title="Se încarcă..." description="Conectăm în siguranță contul de proprietar." />
       </FormPageShell>
@@ -318,16 +319,16 @@ export default function OwnerOtpGate({ children, nextPath, purpose = "portal" }:
                   ? "Verifică emailul"
                   : isListingCreation
                     ? "Emailul contului de proprietar"
-                    : "Primește accesul securizat"}
+                    : isPromotion ? "Emailul proprietarului" : "Primește accesul securizat"}
               </h2>
               <p className="mt-1 text-sm leading-6 text-zinc-600 dark:text-zinc-300">
                 {codeSent
                   ? isListingCreation
                     ? `Am trimis un link la ${email}. Deschide-l pentru a reveni la formular și a adăuga proprietatea. Nu trebuie să introduci un cod.`
-                    : `Am trimis un link la ${email}. Deschide-l pentru a intra în cont. Nu trebuie să introduci un cod.`
+                    : isPromotion ? `Am trimis un link la ${email}. Deschide-l pentru a reveni la postarea ta Instagram.` : `Am trimis un link la ${email}. Deschide-l pentru a intra în cont. Nu trebuie să introduci un cod.`
                   : isListingCreation
                     ? "Conectează-te înainte de a completa formularul. Proprietatea va fi salvată în acest cont când o trimiți spre verificare."
-                    : "Folosește adresa de email pe care vrei să administrezi proprietățile. Primești un link de autentificare, fără parolă."}
+                    : isPromotion ? "Folosește emailul contului care administrează cazarea. Primești un link securizat pentru a edita și aproba postarea." : "Folosește adresa de email pe care vrei să administrezi proprietățile. Primești un link de autentificare, fără parolă."}
               </p>
             </div>
           </div>
@@ -443,8 +444,8 @@ export default function OwnerOtpGate({ children, nextPath, purpose = "portal" }:
   return (
     <FormPageShell
       eyebrow="Cont proprietar"
-      title="Intră în contul de proprietar"
-      description="Listează cazarea gratuit sau solicită acces la o proprietate deja prezentă pe CABN. Gestionează apoi informațiile din contul tău."
+      title={isPromotion ? "Pregătește postarea Instagram" : "Intră în contul de proprietar"}
+      description={isPromotion ? "Personalizează textul și fotografiile cazării, verifică preview-ul și alege dacă aprobi promovarea pe cabn.ro." : "Administrează cazările tale, urmărește starea publicării și pregătește promovările dintr-un singur loc."}
     >
       <div className="mx-auto max-w-xl">{gateContent}</div>
     </FormPageShell>

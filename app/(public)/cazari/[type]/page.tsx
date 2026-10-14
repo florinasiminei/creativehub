@@ -21,6 +21,9 @@ import { hasMinimumPublishedListings } from '@/lib/seoIndexing';
 import type { Cazare } from '@/lib/utils';
 import ExploreCard from '@/components/explore/ExploreCard';
 import { getDestinationPhoto } from '@/lib/exploreCards';
+import FacilityCollectionPage from '@/components/explore/FacilityCollectionPage';
+import { FACILITY_COLLECTIONS, getFacilityCollectionBySlug } from '@/lib/facilityCollections';
+import { getPublishedFacilityCollections } from '@/lib/server/facilityCollections';
 
 export const revalidate = 21600;
 
@@ -31,11 +34,24 @@ type PageProps = {
 };
 
 export async function generateStaticParams() {
-  return LISTING_TYPES.map((type) => ({ type: type.slug }));
+  return [...LISTING_TYPES, ...FACILITY_COLLECTIONS].map((type) => ({ type: type.slug }));
 }
 
 export async function generateMetadata({ params: paramsPromise }: PageProps) {
   const params = await paramsPromise;
+  const facilityCollection = getFacilityCollectionBySlug(params.type);
+  if (facilityCollection) {
+    const collections = await getPublishedFacilityCollections();
+    const count = collections.find((collection) => collection.slug === facilityCollection.slug)?.count || 0;
+    const pathname = `/cazari/${facilityCollection.slug}`;
+    const shouldIndex = await resolveListingsRouteIndexability(pathname, count);
+    return buildPageMetadata({
+      title: facilityCollection.title,
+      description: facilityCollection.description,
+      pathname,
+      robots: shouldIndex ? undefined : { index: false, follow: true },
+    });
+  }
   const listingType = getTypeBySlug(params.type);
   if (!listingType) return {};
   const seoTypeLabel = getSeoTypeLabel(listingType.slug, listingType.label);
@@ -112,6 +128,9 @@ async function getTypeCountyLinks(typeSlug: string, typeValue: string): Promise<
 
 export default async function TypePage({ params: paramsPromise }: PageProps) {
   const params = await paramsPromise;
+  if (getFacilityCollectionBySlug(params.type)) {
+    return <FacilityCollectionPage slug={params.type} />;
+  }
   const listingType = getTypeBySlug(params.type);
   if (!listingType) return notFound();
 

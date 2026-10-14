@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
+import { queueInstagramPromotionSync } from '@/lib/server/instagramPromotionConfig';
 import {
   invalidateSubmittedOwnerListing,
   resolveListingAccess,
@@ -78,6 +79,7 @@ export async function POST(req: Request) {
       await invalidateSubmittedOwnerListing(supabaseAdmin, String(listingId), access.ownerId);
     }
 
+    queueInstagramPromotionSync(String(listingId));
     revalidatePath('/', 'layout');
     return NextResponse.json({ ok: true });
   } catch (err: any) {

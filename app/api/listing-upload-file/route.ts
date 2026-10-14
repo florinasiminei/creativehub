@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
+import { queueInstagramPromotionSync } from '@/lib/server/instagramPromotionConfig';
 import { LISTING_SUBMISSION_LIMITS } from '@/lib/listings/listingSubmissionRules';
 import { buildListingCardVariantBuffer, toListingCardVariantPath } from '@/lib/server/listingImageVariants';
 import {
@@ -284,6 +285,7 @@ async function handleComplete(req: Request, body: any) {
       );
     }
 
+    queueInstagramPromotionSync(listingId);
     return NextResponse.json({
       id: String(inserted.image_id),
       url,
@@ -387,6 +389,7 @@ async function handleLegacyUpload(req: Request) {
       );
     }
 
+    queueInstagramPromotionSync(listingId);
     return NextResponse.json({
       id: String(inserted.image_id),
       url,

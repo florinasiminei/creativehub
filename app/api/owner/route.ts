@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getVerifiedOwner, OwnerAuthUnavailableError } from "@/lib/server/ownerAuth";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { rateLimit } from "@/lib/rateLimit";
+import { instagramPromotionEnabled } from '@/lib/server/instagramPromotionConfig';
+import type { InstagramPromotionSummary } from '@/lib/social/instagram';
 
 export const dynamic = "force-dynamic";
 
@@ -93,6 +95,23 @@ export async function GET(request: Request) {
     const listingIds = listingRows.map((listing: any) =>
       String(listing.id)
     );
+    const promotionEnabled = instagramPromotionEnabled();
+    let instagramPromotionStatusAvailable = promotionEnabled;
+    const promotionsByListingId = new Map<string, InstagramPromotionSummary>();
+    if (promotionEnabled && listingIds.length > 0) {
+      try {
+        const { data, error } = await supabase.from('social_promotions')
+          .select('listing_reference, status, approved_at, needs_reapproval, scheduled_for, published_at, external_url, last_error')
+          .eq('platform', 'instagram').eq('owner_id', user.id).in('listing_reference', listingIds);
+        if (error) throw error;
+        const promotions = (data || []) as Array<InstagramPromotionSummary & { listing_reference: string }>;
+        promotions.forEach(({ listing_reference, ...promotion }) => promotionsByListingId.set(listing_reference, promotion));
+      } catch (error) {
+        instagramPromotionStatusAvailable = false;
+        const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : 'unknown';
+        console.warn('[owner-dashboard] Instagram promotion status is unavailable', { code });
+      }
+    }
     let pendingPeriods: PendingPeriodRow[] = [];
 
     if (listingIds.length > 0) {
@@ -172,6 +191,7 @@ export async function GET(request: Request) {
           : null,
         canRenew,
         image: getFirstImage(listing),
+        instagramPromotion: promotionsByListingId.get(String(listing.id)) || null,
         pendingPayment: pendingPayment
           ? {
               status: String(pendingPayment.status || "pending"),
@@ -204,6 +224,8 @@ export async function GET(request: Request) {
     });
 
     const response = NextResponse.json({
+      instagramPromotionEnabled: promotionEnabled,
+      instagramPromotionStatusAvailable,
       user: { email: user.email },
       listings: mappedListings,
       claims: mappedClaims,

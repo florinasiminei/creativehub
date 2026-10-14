@@ -22,22 +22,51 @@ export default function Navbar() {
   useEffect(() => {
     let cancelled = false;
     let unsubscribe: (() => void) | undefined;
-    import("@/lib/supabaseClient").then(({ supabase }) => {
+    let idleId: number | undefined;
+    let timerId: number | undefined;
+
+    const connectOwnerStatus = () => {
       if (cancelled) return;
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        setOwnerSignedIn(Boolean(
-          session?.user.email && session.user.email_confirmed_at && !session.user.is_anonymous
-        ));
+      import("@/lib/supabaseClient").then(({ supabase }) => {
+        if (cancelled) return;
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+          setOwnerSignedIn(Boolean(
+            session?.user.email && session.user.email_confirmed_at && !session.user.is_anonymous
+          ));
+        });
+        unsubscribe = () => subscription.unsubscribe();
+      }).catch((error) => {
+        if (!cancelled) console.error("Owner account status could not be loaded:", error);
       });
-      unsubscribe = () => subscription.unsubscribe();
-    }).catch((error) => {
-      if (!cancelled) console.error("Owner account status could not be loaded:", error);
-    });
+    };
+
+    const scheduleOwnerStatus = () => {
+      if (typeof window.requestIdleCallback === "function") {
+        idleId = window.requestIdleCallback(connectOwnerStatus, { timeout: 2000 });
+      } else {
+        timerId = window.setTimeout(connectOwnerStatus, 1500);
+      }
+    };
+
+    const ownerPage = pathname === "/proprietari" || pathname.startsWith("/proprietari/") ||
+      pathname === "/add-property" || pathname.startsWith("/edit-property/");
+
+    if (ownerPage) {
+      connectOwnerStatus();
+    } else if (document.readyState === "complete") {
+      scheduleOwnerStatus();
+    } else {
+      window.addEventListener("load", scheduleOwnerStatus, { once: true });
+    }
+
     return () => {
       cancelled = true;
+      window.removeEventListener("load", scheduleOwnerStatus);
+      if (idleId !== undefined) window.cancelIdleCallback(idleId);
+      if (timerId !== undefined) window.clearTimeout(timerId);
       unsubscribe?.();
     };
-  }, []);
+  }, [pathname]);
 
   const ownerAccountLabel = ownerSignedIn ? "Contul meu" : "Cont proprietar";
 

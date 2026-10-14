@@ -8,6 +8,7 @@ import BackofficeMobileDrawer from "@/components/admin/BackofficeMobileDrawer";
 import CatalogSection from "@/components/admin/sections/CatalogSection";
 import LeadsCalendarSection from "@/components/admin/sections/LeadsCalendarSection";
 import SettingsSection from "@/components/admin/sections/SettingsSection";
+import SocialPromotionsSection from '@/components/admin/sections/SocialPromotionsSection';
 import {
   countExpiringListings,
   countExpiredListings,
@@ -65,6 +66,7 @@ export default function DraftsClient({
         content: "catalog",
         seo: "catalog",
         settings: "settings",
+        "social-promotions": "social-promotions",
       };
       const mapped = legacyMap[tabParam];
       if (mapped) setActiveSection(mapped);
@@ -85,7 +87,7 @@ export default function DraftsClient({
     ? "Catalog"
     : activeSection === "leads-calendar"
       ? "Leads & Calendar"
-      : "Setări";
+      : activeSection === 'social-promotions' ? 'Promovare' : "Setări";
 
   return (
     <>
@@ -151,6 +153,8 @@ export default function DraftsClient({
                 onStatusMessage={setStatusMessage}
               />
             )}
+
+            {activeSection === 'social-promotions' && <SocialPromotionsSection />}
 
             {activeSection === "settings" && (
               <SettingsSection role={role} />

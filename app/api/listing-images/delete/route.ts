@@ -7,6 +7,7 @@ import {
   resolveListingAccess,
 } from '@/lib/server/ownerAuth';
 import { deleteStoredImageUrls } from '@/lib/server/r2';
+import { queueInstagramPromotionSync } from '@/lib/server/instagramPromotionConfig';
 
 export async function POST(request: Request) {
   try {
@@ -125,6 +126,7 @@ export async function POST(request: Request) {
       console.error('[listing-image-delete] storage cleanup failed', storageError);
     }
 
+    queueInstagramPromotionSync(String(rows.listing_id));
     revalidatePath('/', 'layout');
     return NextResponse.json({ ok: true });
   } catch (err: any) {

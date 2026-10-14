@@ -4,6 +4,7 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
 import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
 import { deleteStoredImageUrls } from '@/lib/server/r2';
+import { queueInstagramPromotionSync } from '@/lib/server/instagramPromotionConfig';
 
 export async function POST(request: Request) {
   try {
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
     await supabaseAdmin.from('listing_facilities').delete().eq('listing_id', id);
     const { error } = await supabaseAdmin.from('listings').delete().eq('id', id);
     if (error) return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
+    queueInstagramPromotionSync(String(id));
     revalidatePath('/', 'layout');
     return NextResponse.json({ ok: true });
   } catch (err: any) {

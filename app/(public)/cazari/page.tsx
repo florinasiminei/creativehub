@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { LISTING_TYPES } from "@/lib/listingTypes";
 import { getCanonicalSiteUrl } from "@/lib/siteUrl";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { resolveListingsRouteIndexability } from "@/lib/seoRouteIndexing";
@@ -11,10 +10,9 @@ import { buildBreadcrumbJsonLd, buildCollectionPageJsonLd, serializeJsonLd } fro
 import { getCounties } from "@/lib/counties";
 import { normalizeRegionText } from "@/lib/regions";
 import { hasMinimumPublishedListings } from "@/lib/seoIndexing";
-import ExploreCard from "@/components/explore/ExploreCard";
-import { getCategoryPhoto, getDestinationPhoto } from "@/lib/exploreCards";
-import type { ListingRaw } from "@/lib/types";
-import { COLLECTION_IMAGE_SIZES } from "@/lib/imageConfig";
+import AccommodationCategories from "@/components/explore/AccommodationCategories";
+import { fetchPublishedListingRows } from "@/lib/publicListingCollections";
+import { mapListingSummary } from "@/lib/transformers";
 
 export const revalidate = 21600;
 
@@ -23,30 +21,16 @@ const pagePath = "/cazari";
 const pageUrl = `${siteUrl}${pagePath}`;
 const pageHeading = "Categorii de cazări";
 const pageIntro =
-  "Alege tipul de proprietate care te interesează și vezi listări verificate, cu contact direct la gazdă.";
+  "Alege cazarea după tip, facilități sau destinație și contactează direct gazda.";
 
-async function getPublishedCollectionCounts() {
-  const { data, error } = await getSupabaseAdmin()
-    .from("listings")
-    .select("type, judet")
-    .eq("is_published", true)
-    .in("publication_status", ["active", "expiring"])
-    .or(`publication_expires_at.is.null,publication_expires_at.gt.${new Date().toISOString()}`);
-
-  if (error || !data) {
-    return { typeCounts: new Map<string, number>(), countyLinks: [] };
-  }
-
-  const typeCounts = new Map<string, number>();
+async function getPublishedCollections() {
+  const rows = await fetchPublishedListingRows();
   const countyCounts = new Map<string, number>();
   const countyByName = new Map(
     getCounties().map((county) => [normalizeRegionText(county.name), county] as const)
   );
 
-  (data as Array<Pick<ListingRaw, "type" | "judet">>).forEach((listing) => {
-    const type = String(listing.type || "").trim();
-    if (type) typeCounts.set(type, (typeCounts.get(type) || 0) + 1);
-
+  rows.forEach((listing) => {
     const county = countyByName.get(normalizeRegionText(String(listing.judet || "")));
     if (county) countyCounts.set(county.slug, (countyCounts.get(county.slug) || 0) + 1);
   });
@@ -60,7 +44,7 @@ async function getPublishedCollectionCounts() {
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "ro"))
     .slice(0, 12);
 
-  return { typeCounts, countyLinks };
+  return { listings: rows.map((row) => mapListingSummary(row)), countyLinks };
 }
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -85,7 +69,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function CazariIndexPage() {
-  const { typeCounts, countyLinks } = await getPublishedCollectionCounts();
+  const { listings, countyLinks } = await getPublishedCollections();
   const breadcrumbJsonLd = buildBreadcrumbJsonLd([
     { name: "Acasă", item: siteUrl },
     { name: "Cazări", item: pageUrl },
@@ -121,48 +105,9 @@ export default async function CazariIndexPage() {
           <p className="mt-4 max-w-2xl leading-7 text-zinc-600 dark:text-zinc-400">{pageIntro}</p>
         </header>
 
-        <section aria-labelledby="tipuri-cazare" className="mt-10">
-          <h2 id="tipuri-cazare" className="sr-only">Tipuri de cazare</h2>
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {LISTING_TYPES.filter((type) => (typeCounts.get(type.value) || 0) > 0).map((type) => {
-              const count = typeCounts.get(type.value) || 0;
-              return (
-                <ExploreCard
-                  key={type.slug}
-                  href={`/cazari/${type.slug}`}
-                  title={type.label}
-                  subtitle={`Descoperă ${type.label.toLowerCase()} în România`}
-                  count={count}
-                  {...getCategoryPhoto(type.slug)}
-                />
-              );
-            })}
-          </div>
-        </section>
-
-        {countyLinks.length > 0 && (
-          <section className="mt-14" aria-labelledby="cazari-dupa-judet">
-            <h2 id="cazari-dupa-judet" className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-              Descoperă România, destinație cu destinație
-            </h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-              Alege un județ și compară toate tipurile de cazare disponibile în zonă.
-            </p>
-            <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {countyLinks.map((county) => (
-                <ExploreCard
-                  key={county.slug}
-                  href={`/judet/${county.slug}`}
-                  title={county.name}
-                  subtitle={`Cazări în județul ${county.name}`}
-                  imageSizes={COLLECTION_IMAGE_SIZES}
-                  count={county.count}
-                  {...getDestinationPhoto(county.slug)}
-                />
-              ))}
-            </div>
-          </section>
-        )}
+        <div className="mt-10">
+          <AccommodationCategories listings={listings} destinations={countyLinks} />
+        </div>
       </main>
     </>
   );

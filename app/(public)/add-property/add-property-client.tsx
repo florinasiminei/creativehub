@@ -36,19 +36,20 @@ import useAddPropertyWizard from './use-add-property-wizard';
 
 const MAX_LISTING_IMAGES = LISTING_SUBMISSION_LIMITS.maxImages;
 
-export default function AddPropertyPage({ initialFacilities }: { initialFacilities: FacilityOption[] }) {
+export default function AddPropertyPage({ initialFacilities, promotionEnabled = false }: { initialFacilities: FacilityOption[]; promotionEnabled?: boolean }) {
   return (
     <OwnerOtpGate purpose="listing-create">
       {({ session }) => (
-        <AddPropertyForm key={session.user.id} initialFacilities={initialFacilities} session={session} />
+        <AddPropertyForm key={session.user.id} initialFacilities={initialFacilities} session={session} promotionEnabled={promotionEnabled} />
       )}
     </OwnerOtpGate>
   );
 }
 
-function AddPropertyForm({ initialFacilities, session }: {
+function AddPropertyForm({ initialFacilities, session, promotionEnabled }: {
   initialFacilities: FacilityOption[];
   session: Session;
+  promotionEnabled: boolean;
 }) {
   const router = useRouter();
   const [formData, setFormData] = useState<AddPropertyForm>(createInitialAddPropertyForm);
@@ -243,7 +244,7 @@ function AddPropertyForm({ initialFacilities, session }: {
         terms_accepted: acceptedTerms,
       };
 
-      await persistAddProperty({
+      const submittedListingId = await persistAddProperty({
         listingId,
         expectedOwnerId: ownerCheck.ownerId,
         payload,
@@ -259,7 +260,7 @@ function AddPropertyForm({ initialFacilities, session }: {
 
       markPageModified();
       resetForm();
-      router.push('/proprietari?trimis=1');
+      router.push(promotionEnabled ? `/proprietari/promovare/${submittedListingId}?trimis=1` : '/proprietari?trimis=1');
     } catch (error) {
       if (
         error &&
@@ -403,6 +404,12 @@ function AddPropertyForm({ initialFacilities, session }: {
                     }}
                     onSwitchOwnerAccount={() => void handleSwitchOwnerAccount()}
                   />
+                )}
+
+                {wizard.activeStep.id === 'review' && promotionEnabled && (
+                  <p className="rounded-2xl bg-emerald-50 p-4 text-sm leading-6 text-emerald-950 dark:bg-emerald-950/40 dark:text-emerald-100">
+                    După trimitere poți pregăti gratuit promovarea pe Instagram cabn.ro. Vei putea edita și aproba postarea separat. Acest pas este opțional.
+                  </p>
                 )}
 
                 {wizard.activeStep.id === 'review' && (

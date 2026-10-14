@@ -9,6 +9,7 @@ import {
 } from '@/lib/server/ownerAuth';
 import { LISTING_TYPES } from '@/lib/listingTypes';
 import { slugify } from '@/lib/utils';
+import { queueInstagramPromotionSync } from '@/lib/server/instagramPromotionConfig';
 import {
   validateCapacity,
   validateDescriptionLength,
@@ -442,6 +443,8 @@ export async function POST(request: Request) {
     if (access.kind === 'owner') {
       await invalidateSubmittedOwnerListing(supabaseAdmin, String(id), access.ownerId);
     }
+
+    queueInstagramPromotionSync(String(id));
 
     try {
       const { data: listingRow } = await supabaseAdmin

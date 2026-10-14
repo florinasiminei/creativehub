@@ -17,6 +17,7 @@ type Props = {
 const sections: Array<{ id: BackofficeSection; label: string; icon: string }> = [
   { id: "catalog", label: "Catalog", icon: "🗂️" },
   { id: "leads-calendar", label: "Leads & Calendar", icon: "📋" },
+  { id: "social-promotions", label: "Promovare", icon: "📷" },
   { id: "settings", label: "Setări", icon: "⚙️" },
 ];
 

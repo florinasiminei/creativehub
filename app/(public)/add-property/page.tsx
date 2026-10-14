@@ -5,6 +5,7 @@ import { getCanonicalSiteUrl } from '@/lib/siteUrl';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { sortFacilitiesByPriority } from '@/lib/facilitiesCatalog';
 import type { FacilityOption } from '@/lib/listings/listingForm';
+import { instagramPromotionEnabled } from '@/lib/server/instagramPromotionConfig';
 
 const siteUrl = getCanonicalSiteUrl();
 
@@ -66,5 +67,5 @@ export default async function AddPropertyPage({ searchParams: searchParamsPromis
   } catch {
     console.error('Nu am putut încărca facilitățile formularului.');
   }
-  return <AddPropertyClientPage initialFacilities={sortFacilitiesByPriority(facilities)} />;
+  return <AddPropertyClientPage initialFacilities={sortFacilitiesByPriority(facilities)} promotionEnabled={instagramPromotionEnabled()} />;
 }

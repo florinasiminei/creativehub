@@ -93,6 +93,7 @@ export type OwnerClaimItem = {
 export type BackofficeSection =
   | "catalog"
   | "leads-calendar"
+  | "social-promotions"
   | "settings";
 
 export type PropertyViewFilter = "all" | "submitted" | "client_unpublished" | "draft";

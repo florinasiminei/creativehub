@@ -49,6 +49,8 @@ export function getR2Client() {
     r2Client = new S3Client({
       region: "auto",
       endpoint: config.endpoint,
+      // Presigning has no body; the SDK's default CRC32 would sign an empty file.
+      requestChecksumCalculation: "WHEN_REQUIRED",
       credentials: async () => ({
         accessKeyId: config.accessKeyId,
         secretAccessKey: config.secretAccessKey,
