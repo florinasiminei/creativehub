@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { cache, Suspense } from 'react';
 import { headers } from 'next/headers';
 import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
 import { notFound, permanentRedirect } from 'next/navigation';
@@ -378,13 +379,15 @@ Interiorul este amenajat cu gust, oferind spații generoase și luminoase. Fieca
   return listing;
 }
 
+const fetchPublicListing = cache((slug: string) => fetchListing(slug));
+
 export async function generateMetadata({ params: paramsPromise, searchParams: searchParamsPromise }: PageProps): Promise<Metadata> {
   const params = await paramsPromise;
   const searchParams = await searchParamsPromise;
   if (searchParams?.preview === '1' || searchParams?.draft === '1') {
     return { robots: { index: false, follow: false } };
   }
-  const listing = await fetchListing(params.slug);
+  const listing = await fetchPublicListing(params.slug);
   if (!listing) return {};
 
   const description = clampMetaDescription(listing.seoDescription || listing.description);
@@ -442,11 +445,27 @@ export async function generateMetadata({ params: paramsPromise, searchParams: se
   };
 }
 
+async function ListingRelatedLinks({ listing }: { listing: ListingPageData }) {
+  const relatedLinks = await buildListingRelatedLinks(listing);
+
+  return (
+    <div className="mx-auto max-w-6xl px-4 pb-16">
+      <SeoRelatedLinks
+        title={`Continuă explorarea din ${listing.judet || "România"}`}
+        description="Compară proprietăți similare după tip, județ și facilitățile care contează pentru sejurul tău."
+        links={relatedLinks}
+      />
+    </div>
+  );
+}
+
 export default async function CazarePage({ params: paramsPromise, searchParams: searchParamsPromise }: PageProps) {
   const params = await paramsPromise;
   const searchParams = await searchParamsPromise;
   const previewRequested = searchParams?.preview === '1' || searchParams?.draft === '1';
-  const listing = await fetchListing(params.slug, searchParams);
+  const listing = !previewRequested && typeof searchParams?.id !== 'string'
+    ? await fetchPublicListing(params.slug)
+    : await fetchListing(params.slug, searchParams);
   if (!listing) {
     notFound();
   }
@@ -457,8 +476,6 @@ export default async function CazarePage({ params: paramsPromise, searchParams: 
   }
 
   const canonicalUrl = new URL(canonicalPath, siteUrl).toString();
-  const relatedLinks = await buildListingRelatedLinks(listing);
-
   const jsonLd = buildPropertyJsonLd({
     url: canonicalUrl,
     name: listing.title,
@@ -493,13 +510,9 @@ export default async function CazarePage({ params: paramsPromise, searchParams: 
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbJsonLd) }}
       />
       <ListingClient data={listing} />
-      <div className="mx-auto max-w-6xl px-4 pb-16">
-        <SeoRelatedLinks
-          title={`Continuă explorarea din ${listing.judet || "România"}`}
-          description="Compară proprietăți similare după tip, județ și facilitățile care contează pentru sejurul tău."
-          links={relatedLinks}
-        />
-      </div>
+      <Suspense fallback={null}>
+        <ListingRelatedLinks listing={listing} />
+      </Suspense>
     </>
   );
 }

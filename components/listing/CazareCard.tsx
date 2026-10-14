@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Cazare } from "@/lib/utils";
@@ -25,6 +25,27 @@ export default function CazareCard({
   const fallbackImage = cazare.imageOriginal || preferredImage;
   const canFallback = fallbackImage !== preferredImage;
   const [imageSrc, setImageSrc] = useState(preferredImage);
+  const [prefetchedSlug, setPrefetchedSlug] = useState<string | null>(null);
+  const hasPrefetchIntent = prefetchedSlug === cazare.slug;
+  const prefetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const cancelPrefetchIntent = useCallback(() => {
+    if (prefetchTimer.current !== null) {
+      clearTimeout(prefetchTimer.current);
+      prefetchTimer.current = null;
+    }
+  }, []);
+
+  const schedulePrefetchIntent = () => {
+    if (priority || hasPrefetchIntent || prefetchTimer.current !== null) return;
+
+    prefetchTimer.current = setTimeout(() => {
+      prefetchTimer.current = null;
+      setPrefetchedSlug(cazare.slug);
+    }, 150);
+  };
+
+  useEffect(() => cancelPrefetchIntent, [cancelPrefetchIntent, cazare.slug]);
 
   useEffect(() => {
     setImageSrc(preferredImage);
@@ -46,7 +67,16 @@ export default function CazareCard({
   const cleanedLocation = [firstPart, ...locationParts.slice(1)].filter(Boolean).join(", ");
 
   return (
-    <Link href={`/cazare/${cazare.slug}`} className="min-w-0">
+    <Link
+      href={`/cazare/${cazare.slug}`}
+      className="min-w-0"
+      prefetch={priority || hasPrefetchIntent}
+      onMouseEnter={schedulePrefetchIntent}
+      onMouseLeave={cancelPrefetchIntent}
+      onFocus={schedulePrefetchIntent}
+      onBlur={cancelPrefetchIntent}
+      onClick={cancelPrefetchIntent}
+    >
       <article className="group min-w-0 transition bg-transparent dark:bg-transparent">
         <div className="relative aspect-[2.7/2] overflow-hidden rounded-xl" style={{ aspectRatio: "2.7 / 2" }}>
           <Image
