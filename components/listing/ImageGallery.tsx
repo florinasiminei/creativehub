@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, MouseEvent, useCallback, useEffect, useMemo } from "react";
-import Image, { getImageProps } from "next/image";
+import Image from "@/components/R2Image";
 import ReactImageGallery from "react-image-gallery";
 import { MoveLeft, MoveRight, X } from "lucide-react";
 import "react-image-gallery/styles/css/image-gallery.css";
 import "./image-gallery.css";
+import { toListingResponsiveVariantUrl } from "@/lib/listingImagePaths";
 
 interface ImageGalleryProps {
   images: string[];
@@ -30,7 +31,7 @@ const GallerySlide: React.FC<{ src: string; alt: string; eager?: boolean }> = ({
   eager = false,
 }) => {
   const blurSrc = useMemo(
-    () => getImageProps({ src, alt: "", width: 32, height: 24, quality: 30 }).props.src,
+    () => toListingResponsiveVariantUrl(src, 160) || src,
     [src]
   );
 

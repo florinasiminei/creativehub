@@ -1,5 +1,5 @@
 import type { DragEvent, ReactNode } from "react";
-import Image from "next/image";
+import Image from "@/components/R2Image";
 import Link from "next/link";
 import DraftActions from "@/components/DraftActions";
 import type { Cazare } from "@/lib/utils";

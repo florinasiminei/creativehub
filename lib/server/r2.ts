@@ -8,7 +8,7 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Readable } from "stream";
-import { toListingCardVariantPath } from "@/lib/listingImagePaths";
+import { getListingImageVariantPaths, toListingCardVariantPath } from "@/lib/listingImagePaths";
 
 export const R2_UPLOAD_CACHE_CONTROL = "public, max-age=31536000, immutable";
 
@@ -250,8 +250,8 @@ export async function deleteStoredImageUrls(
     const r2Key = getR2ObjectKeyFromUrl(rawUrl);
     if (r2Key) {
       r2Keys.push(r2Key);
-      if (includeListingCardVariant && r2Key.startsWith("listings/")) {
-        r2Keys.push(toListingCardVariantPath(r2Key));
+      if ((includeListingCardVariant && r2Key.startsWith("listings/")) || r2Key.startsWith("attractions/")) {
+        r2Keys.push(...getListingImageVariantPaths(r2Key));
       }
       continue;
     }

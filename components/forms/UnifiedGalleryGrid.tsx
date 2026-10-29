@@ -1,5 +1,5 @@
 import React from 'react';
-import Image from 'next/image';
+import Image from '@/components/R2Image';
 import { ArrowDown, ArrowUp, Clock3, LoaderCircle, Trash2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { CONSTRAINED_GRID_PREVIEW_LIMIT, isConstrainedClientDevice } from '@/lib/deviceProfile';
 

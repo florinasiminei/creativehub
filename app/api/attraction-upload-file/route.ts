@@ -1,12 +1,16 @@
 export const runtime = 'nodejs';
+export const maxDuration = 180;
 
 import { NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
 import { getDraftRoleFromRequest } from '@/lib/draftsAuth';
+import { uploadResponsiveImageVariants } from '@/lib/server/listingImageVariants';
+import { getListingImageVariantPaths, withListingImageVariantLimit } from '@/lib/listingImagePaths';
 import {
   createSignedUploadUrl,
   deleteR2Object,
+  downloadBufferFromR2,
   getR2PublicUrl,
   uploadBufferToR2,
 } from '@/lib/server/r2';
@@ -121,9 +125,9 @@ async function handleComplete(req: Request, body: any) {
   const capacityError = await ensureAttractionImageCapacity(attractionId, supabaseAdmin);
   if (capacityError) return capacityError;
 
-  const url = getR2PublicUrl(path);
-
   try {
+    const maxWidth = await uploadResponsiveImageVariants(path, await downloadBufferFromR2(path));
+    const url = withListingImageVariantLimit(getR2PublicUrl(path), maxWidth);
     const { data: inserted, error: imgErr } = await supabaseAdmin
       .from('attraction_images')
       .insert([
@@ -143,7 +147,7 @@ async function handleComplete(req: Request, body: any) {
 
     return NextResponse.json({ id: String(inserted.id), url, display_order: inserted.display_order });
   } catch (err: any) {
-    await deleteR2Object(path);
+    await Promise.allSettled([path, ...getListingImageVariantPaths(path)].map((key) => deleteR2Object(key)));
     console.error(err);
     return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
   }
@@ -177,8 +181,8 @@ async function handleLegacyUpload(req: Request) {
 
   try {
     await uploadBufferToR2(path, sourceBuffer, fileValue.type || 'application/octet-stream');
-
-    const url = getR2PublicUrl(path);
+    const maxWidth = await uploadResponsiveImageVariants(path, sourceBuffer);
+    const url = withListingImageVariantLimit(getR2PublicUrl(path), maxWidth);
     const { data: inserted, error: imgErr } = await supabaseAdmin
       .from('attraction_images')
       .insert([
@@ -198,7 +202,7 @@ async function handleLegacyUpload(req: Request) {
 
     return NextResponse.json({ id: String(inserted.id), url, display_order: inserted.display_order });
   } catch (err: any) {
-    await deleteR2Object(path);
+    await Promise.allSettled([path, ...getListingImageVariantPaths(path)].map((key) => deleteR2Object(key)));
     console.error(err);
     return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
   }

@@ -19,7 +19,7 @@ import {
   mapListingsToJsonLdItems,
 } from "@/lib/publicListingCollections";
 import type { Cazare } from "@/lib/utils";
-import Image from "next/image";
+import Image from "@/components/R2Image";
 import ExploreCard from "@/components/explore/ExploreCard";
 import { getCategoryPhoto, getDestinationPhoto } from "@/lib/exploreCards";
 import { hasMinimumPublishedListings } from "@/lib/seoIndexing";

@@ -1,4 +1,4 @@
-import Image from "next/image";
+import Image from "@/components/R2Image";
 import Link from "next/link";
 import { cache } from "react";
 import type { Metadata } from "next";

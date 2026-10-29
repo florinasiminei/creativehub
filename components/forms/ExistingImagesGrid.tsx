@@ -1,5 +1,5 @@
 import React from 'react';
-import Image from 'next/image';
+import Image from '@/components/R2Image';
 import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react';
 import { CONSTRAINED_GRID_PREVIEW_LIMIT, isConstrainedClientDevice } from '@/lib/deviceProfile';
 

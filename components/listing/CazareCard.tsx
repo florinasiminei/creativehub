@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Image from "next/image";
+import Image from "@/components/R2Image";
 import Link from "next/link";
 import { Cazare } from "@/lib/utils";
 import { CARD_IMAGE_QUALITY, COLLECTION_IMAGE_SIZES } from "@/lib/imageConfig";

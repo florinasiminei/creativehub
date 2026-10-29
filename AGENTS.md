@@ -81,6 +81,14 @@ For unclear or broader tasks:
 - Keep route, layout, loading, error, and page files aligned with existing App Router structure.
 - Do not move files or restructure routes unless explicitly requested.
 
+### Image delivery
+
+- Use pregenerated WebP variants stored in Cloudflare R2 for uploaded property and attraction photos.
+- Keep `images.unoptimized: true` in `next.config.js`. Do not enable Vercel Image Optimization or generate `/_next/image` URLs.
+- Use `components/R2Image.tsx` for responsive uploaded photos; it selects R2 files using `srcset` and `sizes`.
+- Generate new variants at upload time, never on image requests. The existing-images command is `node scripts/generate-r2-card-variants.mjs --responsive` (add `--dry-run` to inspect).
+- Preserve the `r2w` query parameter on new image URLs: it records the largest available variant. The backfill command also updates `lib/listingImageVariantLimits.json` for older images with fewer sizes; include that file when deploying.
+
 ---
 
 ## React and UI conventions

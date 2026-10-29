@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
+import Image from "@/components/R2Image";
 import Link from "next/link";
 import { ArrowUpRight, ImageIcon } from "lucide-react";
 import { CARD_IMAGE_QUALITY, EXPLORE_IMAGE_SIZES } from "@/lib/imageConfig";

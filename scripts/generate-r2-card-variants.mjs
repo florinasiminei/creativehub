@@ -13,6 +13,8 @@ import {
 
 const CARD_IMAGE_WIDTH = 720;
 const CARD_IMAGE_QUALITY = 72;
+// Keep in sync with lib/listingImagePaths.ts. Files are generated once, never on image requests.
+const RESPONSIVE_WIDTHS = [160, 320, 480, 720, 1080, 1440, 1920];
 const TARGET_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
 function loadDotEnv() {
@@ -37,12 +39,20 @@ function parseArgs(argv) {
   const args = {
     dryRun: false,
     overwrite: false,
+    responsive: false,
+    retryMissing: false,
+    recoverJpegWarnings: false,
+    recoveryPreviewDir: null,
     limit: null,
     concurrency: 4,
   };
   for (const arg of argv) {
     if (arg === '--dry-run') args.dryRun = true;
     else if (arg === '--overwrite') args.overwrite = true;
+    else if (arg === '--responsive') args.responsive = true;
+    else if (arg === '--retry-missing') args.retryMissing = true;
+    else if (arg === '--recover-jpeg-warnings') args.recoverJpegWarnings = true;
+    else if (arg.startsWith('--recovery-preview-dir=')) args.recoveryPreviewDir = arg.slice('--recovery-preview-dir='.length);
     else if (arg.startsWith('--limit=')) args.limit = Number(arg.slice('--limit='.length));
     else if (arg.startsWith('--concurrency=')) args.concurrency = Number(arg.slice('--concurrency='.length));
   }
@@ -65,6 +75,13 @@ function toCardVariantKey(sourceKey) {
   if (file.startsWith('card_')) return sourceKey;
   const base = file.replace(/\.[^.]+$/, '');
   return `${dir}/card_${base}.webp`;
+}
+
+function toResponsiveVariantKey(sourceKey, width) {
+  const slash = sourceKey.lastIndexOf('/');
+  const dir = sourceKey.slice(0, slash);
+  const base = sourceKey.slice(slash + 1).replace(/\.[^.]+$/, '');
+  return `${dir}/responsive_v1_${width}_${base}.webp`;
 }
 
 function streamToBuffer(stream) {
@@ -109,14 +126,14 @@ async function mapLimit(items, limit, worker) {
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => runner()));
 }
 
-async function fetchListingImages(supabase) {
+async function fetchImages(supabase, table) {
   const pageSize = 1000;
   let from = 0;
   const rows = [];
   while (true) {
     const to = from + pageSize - 1;
     const { data, error } = await supabase
-      .from('listing_images')
+      .from(table)
       .select('id, image_url')
       .range(from, to);
     if (error) throw new Error(error.message);
@@ -134,7 +151,8 @@ async function objectExists(client, bucket, key) {
     return true;
   } catch (err) {
     const status = err?.$metadata?.httpStatusCode;
-    return status !== 404 ? false : false;
+    if (status === 404) return false;
+    throw err;
   }
 }
 
@@ -158,16 +176,27 @@ async function main() {
     credentials: { accessKeyId, secretAccessKey },
   });
 
-  const rows = await fetchListingImages(supabase);
-  const selected = args.limit ? rows.slice(0, args.limit) : rows;
-  console.log(`[r2-variants] Listing rows scanned: ${selected.length}`);
-  console.log(`[r2-variants] Mode: ${args.dryRun ? 'DRY RUN' : 'LIVE'} | overwrite=${args.overwrite} | concurrency=${args.concurrency}`);
+  const tables = args.responsive ? ['listing_images', 'attraction_images'] : ['listing_images'];
+  const rows = (await Promise.all(tables.map((table) => fetchImages(supabase, table)))).flat();
+  const limitsPath = path.resolve(process.cwd(), 'lib/listingImageVariantLimits.json');
+  const variantLimits = args.responsive && fs.existsSync(limitsPath)
+    ? JSON.parse(fs.readFileSync(limitsPath, 'utf8')) : {};
+  const eligible = args.retryMissing ? rows.filter((row) => {
+    const key = decodeR2KeyFromUrl(String(row.image_url || ''), r2PublicBaseUrl)?.replace(/\.[^/.]+$/, '');
+    return key && Array.isArray(variantLimits[key]) && variantLimits[key].length === 0;
+  }) : rows;
+  const selected = args.limit ? eligible.slice(0, args.limit) : eligible;
+  console.log(`[r2-variants] Image rows scanned: ${selected.length}`);
+  console.log(`[r2-variants] Mode: ${args.dryRun ? 'DRY RUN' : 'LIVE'} | responsive=${args.responsive} | overwrite=${args.overwrite} | concurrency=${args.concurrency}`);
 
   let created = 0;
   let overwritten = 0;
   let exists = 0;
   let skipped = 0;
   let failed = 0;
+  let avoidedUpscales = 0;
+  let recoveredFromCard = 0;
+  let recoveredJpegWarnings = 0;
 
   await mapLimit(selected, args.concurrency, async (row, idx) => {
     const sourceUrl = String(row.image_url || '').trim();
@@ -177,52 +206,93 @@ async function main() {
     }
 
     const sourceKey = decodeR2KeyFromUrl(sourceUrl, r2PublicBaseUrl);
-    if (!sourceKey || !sourceKey.startsWith('listings/')) {
+    if (!sourceKey || !/^(listings|attractions)\//.test(sourceKey)) {
       skipped += 1;
       return;
     }
-    if (sourceKey.split('/').pop()?.startsWith('card_')) {
+    if (/^(card_|responsive_v1_)/.test(sourceKey.split('/').pop() || '')) {
       skipped += 1;
       return;
     }
 
-    const cardKey = toCardVariantKey(sourceKey);
+    const variants = [
+      ...(sourceKey.startsWith('listings/') ? [{ key: toCardVariantKey(sourceKey), width: CARD_IMAGE_WIDTH, legacy: true }] : []),
+      ...(args.responsive ? RESPONSIVE_WIDTHS.map((width) => ({
+        key: toResponsiveVariantKey(sourceKey, width), width, legacy: false,
+      })) : []),
+    ];
+    const availableWidths = new Set();
+    const imageKey = sourceKey.replace(/\.[^/.]+$/, '');
     try {
-      const alreadyExists = await objectExists(r2, bucket, cardKey);
-      if (alreadyExists && !args.overwrite) {
-        exists += 1;
-        return;
+      const pending = [];
+      for (const variant of variants) {
+        const alreadyExists = await objectExists(r2, bucket, variant.key);
+        if (alreadyExists && !variant.legacy) availableWidths.add(variant.width);
+        if (alreadyExists && !args.overwrite) exists += 1;
+        else pending.push({ ...variant, alreadyExists });
       }
-
-      if (args.dryRun) {
-        if (alreadyExists) {
-          overwritten += 1;
-        } else {
-          created += 1;
-        }
-        return;
-      }
+      if (!pending.length) return;
 
       const sourceObj = await r2.send(new GetObjectCommand({ Bucket: bucket, Key: sourceKey }));
       if (!sourceObj?.Body) throw new Error('missing_source_body');
-      const sourceBuffer = await streamToBuffer(sourceObj.Body);
-      const cardBuffer = await sharp(sourceBuffer)
-        .rotate()
-        .resize({ width: CARD_IMAGE_WIDTH, withoutEnlargement: true })
-        .webp({ quality: CARD_IMAGE_QUALITY })
-        .toBuffer();
+      let sourceBuffer = await streamToBuffer(sourceObj.Body);
+      let metadata = await sharp(sourceBuffer).metadata();
+      let sourceWidth = (metadata.orientation || 1) >= 5 ? metadata.height : metadata.width;
+      if (!sourceWidth) throw new Error('invalid_image_dimensions');
+      let usingCardFallback = false;
+      let decoderOptions;
 
-      await r2.send(new PutObjectCommand({
-        Bucket: bucket,
-        Key: cardKey,
-        Body: cardBuffer,
-        ContentType: 'image/webp',
-        CacheControl: TARGET_CACHE_CONTROL,
-      }));
-      if (alreadyExists) {
-        overwritten += 1;
-      } else {
-        created += 1;
+      for (const variant of pending) {
+        if (!variant.legacy && variant.width > sourceWidth) {
+          avoidedUpscales += 1;
+          continue;
+        }
+        if (!args.dryRun) {
+          const render = () => sharp(sourceBuffer, decoderOptions)
+            .rotate().resize({ width: variant.width, withoutEnlargement: true })
+            .webp({ quality: CARD_IMAGE_QUALITY }).toBuffer();
+          let buffer;
+          try {
+            buffer = await render();
+          } catch (error) {
+            if (args.recoverJpegWarnings && metadata.format === 'jpeg' && !decoderOptions) {
+              // Explicit recovery for old JPEG warnings only; decoding errors still abort.
+              decoderOptions = { failOn: 'error' };
+              buffer = await render();
+              recoveredJpegWarnings += 1;
+              if (args.recoveryPreviewDir) {
+                fs.mkdirSync(args.recoveryPreviewDir, { recursive: true });
+                fs.writeFileSync(path.join(args.recoveryPreviewDir, path.basename(sourceKey) + '.webp'), buffer);
+              }
+            } else {
+              if (usingCardFallback || !sourceKey.startsWith('listings/')) throw error;
+              // Reuse a valid existing thumbnail while preserving the original.
+              const cardObj = await r2.send(new GetObjectCommand({ Bucket: bucket, Key: toCardVariantKey(sourceKey) }));
+              if (!cardObj.Body) throw error;
+              sourceBuffer = await streamToBuffer(cardObj.Body);
+              metadata = await sharp(sourceBuffer).metadata();
+              sourceWidth = (metadata.orientation || 1) >= 5 ? metadata.height : metadata.width;
+              if (!sourceWidth) throw error;
+              usingCardFallback = true;
+              recoveredFromCard += 1;
+              if (!variant.legacy && variant.width > sourceWidth) {
+                avoidedUpscales += 1;
+                continue;
+              }
+              buffer = await render();
+            }
+          }
+          await r2.send(new PutObjectCommand({
+            Bucket: bucket,
+            Key: variant.key,
+            Body: buffer,
+            ContentType: 'image/webp',
+            CacheControl: TARGET_CACHE_CONTROL,
+          }));
+          if (!variant.legacy) availableWidths.add(variant.width);
+        }
+        if (variant.alreadyExists) overwritten += 1;
+        else created += 1;
       }
     } catch (err) {
       failed += 1;
@@ -230,18 +300,32 @@ async function main() {
         console.error('[r2-variants] Failed:', sourceKey, '-', err instanceof Error ? err.message : String(err));
       }
     } finally {
+      if (args.responsive && !args.dryRun) {
+        if (availableWidths.size === RESPONSIVE_WIDTHS.length) delete variantLimits[imageKey];
+        else variantLimits[imageKey] = [...availableWidths].sort((a, b) => a - b);
+      }
       if ((idx + 1) % 100 === 0 || idx + 1 === selected.length) {
         console.log(`[r2-variants] ${idx + 1}/${selected.length} processed`);
       }
     }
   });
 
+  if (args.responsive && !args.dryRun) {
+    const sortedLimits = Object.fromEntries(Object.entries(variantLimits).sort(([a], [b]) => a.localeCompare(b)));
+    fs.writeFileSync(limitsPath, JSON.stringify(sortedLimits, null, 2) + '\n', 'utf8');
+    console.log(`[r2-variants] Recorded ${Object.keys(sortedLimits).length} sources with limited available widths.`);
+  }
+
   console.log('\n[r2-variants] Finished');
   console.log(`- created/would_create: ${created}`);
   console.log(`- overwritten/would_overwrite: ${overwritten}`);
   console.log(`- already_exists: ${exists}`);
   console.log(`- skipped: ${skipped}`);
+  console.log(`- avoided_upscales: ${avoidedUpscales}`);
+  console.log(`- recovered_from_existing_card: ${recoveredFromCard}`);
+  console.log(`- recovered_jpeg_warnings: ${recoveredJpegWarnings}`);
   console.log(`- failed: ${failed}`);
+  if (failed) process.exitCode = 1;
 }
 
 main().catch((err) => {

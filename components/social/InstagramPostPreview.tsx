@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import Image from '@/components/R2Image';
 import { Bookmark, ChevronLeft, ChevronRight, Heart, MessageCircle, MoreHorizontal, Send } from 'lucide-react';
 import { CARD_IMAGE_QUALITY } from '@/lib/imageConfig';
 import type { PromotionImage, PromotionSource } from '@/lib/social/instagram';

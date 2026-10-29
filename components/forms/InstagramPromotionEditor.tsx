@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
-import Image from 'next/image';
+import Image from '@/components/R2Image';
 import Link from 'next/link';
 import { AlertCircle, ArrowLeft, ArrowRight, Check, CheckCircle2, ChevronLeft, ChevronRight, Eye, ImagePlus, Instagram, Loader2, Pencil, RotateCcw, ShieldCheck, X } from 'lucide-react';
 import OwnerOtpGate from '@/components/forms/OwnerOtpGate';

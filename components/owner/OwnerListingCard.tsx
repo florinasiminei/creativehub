@@ -1,5 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
+import Image from "@/components/R2Image";
 import { ArrowUpRight, Building2, CalendarDays, CreditCard, Instagram, Pencil } from "lucide-react";
 import { CARD_IMAGE_QUALITY } from "@/lib/imageConfig";
 import { formatOwnerDate } from "@/lib/ownerPortal";

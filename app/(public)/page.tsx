@@ -1,5 +1,5 @@
 import HomeClient from "./home-client";
-import { getImageProps } from "next/image";
+import { getListingResponsiveSrcSet } from "@/lib/listingImagePaths";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
@@ -19,7 +19,7 @@ import {
 import type { FacilityOption, ListingRaw } from "@/lib/types";
 import AccommodationCategories from "@/components/explore/AccommodationCategories";
 import SubmissionNotice from "@/components/SubmissionNotice";
-import { CARD_IMAGE_QUALITY, HOME_LISTING_IMAGE_SIZES } from "@/lib/imageConfig";
+import { HOME_LISTING_IMAGE_SIZES } from "@/lib/imageConfig";
 
 export const revalidate = 300;
 const siteUrl = getCanonicalSiteUrl();
@@ -140,21 +140,15 @@ export default async function HomePage() {
   return (
     <>
       {listings.slice(1, 6).map((listing, index) => {
-        const { props } = getImageProps({
-          src: listing.image || "/fallback.svg",
-          alt: "",
-          fill: true,
-          sizes: HOME_LISTING_IMAGE_SIZES,
-          quality: CARD_IMAGE_QUALITY,
-        });
-        if (!props.srcSet) return null;
+        const srcSet = getListingResponsiveSrcSet(listing.image || "/fallback.svg");
+        if (!srcSet) return null;
         return (
           <link
             key={listing.id}
             rel="preload"
             as="image"
-            imageSrcSet={props.srcSet}
-            imageSizes={props.sizes}
+            imageSrcSet={srcSet}
+            imageSizes={HOME_LISTING_IMAGE_SIZES}
             media={`(min-width: ${index === 0 ? 640 : index === 1 ? 768 : 1024}px)`}
             fetchPriority="high"
           />

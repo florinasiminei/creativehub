@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
-import Image from 'next/image';
+import Image from '@/components/R2Image';
 import { Camera } from 'lucide-react';
 import { toListingCardVariantUrl } from '@/lib/listingImagePaths';
 import { CARD_IMAGE_QUALITY } from '@/lib/imageConfig';

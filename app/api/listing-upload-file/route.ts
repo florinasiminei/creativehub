@@ -1,4 +1,5 @@
 export const runtime = 'nodejs';
+export const maxDuration = 180;
 
 import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
@@ -6,7 +7,8 @@ import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
 import { queueInstagramPromotionSync } from '@/lib/server/instagramPromotionConfig';
 import { LISTING_SUBMISSION_LIMITS } from '@/lib/listings/listingSubmissionRules';
-import { buildListingCardVariantBuffer, toListingCardVariantPath } from '@/lib/server/listingImageVariants';
+import { buildListingCardVariantBuffer, uploadResponsiveImageVariants, toListingCardVariantPath } from '@/lib/server/listingImageVariants';
+import { getListingImageVariantPaths, withListingImageVariantLimit } from '@/lib/listingImagePaths';
 import {
   invalidateSubmittedOwnerListing,
   resolveListingAccess,
@@ -16,6 +18,7 @@ import {
   deleteR2Object,
   downloadBufferFromR2,
   getR2PublicUrl,
+  getR2ObjectKeyFromUrl,
   getR2ObjectMetadata,
   uploadBufferToR2,
 } from '@/lib/server/r2';
@@ -119,11 +122,12 @@ async function ensureListingImageCapacity(listingId: string, supabaseAdmin: Retu
   return null;
 }
 
-async function createCardVariant(path: string) {
+async function createListingImageVariants(path: string) {
   const cardPath = toListingCardVariantPath(path);
   const sourceBuffer = await downloadBufferFromR2(path);
   const cardBuffer = await buildListingCardVariantBuffer(sourceBuffer);
   await uploadBufferToR2(cardPath, cardBuffer, 'image/webp');
+  return uploadResponsiveImageVariants(path, sourceBuffer);
 }
 
 async function validateStoredImage(path: string, expectedContentType: string, expectedFileSize: number) {
@@ -154,19 +158,15 @@ async function deleteInvalidUnpersistedUpload(
   listingId: string,
   supabaseAdmin: ReturnType<typeof getSupabaseAdmin>
 ) {
-  const url = getR2PublicUrl(path);
   const { data, error } = await supabaseAdmin
     .from('listing_images')
-    .select('id')
-    .eq('listing_id', listingId)
-    .eq('image_url', url)
-    .limit(1)
-    .maybeSingle();
+    .select('image_url')
+    .eq('listing_id', listingId);
 
-  if (error || data) return;
+  if (error || data?.some((image) => getR2ObjectKeyFromUrl(image.image_url) === path)) return;
   await Promise.allSettled([
     deleteR2Object(path),
-    deleteR2Object(toListingCardVariantPath(path)),
+    ...getListingImageVariantPaths(path).map((variantPath) => deleteR2Object(variantPath)),
   ]);
 }
 
@@ -245,11 +245,11 @@ async function handleComplete(req: Request, body: any) {
     );
   }
 
-  const url = getR2PublicUrl(path);
   let imageRegistered = false;
 
   try {
-    await createCardVariant(path);
+    const maxWidth = await createListingImageVariants(path);
+    const url = withListingImageVariantLimit(getR2PublicUrl(path), maxWidth);
     const normalizedDisplayOrder =
       Number.isInteger(displayOrder) &&
       displayOrder >= 0 &&
@@ -295,7 +295,7 @@ async function handleComplete(req: Request, body: any) {
     if (!imageRegistered) {
       await Promise.allSettled([
         deleteR2Object(path),
-        deleteR2Object(toListingCardVariantPath(path)),
+        ...getListingImageVariantPaths(path).map((variantPath) => deleteR2Object(variantPath)),
       ]);
     }
     console.error(err);
@@ -352,8 +352,8 @@ async function handleLegacyUpload(req: Request) {
       await deleteInvalidUnpersistedUpload(path, listingId, supabaseAdmin);
       return NextResponse.json({ error: storedImageError }, { status: 400 });
     }
-    const url = getR2PublicUrl(path);
-    await createCardVariant(path);
+    const maxWidth = await createListingImageVariants(path);
+    const url = withListingImageVariantLimit(getR2PublicUrl(path), maxWidth);
     const normalizedDisplayOrder =
       Number.isInteger(displayOrder) &&
       displayOrder >= 0 &&
@@ -399,7 +399,7 @@ async function handleLegacyUpload(req: Request) {
     if (!imageRegistered) {
       await Promise.allSettled([
         deleteR2Object(path),
-        deleteR2Object(toListingCardVariantPath(path)),
+        ...getListingImageVariantPaths(path).map((variantPath) => deleteR2Object(variantPath)),
       ]);
     }
     console.error(err);
