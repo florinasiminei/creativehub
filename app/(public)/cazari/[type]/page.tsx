@@ -5,14 +5,15 @@ import ListingCollectionResults from '@/components/seo/ListingCollectionResults'
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { getTypeBySlug, LISTING_TYPES } from '@/lib/listingTypes';
 import { getCounties } from '@/lib/counties';
-import { normalizeRegionText } from '@/lib/regions';
+import { findRegionBySlug, normalizeRegionText } from '@/lib/regions';
 import { getCanonicalSiteUrl } from '@/lib/siteUrl';
 import { resolveListingsRouteIndexability } from '@/lib/seoRouteIndexing';
-import { countPublishedListingsByType } from '@/lib/seoListingsCounts';
+import { countPublishedListingsByType, resolveRegionCountyNames } from '@/lib/seoListingsCounts';
 import { buildSeoTypeDescription, buildSeoTypeTitle, getSeoTypeLabel } from '@/lib/seoCopy';
 import { buildPageMetadata } from '@/lib/seoMetadata';
 import { buildBreadcrumbJsonLd, buildListingPageJsonLd } from '@/lib/jsonLd';
 import { buildTypeCountyPath } from '@/lib/typeCountyRoutes';
+import { buildTypeRegionPath } from '@/lib/locationRoutes';
 import {
   fetchPublishedListingSummaries,
   mapListingsToJsonLdItems,
@@ -28,6 +29,16 @@ import { getPublishedFacilityCollections } from '@/lib/server/facilityCollection
 export const revalidate = 21600;
 
 const siteUrl = getCanonicalSiteUrl();
+const hotTubFacilityName = normalizeRegionText("Ciubăr / Jacuzzi");
+
+const nationalCopy: Partial<Record<string, { title: string; heading?: string; intro?: string }>> = {
+  cabane: {
+    title: "Cabane de închiriat în România",
+    heading: "Cabane autentice în România",
+    intro: "Alege o zonă și compară capacitatea și facilitățile cabanelor. Pentru disponibilitate și tariful sejurului, discută direct cu gazda.",
+  },
+  "a-frame": { title: "Cabane A-frame de închiriat în România" },
+};
 
 type PageProps = {
   params: Promise<{ type: string }>;
@@ -55,7 +66,7 @@ export async function generateMetadata({ params: paramsPromise }: PageProps) {
   const listingType = getTypeBySlug(params.type);
   if (!listingType) return {};
   const seoTypeLabel = getSeoTypeLabel(listingType.slug, listingType.label);
-  const title = buildSeoTypeTitle(seoTypeLabel, "în România");
+  const title = nationalCopy[listingType.slug]?.title ?? buildSeoTypeTitle(seoTypeLabel, "în România");
   const canonical = new URL(`/cazari/${listingType.slug}`, siteUrl).toString();
   const supabaseAdmin = getSupabaseAdmin();
   const publishedListingsCount = await countPublishedListingsByType(supabaseAdmin, listingType.value);
@@ -89,7 +100,10 @@ type CountyLinkItem = {
   count: number;
 };
 
-async function getTypeCountyLinks(typeSlug: string, typeValue: string): Promise<CountyLinkItem[]> {
+async function getTypeDestinationLinks(
+  typeSlug: string,
+  typeValue: string,
+): Promise<{ countyLinks: CountyLinkItem[]; apuseniHref?: string }> {
   const supabaseAdmin = getSupabaseAdmin();
   const { data, error } = await supabaseAdmin
     .from("listings")
@@ -99,22 +113,23 @@ async function getTypeCountyLinks(typeSlug: string, typeValue: string): Promise<
     .or(`publication_expires_at.is.null,publication_expires_at.gt.${new Date().toISOString()}`)
     .eq("type", typeValue);
 
-  if (error || !data) return [];
+  if (error || !data) return { countyLinks: [] };
 
+  const rows = data as Array<{ judet?: unknown }>;
   const counties = getCounties();
   const countyByKey = new Map(
     counties.map((county) => [normalizeRegionText(county.name), county] as const)
   );
   const countsBySlug = new Map<string, number>();
 
-  for (const row of data as Array<Record<string, unknown>>) {
-    const key = normalizeRegionText(String(row["judet"] || ""));
+  for (const row of rows) {
+    const key = normalizeRegionText(String(row.judet || ""));
     const county = countyByKey.get(key);
     if (!county) continue;
     countsBySlug.set(county.slug, (countsBySlug.get(county.slug) || 0) + 1);
   }
 
-  return counties
+  const countyLinks = counties
     .map((county) => ({
       countyName: county.name,
       countySlug: county.slug,
@@ -124,6 +139,16 @@ async function getTypeCountyLinks(typeSlug: string, typeValue: string): Promise<
     .filter((item) => hasMinimumPublishedListings(item.count))
     .sort((a, b) => (b.count - a.count) || a.countyName.localeCompare(b.countyName, "ro"))
     .slice(0, 12);
+
+  const apuseni = typeSlug === "a-frame" ? findRegionBySlug("apuseni") : undefined;
+  if (!apuseni) return { countyLinks };
+
+  const apuseniCounties = new Set(resolveRegionCountyNames(apuseni.counties));
+  const apuseniCount = rows.filter((row) => apuseniCounties.has(String(row.judet ?? ""))).length;
+  const apuseniHref = hasMinimumPublishedListings(apuseniCount)
+    ? buildTypeRegionPath(typeSlug, apuseni)
+    : undefined;
+  return { countyLinks, apuseniHref };
 }
 
 export default async function TypePage({ params: paramsPromise }: PageProps) {
@@ -134,9 +159,9 @@ export default async function TypePage({ params: paramsPromise }: PageProps) {
   const listingType = getTypeBySlug(params.type);
   if (!listingType) return notFound();
 
-  const [listings, countyLinks] = await Promise.all([
+  const [listings, { countyLinks, apuseniHref }] = await Promise.all([
     getTypeListings(listingType.value),
-    getTypeCountyLinks(listingType.slug, listingType.value),
+    getTypeDestinationLinks(listingType.slug, listingType.value),
   ]);
   const pageUrl = `${siteUrl}/cazari/${listingType.slug}`;
   const resultLabel =
@@ -144,6 +169,10 @@ export default async function TypePage({ params: paramsPromise }: PageProps) {
       ? `1 proprietate publicată din categoria ${listingType.singular.toLowerCase()}`
       : `${listings.length} ${listingType.label.toLowerCase()} publicate`;
   const description = `Descoperă ${resultLabel} în România, cu informații verificate și contact direct la gazdă.`;
+  const copy = nationalCopy[listingType.slug];
+  const isCabinCollection = listingType.slug === "cabane";
+  const isAFrame = listingType.slug === "a-frame";
+  const hasCountyLinks = countyLinks.length > 0;
 
   const listingJsonLd = buildListingPageJsonLd({
     siteUrl,
@@ -179,32 +208,52 @@ export default async function TypePage({ params: paramsPromise }: PageProps) {
             Colecția CABN
           </p>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-4xl">
-            {listingType.label} în România
+            {copy?.heading ?? copy?.title ?? `${listingType.label} în România`}
           </h1>
-          <p className="mt-3 leading-7 text-zinc-600 dark:text-zinc-400">{description}</p>
+          <p className="mt-3 leading-7 text-zinc-600 dark:text-zinc-400">{copy?.intro ?? description}</p>
+          {(isCabinCollection || isAFrame) && (
+            <p className="mt-3 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+              {isCabinCollection ? (
+                <>
+                  Mai poți explora <Link href="/cazari/a-frame" className="underline underline-offset-2">cabanele A‑Frame</Link> sau{" "}
+                </>
+              ) : "Vezi și "}
+              <Link href="/cazari/cu-ciubar" className="underline underline-offset-2">cazările cu ciubăr sau jacuzzi</Link>.
+            </p>
+          )}
         </header>
 
-        {countyLinks.length > 0 && (
+        {(hasCountyLinks || apuseniHref) && (
           <section className="mt-10" aria-labelledby="destinatii-categorie">
             <h2 id="destinatii-categorie" className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
               {listingType.label} după destinație
             </h2>
             <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-              Alege un județ și descoperă selecția de {listingType.label.toLowerCase()} din zonă.
+              {hasCountyLinks && (
+                <>Alege un județ și descoperă selecția de {isAFrame ? "cabane A‑Frame" : listingType.label.toLowerCase()} din zonă.</>
+              )}
+              {apuseniHref && (
+                <>
+                  {hasCountyLinks ? " Sau explorează " : "Explorează "}
+                  <Link href={apuseniHref} className="underline underline-offset-2">cabanele A‑Frame din Apuseni</Link>.
+                </>
+              )}
             </p>
-            <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {countyLinks.map((item) => (
-                <ExploreCard
-                  key={item.countySlug}
-                  href={item.href}
-                  title={item.countyName}
-                  eyebrow={listingType.label}
-                  subtitle={`${listingType.label} în județul ${item.countyName}`}
-                  count={item.count}
-                  {...getDestinationPhoto(item.countySlug)}
-                />
-              ))}
-            </div>
+            {hasCountyLinks && (
+              <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {countyLinks.map((item) => (
+                  <ExploreCard
+                    key={item.countySlug}
+                    href={item.href}
+                    title={item.countyName}
+                    eyebrow={listingType.label}
+                    subtitle={`${listingType.label} în județul ${item.countyName}`}
+                    count={item.count}
+                    {...getDestinationPhoto(item.countySlug)}
+                  />
+                ))}
+              </div>
+            )}
           </section>
         )}
 
@@ -219,6 +268,48 @@ export default async function TypePage({ params: paramsPromise }: PageProps) {
             <>Publicăm treptat locații reale, atent verificate. Revino în curând sau înscrie o proprietate.</>
           }
         />
+        {isAFrame && listings.length > 0 && (
+          <section className="mt-12" aria-labelledby="compara-cabanele">
+            <h2 id="compara-cabanele" className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+              Compară cabanele A-frame
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+              Confirmă cu gazda tariful pentru datele alese și dacă accesul la ciubăr sau jacuzzi se plătește separat.
+            </p>
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full min-w-[36rem] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-zinc-200 dark:border-white/10">
+                    <th scope="col" className="px-3 py-2">Cabană</th>
+                    <th scope="col" className="px-3 py-2">Localitate</th>
+                    <th scope="col" className="px-3 py-2">Persoane</th>
+                    <th scope="col" className="px-3 py-2">Tarif afișat</th>
+                    <th scope="col" className="px-3 py-2">Ciubăr / jacuzzi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-200 dark:divide-white/10">
+                  {listings.map((listing) => (
+                    <tr key={listing.id}>
+                      <th scope="row" className="px-3 py-2 font-medium">
+                        <Link href={`/cazare/${listing.slug}`} prefetch={false} className="underline underline-offset-2">
+                          {listing.title}
+                        </Link>
+                      </th>
+                      <td className="px-3 py-2">{listing.locatie || "—"}</td>
+                      <td className="px-3 py-2">{/\d/.test(String(listing.numarPersoane)) ? listing.numarPersoane : "—"}</td>
+                      <td className="whitespace-nowrap px-3 py-2">{listing.price > 0 ? `${listing.price.toLocaleString("ro-RO")} lei` : "La gazdă"}</td>
+                      <td className="px-3 py-2">
+                        {listing.facilitiesNames.some((name) => normalizeRegionText(name) === hotTubFacilityName)
+                          ? "Menționat"
+                          : "Întreabă gazda"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
       </main>
     </>
   );

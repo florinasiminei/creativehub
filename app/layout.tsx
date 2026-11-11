@@ -135,7 +135,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {`window.dataLayer = window.dataLayer || [];
 window.gtag = function gtag(){window.dataLayer.push(arguments);};
 window.gtag('js', new Date());
-window.gtag('config', 'G-LSJTRY32B5');`}
+window.gtag('config', 'G-LSJTRY32B5');
+window.dispatchEvent(new Event('cabn:ga-ready'));`}
         </Script>
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-LSJTRY32B5"

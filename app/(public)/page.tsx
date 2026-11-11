@@ -181,7 +181,12 @@ export default async function HomePage() {
           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
             Descoperă România
           </p>
-          <AccommodationCategories listings={listings} destinations={destinationLinks} showAllCategoriesLink />
+          <AccommodationCategories
+            listings={listings}
+            destinations={destinationLinks}
+            showAllCategoriesLink
+            typeDescription="Cauți o cabană de închiriat pentru un weekend? Explorează colecțiile și discută direct cu gazda."
+          />
         </div>
       </section>
     </>

@@ -9,12 +9,14 @@ type AccommodationCategoriesProps = {
   listings: Cazare[];
   destinations: Array<{ name: string; slug: string; count: number }>;
   showAllCategoriesLink?: boolean;
+  typeDescription?: string;
 };
 
 export default function AccommodationCategories({
   listings,
   destinations,
   showAllCategoriesLink = false,
+  typeDescription = "Alege tipul de cazare potrivit pentru vacanța ta și contactează direct proprietarul.",
 }: AccommodationCategoriesProps) {
   const types = LISTING_TYPES.map((type) => ({
     href: `/cazari/${type.slug}`,
@@ -31,7 +33,7 @@ export default function AccommodationCategories({
           Explorează cazările după tip
         </h2>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-600 dark:text-zinc-300">
-          Alege tipul de cazare potrivit pentru vacanța ta și contactează direct proprietarul.
+          {typeDescription}
         </p>
         <ExploreGrid items={types} />
       </section>

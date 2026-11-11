@@ -51,6 +51,15 @@ type RegionInput = {
   coreCities?: string[];
 };
 
+const aFrameLocationTitles: Partial<Record<string, string>> = {
+  "regiune-apuseni": "Cabane A-frame de închiriat în Apuseni",
+  "judet-bihor": "Cabane A-frame de închiriat în Bihor",
+};
+
+function getAFrameLocationTitle(typeSlug: string, location: NonNullable<ReturnType<typeof parseListingLocationSegment>>) {
+  return typeSlug === "a-frame" ? aFrameLocationTitles[location.canonicalSegment] : undefined;
+}
+
 function getLocationLabel(location: NonNullable<ReturnType<typeof parseListingLocationSegment>>): string {
   if (location.kind === "judet" && location.county) return `județul ${location.county.name}`;
   if (location.region) return location.region.name;
@@ -63,7 +72,8 @@ function getLocationTitle(
   location: NonNullable<ReturnType<typeof parseListingLocationSegment>>
 ): string {
   const seoTypeLabel = getSeoTypeLabel(typeSlug, typeLabel);
-  return buildSeoTypeTitle(seoTypeLabel, `în ${getLocationLabel(location)}`);
+  return getAFrameLocationTitle(typeSlug, location)
+    ?? buildSeoTypeTitle(seoTypeLabel, `în ${getLocationLabel(location)}`);
 }
 
 function getLocationDescription(
@@ -183,7 +193,9 @@ export default async function CazariLocationPage({ params: paramsPromise }: Page
 
   const pageUrl = `${siteUrl}${canonicalPath}`;
   const locationName = getLocationMetaLabel(location);
-  const title = `${listingType.label} în ${getLocationLabel(location)}`;
+  const showApuseniAdvice = listingType.slug === "a-frame" && location.canonicalSegment === "regiune-apuseni";
+  const title = getAFrameLocationTitle(listingType.slug, location)
+    ?? `${listingType.label} în ${getLocationLabel(location)}`;
   const description = getLocationDescription(listingType.slug, listingType.label, location, listings.length);
   const locationParentHref =
     location.kind === "judet" && location.county
@@ -291,6 +303,13 @@ export default async function CazariLocationPage({ params: paramsPromise }: Page
           </p>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-4xl">{title}</h1>
           <p className="mt-4 max-w-2xl leading-7 text-zinc-600 dark:text-zinc-400">{description}</p>
+          {showApuseniAdvice && (
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+              Verifică localitatea înainte să alegi cabana. Dacă mergi iarna, întreabă gazda dacă ultimul
+              tronson se deszăpezește, dacă ai nevoie de lanțuri și unde poți parca.
+              Pentru un sejur cu ciubăr, confirmă dacă este privat și cât costă încălzirea.
+            </p>
+          )}
         </header>
 
         <ListingCollectionResults

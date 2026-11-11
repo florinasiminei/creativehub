@@ -7,6 +7,7 @@ import SubtleBackLink from "@/components/SubtleBackLink";
 import PropertyImageGrid from "@/components/listing/PropertyImageGrid";
 import { resolveFacilityIcon } from "@/lib/facilityIcons";
 import { resolveListingTypeIcon } from "@/lib/listingTypeIcons";
+import { trackListingContact } from "@/lib/listingJourneyAnalytics";
 import { getCanonicalSiteUrl } from "@/lib/siteUrl";
 import { Check, Copy, MapPin, PhoneCall, Share2, Users } from "lucide-react";
 
@@ -332,6 +333,7 @@ export default function ListingClient({ data }: Props) {
                         {data.phone && telHref && (
                           <a
                             href={`tel:${telHref}`}
+                            onClick={() => trackListingContact("phone")}
                             className="group inline-flex w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-[#34D399] via-[#10B981] to-[#047857] px-5 py-4 text-base font-semibold text-white shadow-lg shadow-emerald-500/20 transition-all duration-300 hover:-translate-y-[2px] hover:shadow-emerald-500/30 focus-visible:-translate-y-[1px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#10B981]"
                           >
                             <PhoneCall size={18} aria-hidden="true" />
@@ -341,6 +343,7 @@ export default function ListingClient({ data }: Props) {
                         {whatsappHref ? (
                           <a
                             href={whatsappHref}
+                            onClick={() => trackListingContact("whatsapp")}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="group inline-flex w-full items-center justify-center gap-3 rounded-xl border border-[#25D366] bg-white/40 px-5 py-4 text-base font-semibold text-[#0c4a2f] shadow-sm transition-all duration-300 hover:-translate-y-[2px] hover:bg-[#25D366]/10 hover:shadow-md focus-visible:-translate-y-[1px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#25D366] dark:bg-transparent dark:text-[#25D366]"

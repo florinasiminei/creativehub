@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
+import { trackCollectionListingView } from "@/lib/listingJourneyAnalytics";
 
 const VISIT_KEY = "cabn_pageview_visit_v1";
 const VISIT_TIMEOUT_MS = 30 * 60 * 1000;
@@ -78,9 +79,13 @@ function getAnonId() {
 export default function PageviewTracker() {
   const pathname = usePathname();
   const visit = useRef<Visit | null>(null);
+  const previousPath = useRef<string | null>(null);
 
   useEffect(() => {
     if (!pathname) return;
+    trackCollectionListingView(pathname, previousPath.current);
+    previousPath.current = pathname;
+
     const firstPageview = visit.current === null;
     const currentVisit = getVisit(visit.current ?? readVisit(), firstPageview);
     visit.current = currentVisit;
