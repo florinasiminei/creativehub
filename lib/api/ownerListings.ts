@@ -38,7 +38,8 @@ async function getOwnerRequestContext(
 export async function createOwnerListing(
   payload: OwnerListingPayload,
   facilities: string[],
-  expectedOwnerId: string
+  expectedOwnerId: string,
+  creationId: string
 ) {
   const ownerContext = await getOwnerRequestContext(expectedOwnerId);
   const response = await fetchOwnerApi(ownerContext.expectedOwnerId, '/api/listing-create', {
@@ -51,11 +52,15 @@ export async function createOwnerListing(
       ...payload,
       facilities,
       expectedOwnerId: ownerContext.expectedOwnerId,
+      creationId,
     }),
   });
   const body = await readApiBody(response);
   if (!response.ok) throw new Error(body?.error || 'Eroare la crearea cazarii');
-  return body as { ok: true; id: string };
+  if (body?.id !== creationId || body?.ok !== true) {
+    throw new Error('Eroare la crearea cazarii');
+  }
+  return body as { ok: true; id: string; existing?: boolean };
 }
 
 export async function updateOwnerListing(

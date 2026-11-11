@@ -2,10 +2,12 @@ import type { ListingWizardStep } from '@/components/forms/ListingWizard';
 import {
   createEmptyListingFormFields,
   type ExistingImage as ListingImage,
+  type ListingFormFields,
+  type LocationData,
 } from '@/lib/listings/listingForm';
 import type { ListingWizardStepId } from '@/lib/listings/listingSubmissionRules';
 
-export type AddPropertyWizardStep = ListingWizardStep & {
+export type OwnerPropertyWizardStep = ListingWizardStep & {
   id: ListingWizardStepId;
   formSection: 'identity' | 'capacity' | 'description' | 'location' | 'gallery' | 'contact';
   helperText: string;
@@ -17,16 +19,35 @@ export type UploadResult = {
   display_order: number;
 };
 
-export type AddPropertyForm = ReturnType<typeof createInitialAddPropertyForm>;
+export type OwnerPropertyFields = ReturnType<typeof createInitialOwnerPropertyFields>;
 
-export function createInitialAddPropertyForm() {
+export type OwnerPropertyInitialListing = {
+  id: string;
+  formData: ListingFormFields;
+  locationData: LocationData | null;
+  facilities: string[];
+  images: ListingImage[];
+  isPublished: boolean;
+  termsAccepted: boolean;
+  newsletterOptIn: boolean;
+};
+
+export function hasValidPropertyCoordinates(location: LocationData | null) {
+  if (!location) return false;
+  return Number.isFinite(location.latitude) && Number.isFinite(location.longitude)
+    && location.latitude >= -90 && location.latitude <= 90
+    && location.longitude >= -180 && location.longitude <= 180
+    && (location.latitude !== 0 || location.longitude !== 0);
+}
+
+export function createInitialOwnerPropertyFields() {
   return {
     ...createEmptyListingFormFields(),
     honeypot: '',
   };
 }
 
-export const WIZARD_STEPS: AddPropertyWizardStep[] = [
+export const WIZARD_STEPS: OwnerPropertyWizardStep[] = [
   {
     id: 'identity',
     label: 'Proprietate',

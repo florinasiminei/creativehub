@@ -6,8 +6,16 @@ import { instagramPromotionEnabled } from '@/lib/server/instagramPromotionConfig
 import type { InstagramPromotionSummary } from '@/lib/social/instagram';
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const OVERVIEW_TIMEOUT_MS = 15_000;
+
+class OwnerOverviewTimeoutError extends Error {
+  constructor() {
+    super("Încărcarea contului durează prea mult. Încearcă din nou.");
+  }
+}
 
 type PendingPeriodRow = {
   id: string;
@@ -31,6 +39,50 @@ function getFirstImage(row: any) {
 }
 
 export async function GET(request: Request) {
+  const controller = new AbortController();
+  const startedAt = performance.now();
+  const timings: string[] = [];
+  const pendingReads = new Set<string>();
+  const trackRead = async <T,>(name: string, query: PromiseLike<T>) => {
+    const readStartedAt = performance.now();
+    pendingReads.add(name);
+    try { return await query; }
+    finally {
+      pendingReads.delete(name);
+      timings.push(`${name};dur=${(performance.now() - readStartedAt).toFixed(1)}`);
+    }
+  };
+  const withTimings = (response: Response) => {
+    response.headers.set("Server-Timing", [...timings, `total;dur=${(performance.now() - startedAt).toFixed(1)}`].join(", "));
+    return response;
+  };
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      const error = new OwnerOverviewTimeoutError();
+      controller.abort(error);
+      reject(error);
+    }, OVERVIEW_TIMEOUT_MS);
+  });
+  try {
+    return withTimings(await Promise.race([loadOwnerOverview(request, controller.signal, trackRead), timeout]));
+  } catch (error) {
+    if (!(error instanceof OwnerOverviewTimeoutError)) throw error;
+    console.warn("[owner-dashboard] Request timed out", { pendingReads: [...pendingReads], durationMs: Math.round(performance.now() - startedAt) });
+    return withTimings(NextResponse.json(
+      { code: "OWNER_PORTAL_TIMEOUT", error: error.message },
+      { status: 504, headers: { "Cache-Control": "private, no-store" } }
+    ));
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function loadOwnerOverview(
+  request: Request,
+  signal: AbortSignal,
+  trackRead: <T>(name: string, query: PromiseLike<T>) => Promise<T>,
+) {
   try {
     const limit = rateLimit(request, {
       windowMs: 60_000,
@@ -48,7 +100,8 @@ export async function GET(request: Request) {
     }
 
     const supabase = getSupabaseAdmin();
-    const user = await getVerifiedOwner(request, supabase);
+    const user = await trackRead("auth", getVerifiedOwner(request, supabase));
+    signal.throwIfAborted();
     if (!user?.id || !user.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -58,7 +111,7 @@ export async function GET(request: Request) {
       { data: claims, error: claimsError },
       { data: plan, error: planError },
     ] = await Promise.all([
-      supabase
+      trackRead("listings", supabase
         .from("listings")
         .select(
           "id, title, slug, is_published, created_at, published_at, publication_expires_at, renewal_due_at, publication_status, listing_images(image_url, display_order)"
@@ -69,63 +122,66 @@ export async function GET(request: Request) {
           foreignTable: "listing_images",
           ascending: true,
         })
-        .limit(1, { foreignTable: "listing_images" }),
-      supabase
+        .limit(1, { foreignTable: "listing_images" })
+        .abortSignal(signal)),
+      trackRead("claims", supabase
         .from("listing_owner_claims")
         .select(
           "id, status, created_at, reviewed_at, listings(title, slug)"
         )
         .eq("user_id", user.id)
-        .order("created_at", { ascending: false }),
-      supabase
+        .order("created_at", { ascending: false })
+        .abortSignal(signal)),
+      trackRead("plan", supabase
         .from("publication_plans")
         .select(
           "code, name, amount_minor, currency, duration_months, renewal_window_days, grace_days"
         )
         .eq("code", "annual_standard")
         .eq("active", true)
-        .maybeSingle(),
+        .abortSignal(signal)
+        .maybeSingle()),
     ]);
 
     if (listingsError) throw listingsError;
     if (claimsError) throw claimsError;
     if (planError) throw planError;
-
     const listingRows = listings || [];
     const listingIds = listingRows.map((listing: any) =>
       String(listing.id)
     );
     const promotionEnabled = instagramPromotionEnabled();
-    let instagramPromotionStatusAvailable = promotionEnabled;
-    const promotionsByListingId = new Map<string, InstagramPromotionSummary>();
-    if (promotionEnabled && listingIds.length > 0) {
-      try {
-        const { data, error } = await supabase.from('social_promotions')
+    const [promotionsResult, pendingPeriodsResult] = await Promise.all([
+      promotionEnabled && listingIds.length > 0
+        ? trackRead("promotions", supabase.from('social_promotions')
           .select('listing_reference, status, approved_at, needs_reapproval, scheduled_for, published_at, external_url, last_error')
-          .eq('platform', 'instagram').eq('owner_id', user.id).in('listing_reference', listingIds);
-        if (error) throw error;
-        const promotions = (data || []) as Array<InstagramPromotionSummary & { listing_reference: string }>;
-        promotions.forEach(({ listing_reference, ...promotion }) => promotionsByListingId.set(listing_reference, promotion));
-      } catch (error) {
-        instagramPromotionStatusAvailable = false;
-        const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : 'unknown';
-        console.warn('[owner-dashboard] Instagram promotion status is unavailable', { code });
-      }
-    }
-    let pendingPeriods: PendingPeriodRow[] = [];
+          .eq('platform', 'instagram').eq('owner_id', user.id).in('listing_reference', listingIds).abortSignal(signal))
+          .catch((error: unknown) => ({ data: null, error }))
+        : { data: [], error: null },
+      listingIds.length > 0
+        ? trackRead("payments", supabase
+          .from("listing_publication_periods")
+          .select(
+            "id, listing_id, status, listing_publication_payments(status, checkout_url, checkout_expires_at)"
+          )
+          .in("listing_id", listingIds)
+          .eq("status", "pending")
+          .order("created_at", { ascending: false })
+          .abortSignal(signal))
+        : { data: [], error: null },
+    ]);
+    signal.throwIfAborted();
+    if (pendingPeriodsResult.error) throw pendingPeriodsResult.error;
 
-    if (listingIds.length > 0) {
-      const { data, error } = await supabase
-        .from("listing_publication_periods")
-        .select(
-          "id, listing_id, status, listing_publication_payments(status, checkout_url, checkout_expires_at)"
-        )
-        .in("listing_id", listingIds)
-        .eq("status", "pending")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      pendingPeriods = (data || []) as PendingPeriodRow[];
+    const instagramPromotionStatusAvailable = promotionEnabled && !promotionsResult.error;
+    if (promotionsResult.error) {
+      const error = promotionsResult.error;
+      const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : 'unknown';
+      console.warn('[owner-dashboard] Instagram promotion status is unavailable', { code });
     }
+    const promotions = (promotionsResult.data || []) as Array<InstagramPromotionSummary & { listing_reference: string }>;
+    const promotionsByListingId = new Map(promotions.map(({ listing_reference, ...promotion }) => [listing_reference, promotion]));
+    const pendingPeriods = (pendingPeriodsResult.data || []) as PendingPeriodRow[];
 
     const pendingByListingId = new Map<string, PendingPeriodRow>();
     pendingPeriods.forEach((period) => {
@@ -243,6 +299,7 @@ export async function GET(request: Request) {
     response.headers.set("Cache-Control", "private, no-store");
     return response;
   } catch (error) {
+    if (signal.aborted) throw signal.reason;
     if (error instanceof OwnerAuthUnavailableError) {
       return NextResponse.json(
         { error: error.message },
@@ -256,7 +313,6 @@ export async function GET(request: Request) {
     if (["42703", "42P01", "PGRST200", "PGRST202", "PGRST204", "PGRST205"].includes(databaseCode)) {
       console.warn("[owner-dashboard] Schema portalului proprietarilor este incompletă.", {
         code: databaseCode,
-        migration: "db/2026-07-27_owner_portal_annual_renewals.sql",
       });
       return NextResponse.json(
         {

@@ -3,7 +3,7 @@ import { after } from 'next/server';
 
 export function instagramPromotionEnabled() {
   const configured = process.env.INSTAGRAM_PROMOTION_ENABLED;
-  return configured === undefined ? process.env.NODE_ENV === 'development' : configured === 'true';
+  return configured === undefined || configured === 'true';
 }
 
 export function instagramPromotionConfiguration() {

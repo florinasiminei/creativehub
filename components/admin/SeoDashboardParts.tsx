@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
+import { useId, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { getPageviewSources } from "@/app/(backoffice)/admin-seo/pageview-sources";
 import SimpleTopSearchInput from "@/components/SimpleTopSearchInput";
 import {
   INDEX_FILTER_OPTIONS,
@@ -217,9 +218,33 @@ export function SeoResultsTable({
   onTriggerAction: (id: string, action: "toggle_publish" | "toggle_noindex") => void;
   onCopyLink: (url: string | null) => void;
 }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const dialogTitleId = useId();
+  const [selected, setSelected] = useState<{
+    path: string;
+    window: ViewsWindow;
+    report?: Awaited<ReturnType<typeof getPageviewSources>>;
+  } | null>(null);
+
+  async function openSources(path: string) {
+    if (!dialog.current || dialog.current.open) return;
+    const selection = { path, window: viewsWindow };
+    setSelected(selection);
+    dialog.current.showModal();
+
+    let report: Awaited<ReturnType<typeof getPageviewSources>>;
+    try {
+      report = await getPageviewSources(path, selection.window);
+    } catch {
+      report = null;
+    }
+    setSelected((current) => (current === selection ? { ...selection, report } : current));
+  }
+
   const renderIndicator = (field: SortField) => (
     <SeoSortIndicator active={sortField === field} direction={sortDir} />
   );
+  const report = selected?.report;
 
   return (
     <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
@@ -281,6 +306,8 @@ export function SeoResultsTable({
         <tbody>
           {rows.map((row) => {
             const rowLoading = loadingId === row.id;
+            const pageviews = getViewsByWindow(row, viewsWindow);
+            const path = row.url;
 
             return (
               <tr key={row.id} className="border-t border-gray-100 dark:border-zinc-800">
@@ -303,7 +330,19 @@ export function SeoResultsTable({
                   ) : null}
                 </td>
                 <td className="px-2 py-2 align-top">
-                  <div>{getViewsByWindow(row, viewsWindow)}</div>
+                  {path && pageviews > 0 ? (
+                    <button
+                      type="button"
+                      aria-haspopup="dialog"
+                      aria-label={`Surse pentru ${path}, ${pageviews} vizualizări`}
+                      onClick={() => void openSources(path)}
+                      className="font-semibold text-emerald-700 underline underline-offset-2 hover:text-emerald-950 dark:text-emerald-300 dark:hover:text-emerald-100"
+                    >
+                      {pageviews}
+                    </button>
+                  ) : (
+                    <div>{pageviews}</div>
+                  )}
                   <div className="text-xs text-gray-500 dark:text-gray-400">
                     Unici: {getUniqueViewsByWindow(row, viewsWindow)}
                   </div>
@@ -343,6 +382,65 @@ export function SeoResultsTable({
           )}
         </tbody>
       </table>
+      <dialog
+        ref={dialog}
+        aria-labelledby={dialogTitleId}
+        onClose={() => setSelected(null)}
+        className="m-auto max-h-[85vh] w-11/12 max-w-lg overflow-y-auto rounded-2xl border border-gray-200 bg-white p-5 text-gray-900 shadow-xl backdrop:bg-black/50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-gray-100"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h2 id={dialogTitleId} className="text-base font-semibold">Surse de trafic</h2>
+            {selected && (
+              <p className="mt-1 break-all text-xs text-gray-500 dark:text-gray-400">
+                {selected.path} · {getViewsWindowLabel(selected.window)}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => dialog.current?.close()}
+            className="shrink-0 rounded-md border border-gray-200 px-2 py-1 text-sm hover:bg-gray-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+          >
+            Închide
+          </button>
+        </div>
+        {report === undefined && <p role="status" className="mt-4 text-sm">Se încarcă sursele…</p>}
+        {report === null && <p role="alert" className="mt-4 text-sm">Sursele nu au putut fi încărcate.</p>}
+        {report && (report.total === 0 ? (
+          <p className="mt-4 text-sm">Nu sunt vizualizări în acest interval.</p>
+        ) : (
+          <>
+            {report.limited && (
+              <p className="mt-4 rounded-lg bg-amber-50 p-2 text-xs text-amber-900 dark:bg-amber-900/30 dark:text-amber-200">
+                Raportul și procentele acoperă cele mai recente {report.total} de vizualizări din interval.
+              </p>
+            )}
+            <ul className="mt-4 divide-y divide-gray-100 text-sm dark:divide-zinc-800">
+              {report.sources.map(({ source, medium, campaign, views }) => (
+                <li key={JSON.stringify([source, medium, campaign])} className="flex justify-between gap-4 py-2">
+                  <div className="min-w-0 break-words">
+                    <div>{source}</div>
+                    {(medium || campaign) && (
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {[medium, campaign].filter(Boolean).join(" · ")}
+                      </div>
+                    )}
+                  </div>
+                  <div className="shrink-0 tabular-nums">
+                    {views} · {(views / report.total).toLocaleString("ro-RO", { style: "percent", maximumFractionDigits: 1 })}
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {report.historicalViews > 0 && (
+              <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                Referrer detectat pentru vizualizările istorice. Sursa vizitei este estimată pentru aceste date.
+              </p>
+            )}
+          </>
+        ))}
+      </dialog>
     </div>
   );
 }

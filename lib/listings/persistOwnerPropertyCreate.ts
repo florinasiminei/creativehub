@@ -5,8 +5,9 @@ import {
   updateOwnerListing,
 } from '@/lib/api/ownerListings';
 
-type PersistAddPropertyOptions = {
+type PersistOwnerPropertyCreateOptions = {
   listingId: string | null;
+  creationId: string;
   expectedOwnerId: string;
   payload: Record<string, unknown>;
   facilities: string[];
@@ -16,8 +17,9 @@ type PersistAddPropertyOptions = {
   onListingReady: (listingId: string) => void;
 };
 
-export default async function persistAddProperty({
+export default async function persistOwnerPropertyCreate({
   listingId,
+  creationId,
   expectedOwnerId,
   payload,
   facilities,
@@ -25,23 +27,26 @@ export default async function persistAddProperty({
   uploadPendingFiles,
   getOrderedImageIds,
   onListingReady,
-}: PersistAddPropertyOptions) {
-  let activeListingId = listingId;
-
-  if (activeListingId) {
-    await updateOwnerListing(
-      { id: activeListingId, ...payload, facilities },
-      expectedOwnerId,
-    );
-  } else {
-    const created = await createOwnerListing(
-      { ...payload, honeypot },
-      facilities,
-      expectedOwnerId,
-    );
-    activeListingId = created.id;
-    onListingReady(activeListingId);
+}: PersistOwnerPropertyCreateOptions) {
+  if (listingId && listingId !== creationId) {
+    throw new Error('Eroare la crearea cazarii');
   }
+  const created = await createOwnerListing(
+    { ...payload, honeypot },
+    facilities,
+    expectedOwnerId,
+    creationId,
+  );
+  const activeListingId = created.id;
+  onListingReady(activeListingId);
+
+  const editablePayload = { ...payload };
+  delete editablePayload.slug;
+  delete editablePayload.is_published;
+  await updateOwnerListing(
+    { ...editablePayload, id: activeListingId, facilities },
+    expectedOwnerId,
+  );
 
   await uploadPendingFiles(activeListingId, expectedOwnerId);
 

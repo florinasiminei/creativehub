@@ -9,7 +9,7 @@ export type OwnerSubmissionCheck =
   | { status: 'ready'; ownerId: string; email: string }
   | { status: 'needs-confirmation'; email: string };
 
-export default function useAddPropertyOwnerAuth(session: Session) {
+export default function useOwnerPropertyAccount(session: Session) {
   const ownerId = session.user.id;
   const activeOwnerEmail = session.user.email?.trim().toLowerCase() || '';
   const ownerIdentity = `${ownerId}:${activeOwnerEmail}`;

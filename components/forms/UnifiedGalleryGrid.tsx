@@ -59,7 +59,7 @@ function StatusBadge({ status }: { status: GalleryItem['status'] }) {
     return (
       <div className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200">
         <CheckCircle2 size={12} />
-        Ready
+        Încărcată
       </div>
     );
   }
@@ -68,7 +68,7 @@ function StatusBadge({ status }: { status: GalleryItem['status'] }) {
     return (
       <div className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-1 text-[11px] font-semibold text-red-700 dark:bg-red-900/30 dark:text-red-200">
         <AlertCircle size={12} />
-        Failed
+        Eșuată
       </div>
     );
   }
@@ -77,7 +77,7 @@ function StatusBadge({ status }: { status: GalleryItem['status'] }) {
     return (
       <div className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-200">
         <LoaderCircle size={12} className="animate-spin" />
-        Uploading
+        Se încarcă
       </div>
     );
   }
@@ -86,7 +86,7 @@ function StatusBadge({ status }: { status: GalleryItem['status'] }) {
     return (
       <div className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
         <LoaderCircle size={12} className="animate-spin" />
-        Preparing
+        Se pregătește
       </div>
     );
   }
@@ -94,7 +94,7 @@ function StatusBadge({ status }: { status: GalleryItem['status'] }) {
   return (
     <div className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-semibold text-gray-700 dark:bg-zinc-800 dark:text-gray-200">
       <Clock3 size={12} />
-      Queued
+      În așteptare
     </div>
   );
 }
@@ -350,7 +350,7 @@ export default function UnifiedGalleryGrid({
                       {isExisting ? item.image.alt || `Imagine ${item.overallIndex + 1}` : item.file.name}
                     </p>
                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      {isExisting ? 'Deja urcata pe draft' : item.status === 'uploading' ? 'Se incarca acum' : item.status === 'failed' ? 'A esuat, ramane in coada' : 'In asteptare pentru upload'}
+                      {isExisting ? 'Fotografie salvată' : item.status === 'uploading' ? 'Se încarcă acum' : item.status === 'failed' ? 'Încărcarea a eșuat. Poți reîncerca.' : 'În așteptare pentru încărcare'}
                     </p>
                   </div>
                 </div>

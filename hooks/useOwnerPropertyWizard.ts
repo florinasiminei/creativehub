@@ -7,30 +7,34 @@ import {
   type ListingStepValidation,
   type ListingStepValidationInput,
 } from '@/lib/listings/listingSubmissionRules';
-import { WIZARD_STEPS } from './add-property-model';
+import { WIZARD_STEPS } from '@/lib/listings/ownerPropertyForm';
 
-type UseAddPropertyWizardOptions = {
+type UseOwnerPropertyWizardOptions = {
   validationInput: ListingStepValidationInput;
   clearFeedback: () => void;
   setError: (message: string) => void;
   onStepChanged?: () => void;
 };
 
-export default function useAddPropertyWizard({
+export default function useOwnerPropertyWizard({
   validationInput,
   clearFeedback,
   setError,
   onStepChanged,
-}: UseAddPropertyWizardOptions) {
+}: UseOwnerPropertyWizardOptions) {
   const [activeStepIndex, setActiveStepIndex] = useState(0);
-  const [furthestStepIndex, setFurthestStepIndex] = useState(0);
   const [showValidation, setShowValidation] = useState(false);
   const [validationAttempt, setValidationAttempt] = useState(0);
 
   const activeStep = WIZARD_STEPS[activeStepIndex];
-  const currentStepValidation = useMemo(
-    () => validateListingWizardStep(activeStep.id, validationInput),
-    [activeStep.id, validationInput],
+  const stepValidations = useMemo(
+    () => WIZARD_STEPS.map((step) => validateListingWizardStep(step.id, validationInput)),
+    [validationInput],
+  );
+  const currentStepValidation = stepValidations[activeStepIndex];
+  const stepCompletion = useMemo(
+    () => stepValidations.map((validation) => !validation.error),
+    [stepValidations],
   );
 
   const showStepError = useCallback((validation: ListingStepValidation) => {
@@ -44,7 +48,6 @@ export default function useAddPropertyWizard({
     clearFeedback();
     setShowValidation(false);
     setActiveStepIndex(boundedIndex);
-    setFurthestStepIndex((previous) => Math.max(previous, boundedIndex));
     onStepChanged?.();
   }, [clearFeedback, onStepChanged]);
 
@@ -58,19 +61,6 @@ export default function useAddPropertyWizard({
     return true;
   }, [activeStepIndex, clearFeedback, currentStepValidation, moveToStep, showStepError]);
 
-  const selectStep = useCallback((nextIndex: number) => {
-    if (nextIndex > activeStepIndex) {
-      for (let stepIndex = activeStepIndex; stepIndex < nextIndex; stepIndex += 1) {
-        const validation = validateListingWizardStep(WIZARD_STEPS[stepIndex].id, validationInput);
-        if (!validation.error) continue;
-        if (stepIndex !== activeStepIndex) moveToStep(stepIndex);
-        showStepError(validation);
-        return;
-      }
-    }
-    moveToStep(nextIndex);
-  }, [activeStepIndex, moveToStep, showStepError, validationInput]);
-
   const findFirstInvalidStep = useCallback(() => {
     const firstInvalid = findFirstInvalidListingStep(validationInput);
     if (!firstInvalid) return null;
@@ -83,13 +73,13 @@ export default function useAddPropertyWizard({
   return {
     activeStep,
     activeStepIndex,
-    furthestStepIndex,
+    stepCompletion,
     showValidation,
     validationAttempt,
     currentStepValidation,
     moveToStep,
     continueToNextStep,
-    selectStep,
+    selectStep: moveToStep,
     findFirstInvalidStep,
   };
 }

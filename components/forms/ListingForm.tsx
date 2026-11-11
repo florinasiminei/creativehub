@@ -100,6 +100,8 @@ export default function ListingForm({
     );
   }, [
     countyHasMatch,
+    formData.judet,
+    formData.localitate,
     localityHasMatch,
     locationsError,
     locationsReady,

@@ -10,11 +10,15 @@ import {
 import { LISTING_TYPES } from '@/lib/listingTypes';
 import { slugify } from '@/lib/utils';
 import { queueInstagramPromotionSync } from '@/lib/server/instagramPromotionConfig';
+import { getInstagramSourceMutationFailure, withInstagramSourceMutation } from '@/lib/server/instagramPromotionMutation';
+import { PromotionError } from '@/lib/server/instagramPromotions';
 import {
   validateCapacity,
   validateDescriptionLength,
   validatePhone,
 } from '@/lib/validation/listing';
+
+export const maxDuration = 180;
 
 const MIN_DESCRIPTION_LENGTH = 200;
 const MAX_DESCRIPTION_LENGTH = 1000;
@@ -267,10 +271,6 @@ export async function POST(request: Request) {
       }
     }
 
-    if (access.kind === 'owner') {
-      await invalidateSubmittedOwnerListing(supabaseAdmin, String(id), access.ownerId);
-    }
-
     const updateData: any = {};
     if (hasRole) {
       for (const field of ['seo_title', 'seo_description'] as const) {
@@ -377,72 +377,107 @@ export async function POST(request: Request) {
       }
     }
 
-    let updateQuery = supabaseAdmin.from('listings').update(updateData).eq('id', id);
-    if (access.kind === 'owner') updateQuery = updateQuery.eq('owner_id', access.ownerId);
-    let { data: updatedRow, error: upErr } = await updateQuery.select('id').maybeSingle();
-    if (
-      upErr &&
-      access.kind !== 'owner' &&
-      /lat|lng|latitude|longitude|search_radius|camere|paturi|bai|newsletter_opt_in|terms_accepted|terms_accepted_at|published_at|publication_expires_at|renewal_due_at|publication_status/i.test(upErr.message || '')
-    ) {
-      const fallbackUpdate = { ...updateData };
-      const message = String(upErr.message || '');
-      if (/published_at|publication_expires_at|renewal_due_at|publication_status/i.test(message)) {
-        delete fallbackUpdate.published_at;
-        delete fallbackUpdate.publication_expires_at;
-        delete fallbackUpdate.renewal_due_at;
-        delete fallbackUpdate.publication_status;
+    let facilitiesChanged = normalizedFacilities !== null;
+    const mutationResponse = await withInstagramSourceMutation(supabaseAdmin, String(id), async () => {
+      if (access.kind === 'owner') {
+        await invalidateSubmittedOwnerListing(supabaseAdmin, String(id), access.ownerId);
       }
-      if (/newsletter_opt_in/i.test(message)) {
-        delete fallbackUpdate.newsletter_opt_in;
-      }
-      if (/terms_accepted|terms_accepted_at/i.test(message)) {
-        delete fallbackUpdate.terms_accepted;
-        delete fallbackUpdate.terms_accepted_at;
-      }
-      if (/search_radius/i.test(message) && !/lat|lng|latitude|longitude/i.test(message)) {
-        delete fallbackUpdate.search_radius;
-      }
-      if (/lat|lng|latitude|longitude/i.test(message)) {
-        delete fallbackUpdate.lat;
-        delete fallbackUpdate.lng;
-        delete fallbackUpdate.search_radius;
-      }
-      const fallbackQuery = supabaseAdmin.from('listings').update(fallbackUpdate).eq('id', id);
-      ({ data: updatedRow, error: upErr } = await fallbackQuery.select('id').maybeSingle());
-    }
-    if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
-    if (!updatedRow) return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
-
-    // update facilities
-    if (normalizedFacilities) {
-      const { error: facilitiesReplaceError } = await supabaseAdmin.rpc(
-        'replace_listing_facilities',
-        {
-          p_listing_id: String(id),
-          p_facility_ids: normalizedFacilities,
-          p_expected_owner_id:
-            access.kind === 'owner' ? access.ownerId : null,
+      let updateQuery = supabaseAdmin.from('listings').update(updateData).eq('id', id);
+      if (access.kind === 'owner') updateQuery = updateQuery.eq('owner_id', access.ownerId);
+      let { data: updatedRow, error: upErr } = await updateQuery.select('id').maybeSingle();
+      if (
+        upErr &&
+        access.kind !== 'owner' &&
+        /lat|lng|latitude|longitude|search_radius|camere|paturi|bai|newsletter_opt_in|terms_accepted|terms_accepted_at|published_at|publication_expires_at|renewal_due_at|publication_status/i.test(upErr.message || '')
+      ) {
+        const fallbackUpdate = { ...updateData };
+        const message = String(upErr.message || '');
+        if (/published_at|publication_expires_at|renewal_due_at|publication_status/i.test(message)) {
+          delete fallbackUpdate.published_at;
+          delete fallbackUpdate.publication_expires_at;
+          delete fallbackUpdate.renewal_due_at;
+          delete fallbackUpdate.publication_status;
         }
-      );
-      if (facilitiesReplaceError) {
-        const ownerChanged = /proprietarul s-a schimbat/i.test(
-          facilitiesReplaceError.message || ''
-        );
-        return NextResponse.json(
-          {
-            error: ownerChanged
-              ? 'Accesul la proprietate s-a schimbat. Reincarca pagina.'
-              : facilitiesReplaceError.message,
-          },
-          { status: ownerChanged ? 409 : 500 }
-        );
+        if (/newsletter_opt_in/i.test(message)) {
+          delete fallbackUpdate.newsletter_opt_in;
+        }
+        if (/terms_accepted|terms_accepted_at/i.test(message)) {
+          delete fallbackUpdate.terms_accepted;
+          delete fallbackUpdate.terms_accepted_at;
+        }
+        if (/search_radius/i.test(message) && !/lat|lng|latitude|longitude/i.test(message)) {
+          delete fallbackUpdate.search_radius;
+        }
+        if (/lat|lng|latitude|longitude/i.test(message)) {
+          delete fallbackUpdate.lat;
+          delete fallbackUpdate.lng;
+          delete fallbackUpdate.search_radius;
+        }
+        const fallbackQuery = supabaseAdmin.from('listings').update(fallbackUpdate).eq('id', id);
+        ({ data: updatedRow, error: upErr } = await fallbackQuery.select('id').maybeSingle());
       }
-    }
+      if (upErr) return NextResponse.json({ error: upErr.message }, { status: 500 });
+      if (!updatedRow) return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
 
-    if (access.kind === 'owner') {
-      await invalidateSubmittedOwnerListing(supabaseAdmin, String(id), access.ownerId);
-    }
+      // update facilities
+      if (normalizedFacilities && facilitiesChanged) {
+        const { error: facilitiesReplaceError } = await supabaseAdmin.rpc(
+          'replace_listing_facilities',
+          {
+            p_listing_id: String(id),
+            p_facility_ids: normalizedFacilities,
+            p_expected_owner_id:
+              access.kind === 'owner' ? access.ownerId : null,
+          }
+        );
+        if (facilitiesReplaceError) {
+          const ownerChanged = /proprietarul s-a schimbat/i.test(
+            facilitiesReplaceError.message || ''
+          );
+          return NextResponse.json(
+            {
+              error: ownerChanged
+                ? 'Accesul la proprietate s-a schimbat. Reincarca pagina.'
+                : facilitiesReplaceError.message,
+            },
+            { status: ownerChanged ? 409 : 500 }
+          );
+        }
+      }
+
+      if (access.kind === 'owner') {
+        await invalidateSubmittedOwnerListing(supabaseAdmin, String(id), access.ownerId);
+      }
+      return null;
+    }, {
+      actor: access.kind === 'owner' ? access.ownerId : 'staff',
+      shouldInvalidate: async () => {
+        let currentQuery = supabaseAdmin.from('listings')
+          .select('title, type, judet, city, sat, capacity, price, description, camere, paturi, bai, is_published')
+          .eq('id', id);
+        if (access.kind === 'owner') currentQuery = currentQuery.eq('owner_id', access.ownerId);
+        const { data: current, error: currentError } = await currentQuery.maybeSingle();
+        if (currentError) throw currentError;
+        if (!current) throw new PromotionError('Listing not found', 404);
+        if (normalizedFacilities !== null) {
+          const { data: currentFacilities, error: facilitiesError } = await supabaseAdmin.from('listing_facilities')
+            .select('facility_id').eq('listing_id', id);
+          if (facilitiesError) throw facilitiesError;
+          const existingIds = (currentFacilities || []).map((facility) => String(facility.facility_id)).sort();
+          facilitiesChanged = JSON.stringify(existingIds) !== JSON.stringify([...normalizedFacilities].sort());
+        }
+        const numericFields = new Set(['price', 'camere', 'paturi', 'bai']);
+        const fields = ['title', 'type', 'judet', 'city', 'sat', 'capacity', 'price', 'description', 'camere', 'paturi', 'bai'] as const;
+        return facilitiesChanged || updateData.is_published === false || fields.some((field) => {
+          if (updateData[field] === undefined) return false;
+          const previous = current[field];
+          const next = updateData[field];
+          return numericFields.has(field) && previous !== null && next !== null
+            ? Number(previous) !== Number(next) : previous !== next;
+        });
+      },
+    });
+    if (mutationResponse) return mutationResponse;
 
     queueInstagramPromotionSync(String(id));
 
@@ -487,6 +522,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {
+    const promotionFailure = getInstagramSourceMutationFailure(err);
+    if (promotionFailure) return NextResponse.json({ error: promotionFailure.message }, { status: promotionFailure.status });
     console.error(err);
     return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
   }

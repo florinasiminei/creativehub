@@ -21,9 +21,9 @@ export default function DarkModeToggle() {
       type="button"
       onClick={() => setTheme(currentTheme === "dark" ? "light" : "dark")}
       aria-label={currentTheme === "dark" ? "Activează tema luminoasă" : "Activează tema întunecată"}
-      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-600 shadow-sm outline-none transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-emerald-500/30 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-200"
+      className="inline-grid h-10 w-10 shrink-0 place-items-center rounded-full border border-zinc-200 bg-white p-0 leading-none text-zinc-600 shadow-sm outline-none transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-white/10 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-emerald-500/30 dark:hover:bg-emerald-500/10 dark:hover:text-emerald-200"
     >
-      {currentTheme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+      {currentTheme === "dark" ? <Sun size={18} className="block shrink-0" aria-hidden="true" /> : <Moon size={18} className="block shrink-0" aria-hidden="true" />}
     </button>
   );
 }

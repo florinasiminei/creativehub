@@ -3,12 +3,13 @@
 import { FormEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
-import ClientListingConsentPanel from '@/components/forms/ClientListingConsentPanel';
+import type { Session } from '@supabase/supabase-js';
 import ListingForm from '@/components/forms/ListingForm';
 import FormPageShell, { FormPageState } from '@/components/forms/FormPageShell';
 import FormSubmitBar from '@/components/forms/FormSubmitBar';
 import ListingSubmitFeedback from '@/components/forms/ListingSubmitFeedback';
 import OwnerOtpGate from '@/components/forms/OwnerOtpGate';
+import OwnerPropertyForm from '@/components/forms/OwnerPropertyForm';
 import LoadingLogo from '@/components/LoadingLogo';
 import { supabase } from '@/lib/supabaseClient';
 import useImageSelection from '@/hooks/useImageSelection';
@@ -21,17 +22,10 @@ import {
   deleteListingImage,
   getOwnerAuthHeaders,
   reorderListingImages,
-  submitListing,
   updateListing,
 } from '@/lib/api/listings';
 import { sortFacilitiesByPriority } from '@/lib/facilitiesCatalog';
-import { fetchOwnerApi, getOwnerSession } from '@/lib/api/ownerSession';
-import {
-  deleteOwnerListingImage,
-  reorderOwnerListingImages,
-  submitOwnerListing,
-  updateOwnerListing,
-} from '@/lib/api/ownerListings';
+import { fetchOwnerApi } from '@/lib/api/ownerSession';
 import {
   buildListingPayloadBase,
   createEmptyListingFormFields,
@@ -41,16 +35,95 @@ import {
   type FacilityOption,
   type ListingFormFields,
   type LocationData,
-  withClientListingMeta,
 } from '@/lib/listings/listingForm';
+import type { OwnerPropertyInitialListing } from '@/lib/listings/ownerPropertyForm';
 
 const MAX_LISTING_IMAGES = 30;
 
-function EditPropertyPageContent({ params, expectedOwnerId }: { params: { id: string }; expectedOwnerId?: string }) {
+type OwnerListingSource = Parameters<typeof mapListingToFormFields>[0]
+  & Parameters<typeof mapListingToLocationData>[0]
+  & { id: string; is_published?: boolean; terms_accepted?: boolean; newsletter_opt_in?: boolean };
+
+function EditOwnerProperty({ id, session }: { id: string; session: Session }) {
+  const [data, setData] = useState<{ listing: OwnerPropertyInitialListing; facilities: FacilityOption[] } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+    setData(null);
+    setError(null);
+
+    async function load() {
+      try {
+        const [response, catalog] = await Promise.all([
+          fetchOwnerApi(session.user.id, '/api/listing-get', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id }),
+            signal: controller.signal,
+          }),
+          supabase.from('facilities').select('id, name'),
+        ]);
+        const body = await response.json().catch(() => null) as {
+          error?: string;
+          listing?: OwnerListingSource;
+          images?: ListingImage[];
+          facilities?: (string | number)[];
+        } | null;
+        if (!response.ok) {
+          throw new Error(response.status === 401 || response.status === 403
+            ? 'Nu ai acces la această cazare. Verifică adresa de email a contului.'
+            : body?.error || 'Nu am putut încărca proprietatea. Încearcă din nou.');
+        }
+        if (catalog.error || !catalog.data) throw new Error('Nu am putut încărca facilitățile. Încearcă din nou.');
+        if (!body?.listing || body.listing.id !== id || !Array.isArray(body.images) || !Array.isArray(body.facilities)) {
+          throw new Error('Datele proprietății sunt incomplete. Reîncearcă încărcarea înainte de editare.');
+        }
+        if (!active) return;
+        const listing = body.listing;
+        setData({
+          listing: {
+            id,
+            formData: mapListingToFormFields(listing),
+            locationData: mapListingToLocationData(listing),
+            facilities: body.facilities.map(String),
+            images: body.images.map((image) => ({ ...image, id: String(image.id) })),
+            isPublished: listing.is_published === true,
+            termsAccepted: listing.terms_accepted === true,
+            newsletterOptIn: listing.newsletter_opt_in === true,
+          },
+          facilities: sortFacilitiesByPriority(catalog.data.map((facility) => ({
+            id: String(facility.id), name: String(facility.name),
+          }))),
+        });
+      } catch (reason) {
+        if (active) setError(reason instanceof Error ? reason.message : 'Nu am putut încărca proprietatea.');
+      }
+    }
+
+    void load();
+    return () => { active = false; controller.abort(); };
+  }, [id, session.user.id, attempt]);
+
+  if (data) return <OwnerPropertyForm mode="edit" session={session} initialListing={data.listing} initialFacilities={data.facilities} />;
+
+  return <FormPageShell eyebrow="Cont proprietar" title="Editează cazarea" description="Pregătim datele și fotografiile salvate în contul tău.">
+    {error ? <div role="alert" className="space-y-4 rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
+      <p className="text-sm leading-6">{error}</p>
+      <div className="flex flex-wrap items-center gap-4">
+        <button type="button" onClick={() => setAttempt((current) => current + 1)} className="min-h-11 rounded-full bg-emerald-700 px-5 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">Încearcă din nou</button>
+        <Link href="/proprietari" className="inline-flex min-h-11 items-center text-sm font-semibold text-emerald-700 underline underline-offset-4 dark:text-emerald-300">Înapoi la proprietăți</Link>
+      </div>
+    </div> : <FormPageState title="Se încarcă…" description="Încărcăm detaliile, facilitățile și galeria proprietății." />}
+  </FormPageShell>;
+}
+
+function EditPropertyPageContent({ params }: { params: { id: string } }) {
   const { id } = params;
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isClient = searchParams.get('client') === '1' || searchParams.get('role') === 'client';
   const tokenParam = searchParams.get('token');
   const { token: listingToken, tokenReady } = useStoredAccessToken({
     queryToken: tokenParam,
@@ -69,9 +142,6 @@ function EditPropertyPageContent({ params, expectedOwnerId }: { params: { id: st
   const [locationData, setLocationData] = useState<LocationData | null>(null);
   const [showValidation, setShowValidation] = useState(false);
   const [validationAttempt, setValidationAttempt] = useState(0);
-  const [acceptedTerms, setAcceptedTerms] = useState(!isClient);
-  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
-  const [listingIsPublished, setListingIsPublished] = useState(false);
   const { message, tone, clearFeedback, setError, setSuccess, setErrorFromUnknown } = useSubmissionFeedback();
 
   const { uploading, uploadedCount, upload } = useImageUploads({
@@ -79,7 +149,6 @@ function EditPropertyPageContent({ params, expectedOwnerId }: { params: { id: st
       setError(nextMessage);
     },
     listingToken,
-    expectedOwnerId,
   });
 
   const {
@@ -123,10 +192,6 @@ function EditPropertyPageContent({ params, expectedOwnerId }: { params: { id: st
   };
 
   useEffect(() => {
-    setAcceptedTerms(!isClient);
-  }, [isClient]);
-
-  useEffect(() => {
     let mounted = true;
 
     async function loadListing() {
@@ -135,16 +200,12 @@ function EditPropertyPageContent({ params, expectedOwnerId }: { params: { id: st
       try {
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
-          ...(!expectedOwnerId ? await getOwnerAuthHeaders() : {}),
+          ...await getOwnerAuthHeaders(),
         };
         if (listingToken) headers['x-listing-token'] = listingToken;
 
         const [listingResponse, facilitiesResponse] = await Promise.all([
-          expectedOwnerId ? fetchOwnerApi(expectedOwnerId, '/api/listing-get', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ id }),
-          }) : fetch('/api/listing-get', {
+          fetch('/api/listing-get', {
             method: 'POST',
             headers,
             body: JSON.stringify({ id }),
@@ -158,9 +219,7 @@ function EditPropertyPageContent({ params, expectedOwnerId }: { params: { id: st
           if (!mounted) return;
           if (listingResponse.status === 401) {
             setAccessDenied(true);
-            setError(expectedOwnerId
-              ? 'Nu ai acces la această proprietate. Verifică adresa de email a contului.'
-              : 'Linkul de acces este invalid sau a expirat.');
+            setError('Linkul de acces este invalid sau a expirat.');
             return;
           }
           throw new Error(listingBody?.error || 'Nu am putut incarca proprietatea.');
@@ -172,9 +231,6 @@ function EditPropertyPageContent({ params, expectedOwnerId }: { params: { id: st
         if (listing) {
           setFormData(mapListingToFormFields(listing));
           setLocationData(mapListingToLocationData(listing));
-          setNewsletterOptIn(Boolean((listing as any).newsletter_opt_in));
-          setAcceptedTerms(Boolean((listing as any).terms_accepted));
-          setListingIsPublished((listing as any).is_published === true);
         }
 
         if (facilitiesResponse.data) {
@@ -197,7 +253,7 @@ function EditPropertyPageContent({ params, expectedOwnerId }: { params: { id: st
     return () => {
       mounted = false;
     };
-  }, [clearFeedback, id, isClient, listingToken, setError, tokenReady, expectedOwnerId]);
+  }, [clearFeedback, id, listingToken, setError, tokenReady]);
 
   const handleChange = (key: keyof ListingFormFields, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -226,13 +282,13 @@ function EditPropertyPageContent({ params, expectedOwnerId }: { params: { id: st
     phone: formData.telefon,
     phoneKey: 'telefon',
     imagesCount: images.length + files.length,
-    minImages: isClient ? 5 : 0,
+    minImages: 0,
     maxImages: MAX_LISTING_IMAGES,
     description: formData.descriere,
     descriptionKey: 'descriere',
     descriptionMin: 200,
     descriptionMax: 1000,
-    enforceDescription: isClient,
+    enforceDescription: false,
   });
 
   const moveExistingImage = (from: number, to: number) => {
@@ -264,11 +320,6 @@ function EditPropertyPageContent({ params, expectedOwnerId }: { params: { id: st
       return;
     }
 
-    if (isClient && !acceptedTerms) {
-      setError('Te rugam sa accepti termenii si conditiile.');
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -295,42 +346,23 @@ function EditPropertyPageContent({ params, expectedOwnerId }: { params: { id: st
         resetFiles();
       }
 
-      const payload = withClientListingMeta(
-        {
-          id,
-          title: formData.titlu,
-          ...buildListingPayloadBase(formData, locationData),
-          facilities: selectedFacilities,
-        },
-        { isClient, newsletterOptIn, acceptedTerms }
-      );
-
-      if (expectedOwnerId) await updateOwnerListing(payload, expectedOwnerId);
-      else await updateListing(payload, listingToken);
+      const payload = {
+        id,
+        title: formData.titlu,
+        ...buildListingPayloadBase(formData, locationData),
+        facilities: selectedFacilities,
+      };
+      await updateListing(payload, listingToken);
 
       if (updatedImages.length > 0) {
         const imageIds = updatedImages.map((image) => image.id);
-        if (expectedOwnerId) await reorderOwnerListingImages(id, imageIds, expectedOwnerId);
-        else await reorderListingImages(id, imageIds, listingToken);
+        await reorderListingImages(id, imageIds, listingToken);
       }
 
-      if (isClient && !listingIsPublished) {
-        if (expectedOwnerId) await submitOwnerListing(id, expectedOwnerId);
-        else await submitListing(id, listingToken);
-      }
-
-      if (expectedOwnerId) await getOwnerSession(expectedOwnerId);
-
-      setSuccess(
-        isClient && !listingIsPublished
-          ? 'Proprietatea a fost trimisa spre verificare.'
-          : 'Modificarile au fost salvate.'
-      );
+      setSuccess('Modificarile au fost salvate.');
       markPageModified();
 
-      if (isClient && !listingIsPublished) router.push('/proprietari?trimis=1');
-      else if (isClient) router.push('/proprietari?actualizat=1');
-      else router.push('/drafts?updated=1');
+      router.push('/drafts?updated=1');
     } catch (error: any) {
       if (Array.isArray(error?.failed)) {
         setError(error?.message || 'Nu s-au incarcat toate imaginile.');
@@ -344,8 +376,7 @@ function EditPropertyPageContent({ params, expectedOwnerId }: { params: { id: st
 
   const handleDeleteExistingImage = async (image: ListingImage) => {
     try {
-      if (expectedOwnerId) await deleteOwnerListingImage(image.id, expectedOwnerId);
-      else await deleteListingImage(image.id, listingToken);
+      await deleteListingImage(image.id, listingToken);
       setImages((prev) => prev.filter((item) => item.id !== image.id));
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Nu am putut sterge imaginea.');
@@ -387,7 +418,7 @@ function EditPropertyPageContent({ params, expectedOwnerId }: { params: { id: st
       highlights={[
         { label: 'Imagini existente', value: `${images.length}` },
         { label: 'Imagini noi', value: `${files.length}` },
-        { label: 'Mod', value: isClient ? 'Editare client' : 'Editare interna' },
+        { label: 'Mod', value: 'Editare interna' },
       ]}
     >
       {(loading || uploading) && (
@@ -401,15 +432,13 @@ function EditPropertyPageContent({ params, expectedOwnerId }: { params: { id: st
           <span>
             Toate campurile sunt obligatorii, cu exceptia celor marcate ca optionale. Poti schimba ordinea imaginilor direct din aceasta pagina.
           </span>
-          {!isClient && (
-            <Link
+          <Link
               href="/drafts"
               prefetch={false}
               className="text-sm font-medium text-emerald-700 transition hover:text-emerald-900"
             >
               Inapoi la drafturi
-            </Link>
-          )}
+          </Link>
         </div>
 
         <ListingForm
@@ -424,16 +453,8 @@ function EditPropertyPageContent({ params, expectedOwnerId }: { params: { id: st
           initialCity={formData.localitate}
           initialLat={locationData?.latitude ?? null}
           initialLng={locationData?.longitude ?? null}
-          dropzoneTitle={
-            isClient
-              ? `Incarca imagini noi (minim 5, maxim ${MAX_LISTING_IMAGES} total)`
-              : `Incarca imagini noi (maxim ${MAX_LISTING_IMAGES} total)`
-          }
-          dropzoneSubtitle={
-            isClient
-              ? 'Selecteaza fisierele si ordoneaza-le inainte de publicare'
-              : 'Selecteaza fisierele si ordoneaza-le pentru galeria finala'
-          }
+          dropzoneTitle={`Incarca imagini noi (maxim ${MAX_LISTING_IMAGES} total)`}
+          dropzoneSubtitle="Selecteaza fisierele si ordoneaza-le pentru galeria finala"
           dropzoneHelper="Click sau trage imaginile aici"
           showValidation={showValidation}
           invalidFields={invalidFields}
@@ -451,11 +472,7 @@ function EditPropertyPageContent({ params, expectedOwnerId }: { params: { id: st
           onMove={moveFile}
           onRemove={removeFile}
           selectedImagesTitle="Ordinea imaginilor noi"
-          selectedImagesSubtitle={
-            isClient
-              ? `Stabileste ordinea pentru incarcare (5-${MAX_LISTING_IMAGES} imagini total)`
-              : `Stabileste ordinea pentru incarcare (maxim ${MAX_LISTING_IMAGES} imagini total)`
-          }
+          selectedImagesSubtitle={`Stabileste ordinea pentru incarcare (maxim ${MAX_LISTING_IMAGES} imagini total)`}
           maxImagesWarning={MAX_LISTING_IMAGES}
           existingImages={images}
           existingTitle="Galeria actuala"
@@ -468,22 +485,12 @@ function EditPropertyPageContent({ params, expectedOwnerId }: { params: { id: st
           onExistingDelete={handleDeleteExistingImage}
           descriptionMin={200}
           descriptionMax={1000}
-          descriptionRequired={isClient}
+          descriptionRequired={false}
         />
-
-        {isClient && (
-          <ClientListingConsentPanel
-            acceptedTerms={acceptedTerms}
-            newsletterOptIn={newsletterOptIn}
-            showTermsError={showValidation && !acceptedTerms}
-            onAcceptedTermsChange={setAcceptedTerms}
-            onNewsletterOptInChange={setNewsletterOptIn}
-          />
-        )}
 
         <div className="flex justify-end">
           <Link
-            href={isClient ? '/proprietari' : '/drafts'}
+            href="/drafts"
             className="inline-flex items-center justify-center rounded-full border border-gray-200 px-5 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50 dark:border-zinc-700 dark:text-gray-200 dark:hover:bg-zinc-900"
           >
             Anuleaza
@@ -495,13 +502,9 @@ function EditPropertyPageContent({ params, expectedOwnerId }: { params: { id: st
           uploadedCount={uploadedCount}
           totalFiles={files.length}
           loading={loading}
-          submitLabel={isClient && !listingIsPublished ? 'Trimite spre verificare' : 'Salveaza modificari'}
-          loadingLabel={isClient && !listingIsPublished ? 'Se trimite...' : 'Se salveaza...'}
-          idleLabel={
-            isClient && !listingIsPublished
-              ? 'Verifica datele si galeria, apoi trimite proprietatea spre verificare.'
-              : 'Verifica datele, galeria si apoi salveaza modificarile.'
-          }
+          submitLabel="Salveaza modificari"
+          loadingLabel="Se salveaza..."
+          idleLabel="Verifica datele, galeria si apoi salveaza modificarile."
         />
 
         <ListingSubmitFeedback
@@ -524,7 +527,7 @@ export default function EditPropertyPage() {
 
   return (
     <OwnerOtpGate>
-      {({ session }) => <EditPropertyPageContent params={params} expectedOwnerId={session.user.id} />}
+      {({ session }) => <EditOwnerProperty key={`${session.user.id}:${params.id}`} id={params.id} session={session} />}
     </OwnerOtpGate>
   );
 }

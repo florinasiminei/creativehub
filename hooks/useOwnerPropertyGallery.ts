@@ -14,12 +14,14 @@ import {
   mapUploadedImages,
   moveToken,
   type UploadResult,
-} from './add-property-model';
+} from '@/lib/listings/ownerPropertyForm';
 
 type GalleryFeedback = {
   clearFeedback: () => void;
   setError: (message: string) => void;
   setUploadError: (error: unknown) => void;
+  initialImages?: ListingImage[];
+  isInteractionLocked?: () => boolean;
 };
 
 type PartialUploadError = Error & {
@@ -29,40 +31,40 @@ type PartialUploadError = Error & {
 
 const MAX_IMAGES = LISTING_SUBMISSION_LIMITS.maxImages;
 
-export default function useAddPropertyGallery({
+export default function useOwnerPropertyGallery({
   clearFeedback,
   setError,
   setUploadError,
+  initialImages = [],
+  isInteractionLocked,
 }: GalleryFeedback) {
-  const [images, setImages] = useState<ListingImage[]>([]);
+  const [images, setImages] = useState<ListingImage[]>(() => initialImages.map((image) => ({ ...image, id: String(image.id) })));
   const [pendingIds, setPendingIds] = useState<string[]>([]);
-  const [galleryOrder, setGalleryOrder] = useState<string[]>([]);
-  const [draggingExistingIdx, setDraggingExistingIdx] = useState<number | null>(null);
+  const [galleryOrder, setGalleryOrder] = useState<string[]>(() => initialImages.map((image) => `saved:${image.id}`));
+  const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [uploadedCount, setUploadedCount] = useState(0);
 
   const {
     files,
     filePreviews,
-    draggingIdx,
     isDropActive,
     setIsDropActive,
-    moveFile,
-    handleDragStart,
-    handleDragOver,
-    handleDragEnd,
-    resetFiles,
     setFiles,
   } = useImageSelection({
     maxFiles: Number.POSITIVE_INFINITY,
     onLimit: setError,
   });
 
-  const imagesRef = useRef<ListingImage[]>([]);
+  const imagesRef = useRef<ListingImage[]>(images);
   const filesRef = useRef<File[]>([]);
   const pendingIdsRef = useRef<string[]>([]);
-  const galleryOrderRef = useRef<string[]>([]);
+  const galleryOrderRef = useRef<string[]>(galleryOrder);
   const uploadPromiseRef = useRef<Promise<void> | null>(null);
+  const deletingRef = useRef(false);
+  const isMutationInProgress = useCallback(() => Boolean(uploadPromiseRef.current || deletingRef.current), []);
+  const isBlocked = useCallback(() => isMutationInProgress() || Boolean(isInteractionLocked?.()), [isInteractionLocked, isMutationInProgress]);
 
   useEffect(() => {
     filesRef.current = files;
@@ -144,7 +146,7 @@ export default function useAddPropertyGallery({
   }, [applyGalleryOrder, updateImages]);
 
   const handleFilesSelected = useCallback((incoming: File[]) => {
-    if (incoming.length === 0) return;
+    if (incoming.length === 0 || isBlocked()) return;
     clearFeedback();
 
     const validFiles: File[] = [];
@@ -175,50 +177,66 @@ export default function useAddPropertyGallery({
     if (acceptedFiles.length === 0) return;
 
     const nextPendingIds = acceptedFiles.map(createPendingImageId);
-    setFiles((current) => {
-      const next = [...current, ...acceptedFiles];
-      filesRef.current = next;
-      return next;
-    });
-    setPendingIds((current) => {
-      const next = [...current, ...nextPendingIds];
-      pendingIdsRef.current = next;
-      return next;
-    });
-    setGalleryOrder((current) => {
-      const next = [...current, ...nextPendingIds.map((id) => `pending:${id}`)];
-      galleryOrderRef.current = next;
-      return next;
-    });
-  }, [clearFeedback, setError, setFiles]);
+    filesRef.current = [...filesRef.current, ...acceptedFiles];
+    pendingIdsRef.current = [...pendingIdsRef.current, ...nextPendingIds];
+    galleryOrderRef.current = [...galleryOrderRef.current, ...nextPendingIds.map((id) => `pending:${id}`)];
+    setFiles(filesRef.current);
+    setPendingIds(pendingIdsRef.current);
+    setGalleryOrder(galleryOrderRef.current);
+  }, [clearFeedback, isBlocked, setError, setFiles]);
 
   const removePendingAtIndex = useCallback((index: number) => {
+    if (isBlocked()) return;
     const pendingId = pendingIdsRef.current[index];
     if (!pendingId) return;
     replacePendingQueue(pendingIdsRef.current.filter((id) => id !== pendingId));
     applyGalleryOrder((current) => current.filter((token) => token !== `pending:${pendingId}`));
-  }, [applyGalleryOrder, replacePendingQueue]);
+  }, [applyGalleryOrder, isBlocked, replacePendingQueue]);
 
   const moveGalleryToken = useCallback((token: string, direction: -1 | 1) => {
+    if (isBlocked()) return;
     applyGalleryOrder((current) => {
       const fromIndex = current.indexOf(token);
       return moveToken(current, fromIndex, fromIndex + direction);
     });
-  }, [applyGalleryOrder]);
+  }, [applyGalleryOrder, isBlocked]);
 
   const reorderGalleryToken = useCallback((token: string, toIndex: number) => {
+    if (isBlocked()) return;
     applyGalleryOrder((current) => moveToken(current, current.indexOf(token), toIndex));
-  }, [applyGalleryOrder]);
+  }, [applyGalleryOrder, isBlocked]);
+
+  const moveFile = useCallback((from: number, to: number) => {
+    if (isBlocked()) return;
+    const fromId = pendingIdsRef.current[from];
+    const toId = pendingIdsRef.current[to];
+    if (!fromId || !toId) return;
+    applyGalleryOrder((current) => moveToken(current, current.indexOf(`pending:${fromId}`), current.indexOf(`pending:${toId}`)));
+  }, [applyGalleryOrder, isBlocked]);
+
+  const handleDragStart = useCallback((index: number) => {
+    if (!isBlocked()) setDraggingIdx(index);
+  }, [isBlocked]);
+  const handleDragOver = useCallback((index: number) => {
+    if (isBlocked() || draggingIdx === null || draggingIdx === index) return;
+    moveFile(draggingIdx, index);
+    setDraggingIdx(index);
+  }, [draggingIdx, isBlocked, moveFile]);
+  const handleDragEnd = useCallback(() => setDraggingIdx(null), []);
 
   const deleteExistingImage = useCallback(async (
     image: ListingImage,
     expectedOwnerId: string | null,
   ) => {
+    if (isBlocked()) return false;
     if (!expectedOwnerId) {
       setError('Confirmă din nou contul proprietarului înainte de a șterge imaginea.');
       return false;
     }
 
+    deletingRef.current = true;
+    setDeleting(true);
+    clearFeedback();
     try {
       await deleteOwnerListingImage(image.id, expectedOwnerId);
       updateImages((current) => current.filter((item) => item.id !== image.id));
@@ -227,32 +245,38 @@ export default function useAddPropertyGallery({
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Nu am putut șterge imaginea.');
       return false;
+    } finally {
+      deletingRef.current = false;
+      setDeleting(false);
     }
-  }, [applyGalleryOrder, setError, updateImages]);
+  }, [applyGalleryOrder, clearFeedback, isBlocked, setError, updateImages]);
 
   const deleteGalleryToken = useCallback(async (
     token: string,
     expectedOwnerId: string | null,
   ) => {
+    if (isBlocked()) return false;
     if (token.startsWith('saved:')) {
       const image = imagesRef.current.find(
         (item) => item.id === token.slice('saved:'.length),
       );
-      if (image) await deleteExistingImage(image, expectedOwnerId);
-      return;
+      return image ? deleteExistingImage(image, expectedOwnerId) : false;
     }
 
-    if (!token.startsWith('pending:')) return;
+    if (!token.startsWith('pending:')) return false;
     const pendingId = token.slice('pending:'.length);
     const index = pendingIdsRef.current.indexOf(pendingId);
-    if (index >= 0) removePendingAtIndex(index);
-  }, [deleteExistingImage, removePendingAtIndex]);
+    if (index < 0) return false;
+    removePendingAtIndex(index);
+    return true;
+  }, [deleteExistingImage, isBlocked, removePendingAtIndex]);
 
   const uploadPendingFiles = useCallback(async (
     listingId: string,
     expectedOwnerId: string,
   ) => {
     if (uploadPromiseRef.current) return uploadPromiseRef.current;
+    if (deletingRef.current) throw new Error('Așteaptă finalizarea ștergerii fotografiei înainte de salvare.');
 
     const fileSnapshot = filesRef.current.slice();
     if (fileSnapshot.length === 0) return;
@@ -304,29 +328,6 @@ export default function useAddPropertyGallery({
     return uploadPromise;
   }, [appendUploadedImages, clearFeedback, replacePendingQueue, setUploadError]);
 
-  const resetGallery = useCallback(() => {
-    resetFiles();
-    filesRef.current = [];
-    imagesRef.current = [];
-    pendingIdsRef.current = [];
-    galleryOrderRef.current = [];
-    setImages([]);
-    setPendingIds([]);
-    setGalleryOrder([]);
-    setDraggingExistingIdx(null);
-    setUploadedCount(0);
-  }, [resetFiles]);
-
-  const moveExistingImage = useCallback((from: number, to: number) => {
-    applyGalleryOrder((current) => {
-      const savedTokens = current.filter((token) => token.startsWith('saved:'));
-      const fromToken = savedTokens[from];
-      const toToken = savedTokens[to];
-      if (!fromToken || !toToken) return current;
-      return moveToken(current, current.indexOf(fromToken), current.indexOf(toToken));
-    });
-  }, [applyGalleryOrder]);
-
   const getOrderedImageIds = useCallback(
     () => galleryOrderRef.current
       .filter((token) => token.startsWith('saved:'))
@@ -341,9 +342,9 @@ export default function useAddPropertyGallery({
     pendingIds,
     galleryOrder,
     draggingIdx,
-    draggingExistingIdx,
     isDropActive,
     uploading,
+    deleting,
     uploadedCount,
     totalImages: files.length + images.length,
     setIsDropActive,
@@ -356,12 +357,8 @@ export default function useAddPropertyGallery({
     moveGalleryToken,
     reorderGalleryToken,
     deleteGalleryToken,
-    setDraggingExistingIdx,
-    moveExistingImage,
-    deleteExistingImage,
     uploadPendingFiles,
     getOrderedImageIds,
-    resetGallery,
-    isUploadInProgress: () => Boolean(uploadPromiseRef.current),
+    isMutationInProgress,
   };
 }

@@ -654,7 +654,7 @@ export default function LocationPicker({
           {locationName ? (
             <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{locationName}</p>
           ) : (
-            <p className="text-sm text-gray-500 dark:text-gray-400">Nu ai selectat inca o locatie.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{hasSelection ? 'Poziție selectată pe hartă.' : 'Nu ai selectat încă o locație.'}</p>
           )}
 
           <p

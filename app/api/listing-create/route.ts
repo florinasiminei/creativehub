@@ -55,25 +55,43 @@ function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
+async function recoverOwnerCreation(
+  supabaseAdmin: ReturnType<typeof getSupabaseAdmin>,
+  creationId: string,
+  ownerId: string
+) {
+  const { data, error } = await supabaseAdmin
+    .from('listings')
+    .select('id, is_published, publication_status, created_by_actor')
+    .eq('id', creationId)
+    .eq('owner_id', ownerId)
+    .maybeSingle();
+  if (error) {
+    return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
+  }
+  if (!data) return null;
+  if (data.is_published !== false || data.publication_status !== 'draft' || data.created_by_actor !== 'client') {
+    return NextResponse.json({ error: 'Cazarea a fost deja trimisă sau publicată. Continuă din contul de proprietar.' }, { status: 409 });
+  }
+  return NextResponse.json({ ok: true, id: String(data.id), existing: true });
+}
+
 export async function POST(request: Request) {
   try {
     if (request.headers.get('x-owner-access') !== '1') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const limit = rateLimit(request, {
-      windowMs: 60 * 60_000,
-      max: 3,
-      keyPrefix: 'listing-create-owner',
+    const requestLimit = rateLimit(request, {
+      windowMs: 60_000,
+      max: 120,
+      keyPrefix: 'listing-create-owner-request',
     });
-    if (!limit.ok) {
-      return NextResponse.json(
-        { error: 'Too many requests' },
-        {
-          status: 429,
-          headers: { 'Retry-After': String(limit.retryAfter) },
-        }
-      );
+    if (!requestLimit.ok) {
+      return NextResponse.json({ error: 'Too many requests' }, {
+        status: 429,
+        headers: { 'Retry-After': String(requestLimit.retryAfter) },
+      });
     }
 
     const supabaseAdmin = getSupabaseAdmin();
@@ -100,6 +118,29 @@ export async function POST(request: Request) {
     }
     if (String(body.honeypot ?? '').trim()) {
       return NextResponse.json({ error: 'Invalid submission' }, { status: 400 });
+    }
+    const creationId = typeof body.creationId === 'string' ? body.creationId.trim().toLowerCase() : '';
+    if (body.creationId !== undefined && !isUuid(creationId)) {
+      return NextResponse.json({ error: 'Invalid creation id' }, { status: 400 });
+    }
+    if (creationId) {
+      const recovered = await recoverOwnerCreation(supabaseAdmin, creationId, owner.id);
+      if (recovered) return recovered;
+    }
+
+    const limit = rateLimit(request, {
+      windowMs: 60 * 60_000,
+      max: 3,
+      keyPrefix: 'listing-create-owner',
+    });
+    if (!limit.ok) {
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(limit.retryAfter) },
+        }
+      );
     }
 
     const {
@@ -203,6 +244,7 @@ export async function POST(request: Request) {
     );
 
     const payload: Record<string, unknown> = {
+      ...(creationId ? { id: creationId } : {}),
       title: titleValue || 'Draft proprietate',
       slug: uniqueSlug,
       judet: judetValue || null,
@@ -240,6 +282,10 @@ export async function POST(request: Request) {
       .select('id')
       .single();
     if (error) {
+      if (creationId && error.code === '23505') {
+        const recovered = await recoverOwnerCreation(supabaseAdmin, creationId, owner.id);
+        if (recovered) return recovered;
+      }
       console.error('Error inserting owner listing', error);
       return NextResponse.json(
         { error: "Cererea nu a putut fi procesata. Incearca din nou." },
@@ -248,6 +294,10 @@ export async function POST(request: Request) {
     }
 
     const listingId = String(data.id);
+    // The idempotent flow completes fields and relations through listing-update.
+    // Return before other mutations so a lost response can safely recover this draft.
+    if (creationId) return NextResponse.json({ ok: true, id: listingId });
+
     if (normalizedFacilities.length > 0) {
       const { error: relationError } = await supabaseAdmin.rpc(
         'replace_listing_facilities',

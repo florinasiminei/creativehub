@@ -92,15 +92,18 @@ export async function POST(request: Request) {
 
     // also fetch related images and facilities
     const listingId = listing.id;
-    const { data: images } = await supabaseAdmin
+    const { data: images, error: imagesError } = await supabaseAdmin
       .from('listing_images')
       .select(IMAGES_SELECT)
       .eq('listing_id', listingId)
       .order('display_order', { ascending: true });
-    const { data: facilityRows } = await supabaseAdmin
+    const { data: facilityRows, error: facilitiesError } = await supabaseAdmin
       .from('listing_facilities')
       .select('facility_id, facilities(id, name)')
       .eq('listing_id', listingId);
+    if (imagesError || facilitiesError || !Array.isArray(images) || !Array.isArray(facilityRows)) {
+      return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
+    }
 
     const facilitiesMap = new Map<string, { id: string; name: string }>();
     const missingIds: string[] = [];
@@ -116,15 +119,21 @@ export async function POST(request: Request) {
     });
 
     if (missingIds.length > 0) {
-      const { data: fallbackFacilities } = await supabaseAdmin
+      const { data: fallbackFacilities, error: fallbackFacilitiesError } = await supabaseAdmin
         .from('facilities')
         .select('id, name')
         .in('id', Array.from(new Set(missingIds)));
+      if (fallbackFacilitiesError || !Array.isArray(fallbackFacilities)) {
+        return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
+      }
       (fallbackFacilities || []).forEach((f: any) => {
         if (f?.id && f?.name) {
           facilitiesMap.set(String(f.id), { id: String(f.id), name: String(f.name) });
         }
       });
+      if (missingIds.some((id) => !facilitiesMap.has(id))) {
+        return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
+      }
     }
 
     return NextResponse.json({

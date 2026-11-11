@@ -9,12 +9,13 @@ export type InstagramPromotionData = {
   promotion: InstagramPromotion | null;
   sourceCurrent?: boolean;
   estimatedFor?: string | null;
+  publishingAvailable?: boolean;
 };
 export type PromotionAction = 'save' | 'approve' | 'withdraw';
 export type PromotionNotice = { text: string; tone: 'success' | 'error'; conflict?: boolean };
 
 const successMessages: Record<PromotionAction, string> = {
-  save: 'Preview-ul final este salvat. Verifică imaginile și textul înainte de a-ți da acordul.',
+  save: 'Postarea este salvată. Verifică textul și fotografiile din previzualizare înainte de a-ți da acordul.',
   approve: 'Acordul tău a fost salvat. Poți urmări mai jos starea promovării.',
   withdraw: 'Acordul a fost retras și programarea a fost oprită.',
 };

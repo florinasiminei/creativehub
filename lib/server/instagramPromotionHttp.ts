@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { OwnerAuthUnavailableError } from '@/lib/server/ownerAuth';
 import { PromotionError } from '@/lib/server/instagramPromotions';
 import { BufferRequestError } from '@/lib/server/bufferInstagram';
+import { InstagramPromotionBusyError } from '@/lib/server/instagramPromotionLock';
 
 export function promotionJson(value: unknown, status = 200) {
   return NextResponse.json(value, { status, headers: { 'Cache-Control': 'private, no-store' } });
@@ -10,6 +11,7 @@ export function promotionJson(value: unknown, status = 200) {
 
 export function promotionFailure(error: unknown) {
   if (error instanceof PromotionError) return promotionJson({ error: error.message }, error.status);
+  if (error instanceof InstagramPromotionBusyError) return promotionJson({ error: error.message }, error.status);
   if (error instanceof OwnerAuthUnavailableError) return promotionJson({ error: error.message }, 503);
   if (error instanceof BufferRequestError) return promotionJson({ error: error.message }, 502);
   const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : '';

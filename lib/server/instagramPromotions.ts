@@ -6,9 +6,9 @@ import {
   canApproveInstagramPromotion, instagramSlotOnDate, nextInstagramSlot, promotionWeek,
   type InstagramPromotion, type PromotionImage, type PromotionSource,
 } from '@/lib/social/instagram';
-import { renderInstagramImages } from '@/lib/server/instagramMedia';
 import { createBufferInstagramDraft, getBufferInstagramChannel, getBufferPost, pauseBufferInstagramPost, scheduleBufferInstagramPost, type BufferPost } from '@/lib/server/bufferInstagram';
 import { instagramPromotionConfiguration } from '@/lib/server/instagramPromotionConfig';
+import { acquireInstagramPromotionWorkerLock, releaseInstagramPromotionWorkerLock, withInstagramPromotionWorkerLock } from '@/lib/server/instagramPromotionLock';
 export { instagramPromotionEnabled, instagramPromotionConfiguration } from '@/lib/server/instagramPromotionConfig';
 
 type Database = ReturnType<typeof getSupabaseAdmin>;
@@ -115,6 +115,8 @@ async function finish(db: Database, promotion: InstagramPromotion, values: Recor
   return data as InstagramPromotion;
 }
 
+export { claim as claimInstagramPromotion, finish as finishInstagramPromotion };
+
 async function stopRemote(promotion: InstagramPromotion) {
   if (promotion.buffer_post_id) await pauseBufferInstagramPost(promotion.buffer_post_id);
 }
@@ -131,11 +133,16 @@ export async function saveInstagramDraft(db: Database, source: Source, body: Rec
   if (!previous && body.revision !== 0) throw new PromotionError('Preview-ul nu mai este disponibil. Reîncarcă pagina.', 409);
   if (previous?.status === 'published') throw new PromotionError('Campania a fost deja publicată.');
   const locked = previous ? await claim(db, previous, body.revision, actor) : null;
+  if (locked?.status === 'published') {
+    await finish(db, locked, {});
+    throw new PromotionError('Campania a fost deja publicată.');
+  }
   try {
     if (locked && locked.caption === draft.caption && hash(locked.images) === hash(draft.images) && sourceMatches(source, locked)) {
       return await finish(db, locked, {});
     }
     if (locked) await stopRemote(locked);
+    const { renderInstagramImages } = await import('@/lib/server/instagramMedia');
     const rendered = await renderInstagramImages(source, draft.images);
     const freshSource = await getPromotionSource(db, source.id);
     if (sourceHash(freshSource, draft.images) !== sourceHash(source, draft.images)) {
@@ -150,10 +157,16 @@ export async function saveInstagramDraft(db: Database, source: Source, body: Rec
       scheduled_for: null, scheduled_week: null, preferred_date: null, last_error: null, last_actor: actor,
     };
     if (locked) return await finish(db, locked, values);
-    const { data, error } = await db.from('social_promotions').insert(values).select('*').single();
-    if (error?.code === '23505') throw new PromotionError('Un preview a fost salvat între timp. Reîncarcă pagina.', 409);
-    if (error) throw error;
-    return data as InstagramPromotion;
+    return await withInstagramPromotionWorkerLock(db, async () => {
+      const currentSource = await getPromotionSource(db, source.id);
+      if (sourceHash(currentSource, draft.images) !== values.source_hash) {
+        throw new PromotionError('Cazarea s-a modificat în timpul generării. Reîncarcă preview-ul.', 409);
+      }
+      const { data, error } = await db.from('social_promotions').insert(values).select('*').single();
+      if (error?.code === '23505') throw new PromotionError('Un preview a fost salvat între timp. Reîncarcă pagina.', 409);
+      if (error) throw error;
+      return data as InstagramPromotion;
+    });
   } catch (error) {
     if (locked) await finish(db, locked, { status: 'error', last_error: 'Preview-ul nu a fost actualizat. Verifică starea înainte de reluare.' });
     throw error;
@@ -177,34 +190,75 @@ export async function approveInstagramPromotion(db: Database, source: Source, re
 }
 
 export async function changeInstagramPromotion(db: Database, promotion: InstagramPromotion, action: 'pause' | 'withdraw' | 'resume' | 'reschedule', revision: unknown, actor: string, preferredDate?: unknown) {
-  const locked = await claim(db, promotion, revision, actor);
-  try {
-    if (locked.status === 'published') throw new PromotionError('Postarea este publicată. Eliminarea se gestionează separat pe Instagram.');
-    if (action === 'resume' || action === 'reschedule') {
-      if (!locked.approved_at || locked.needs_reapproval || !['approved', 'scheduled', 'paused', 'error'].includes(locked.status)) {
-        throw new PromotionError('Este necesar un preview aprobat înainte de programare.');
-      }
-      const source = locked.listing_id ? await getPromotionSource(db, locked.listing_id) : null;
-      if (!source || !sourceMatches(source, locked)) throw new PromotionError('Cazarea s-a modificat. Este necesar acordul proprietarului.');
-      let preferred: string | null = null;
-      if (action === 'reschedule') {
-        if (typeof preferredDate !== 'string') throw new PromotionError('Alege data programării.');
-        try { instagramSlotOnDate(preferredDate); } catch (error) { throw new PromotionError(error instanceof Error ? error.message : 'Dată invalidă.'); }
-        preferred = preferredDate;
+  return withInstagramPromotionWorkerLock(db, async () => {
+    const current = await getInstagramPromotion(db, promotion.listing_reference);
+    if (!current) throw new PromotionError('Postarea nu a fost găsită.', 404);
+    const locked = await claim(db, current, revision, actor);
+    try {
+      if (locked.status === 'published') throw new PromotionError('Postarea este publicată. Eliminarea se gestionează separat pe Instagram.');
+      if (action === 'resume' || action === 'reschedule') {
+        if (!locked.approved_at || locked.needs_reapproval || !['approved', 'scheduled', 'paused', 'error'].includes(locked.status)) {
+          throw new PromotionError('Este necesar un preview aprobat înainte de programare.');
+        }
+        const source = locked.listing_id ? await getPromotionSource(db, locked.listing_id) : null;
+        if (!source || !sourceMatches(source, locked)) throw new PromotionError('Cazarea s-a modificat. Este necesar acordul proprietarului.');
+        let preferred: string | null = null;
+        let slot: Date | null = null;
+        if (action === 'reschedule') {
+          if (typeof preferredDate !== 'string') throw new PromotionError('Alege data programării.');
+          try { slot = instagramSlotOnDate(preferredDate); } catch (error) { throw new PromotionError(error instanceof Error ? error.message : 'Dată invalidă.'); }
+          preferred = preferredDate;
+          const { data: occupied, error } = await db.from('social_promotions').select('id')
+            .eq('platform', 'instagram').or(`scheduled_week.eq.${promotionWeek(slot)},preferred_date.eq.${preferred}`)
+            .in('status', ['approved', 'scheduled', 'published', 'error']).neq('id', locked.id).limit(1);
+          if (error) throw error;
+          if (occupied?.length) throw new PromotionError('Există deja o campanie în săptămâna aleasă. Programarea existentă a fost păstrată.', 409);
+          if (source.activeUntil && Date.parse(source.activeUntil) <= slot.getTime()) {
+            throw new PromotionError('Publicarea cazării expiră înaintea datei alese. Programarea existentă a fost păstrată.');
+          }
+          const configuration = instagramPromotionConfiguration();
+          if (locked.status === 'scheduled' && locked.buffer_post_id
+            && configuration.enabled && configuration.publishingEnabled && configuration.bufferConfigured) {
+            if (!source.eligible) throw new PromotionError('Cazarea trebuie să fie activă înainte de reprogramare.');
+            await getBufferInstagramChannel();
+            const remote = await getBufferPost(locked.buffer_post_id);
+            if (!remote || remote.status !== 'scheduled' || !remoteMatches(remote, locked)) {
+              throw new PromotionError('Starea postării s-a schimbat în Buffer. Sincronizează calendarul înainte de reprogramare.', 409);
+            }
+            // Reserve the requested week as well as the current week until an uncertain provider response is reconciled.
+            const { data: pending, error: pendingError } = await db.from('social_promotions')
+              .update({ preferred_date: preferred }).eq('id', locked.id).eq('lock_token', locked.lock_token).select('id').maybeSingle();
+            if (pendingError) throw pendingError;
+            if (!pending) throw new PromotionError('Intervalul nu a putut fi rezervat. Programarea existentă a fost păstrată.', 409);
+            // Keep the previous reservation until Buffer confirms the new date. The shared lease excludes other schedulers.
+            const scheduled = await scheduleBufferInstagramPost(locked.buffer_post_id, locked.caption, locked.rendered_images, slot.toISOString());
+            if (scheduled.status !== 'scheduled' || !remoteMatches(scheduled, locked)
+              || !scheduled.dueAt || Date.parse(scheduled.dueAt) !== slot.getTime()) {
+              throw new PromotionError('Buffer nu a confirmat noua programare. Sincronizează calendarul înainte de reluare.', 502);
+            }
+            return await finish(db, locked, {
+              status: 'scheduled', last_error: null, scheduled_for: slot.toISOString(),
+              scheduled_week: promotionWeek(slot), preferred_date: preferred,
+            });
+          }
+        }
+        await stopRemote(locked);
+        return await finish(db, locked, {
+          status: 'approved', last_error: null, scheduled_for: slot?.toISOString() || null,
+          scheduled_week: slot ? promotionWeek(slot) : null, preferred_date: preferred,
+        });
       }
       await stopRemote(locked);
-      return await finish(db, locked, { status: 'approved', last_error: null, scheduled_for: null, scheduled_week: null, preferred_date: preferred });
+      return await finish(db, locked, {
+        status: action === 'withdraw' ? 'cancelled' : 'paused',
+        ...(action === 'withdraw' ? { approved_at: null } : {}),
+        scheduled_for: null, scheduled_week: null, preferred_date: null, last_error: null,
+      });
+    } catch (error) {
+      await finish(db, locked, { last_error: error instanceof Error ? error.message : 'Operația nu a fost confirmată.' });
+      throw error;
     }
-    await stopRemote(locked);
-    return await finish(db, locked, {
-      status: action === 'withdraw' ? 'cancelled' : 'paused',
-      ...(action === 'withdraw' ? { approved_at: null } : {}),
-      scheduled_for: null, scheduled_week: null, preferred_date: null, last_error: null,
-    });
-  } catch (error) {
-    await finish(db, locked, { last_error: error instanceof Error ? error.message : 'Operația nu a fost confirmată.' });
-    throw error;
-  }
+  });
 }
 
 async function syncPromotion(db: Database, promotion: InstagramPromotion) {
@@ -215,7 +269,12 @@ async function syncPromotion(db: Database, promotion: InstagramPromotion) {
       remote = await getBufferPost(locked.buffer_post_id);
       if (!remote) throw new PromotionError('Postarea lipsește din Buffer. Verifică manual calendarul înainte de reluare.');
       if (remote.status === 'sent') {
-        return await finish(db, locked, { status: 'published', published_at: remote.sentAt || new Date().toISOString(), external_url: remote.externalLink, last_error: null });
+        const postedFor = remote.dueAt || remote.sentAt || locked.scheduled_for;
+        return await finish(db, locked, {
+          status: 'published', published_at: remote.sentAt || new Date().toISOString(), external_url: remote.externalLink,
+          scheduled_for: postedFor, scheduled_week: postedFor ? promotionWeek(new Date(postedFor)) : locked.scheduled_week,
+          preferred_date: null, last_error: null,
+        });
       }
       if (remote.status === 'sending') return await finish(db, locked, {});
     }
@@ -241,7 +300,13 @@ async function syncPromotion(db: Database, promotion: InstagramPromotion) {
           last_error: 'Postarea a fost modificată în Buffer. Verifică preview-ul și reia programarea din CABN.' });
       }
       if (remote.status === 'scheduled' && remote.dueAt) {
-        return await finish(db, locked, { status: 'scheduled', scheduled_for: remote.dueAt, scheduled_week: promotionWeek(new Date(remote.dueAt)), last_error: null });
+        return await finish(db, locked, { status: 'scheduled', scheduled_for: remote.dueAt, scheduled_week: promotionWeek(new Date(remote.dueAt)), preferred_date: null, last_error: null });
+      }
+      if (remote.status === 'draft' && locked.status === 'scheduled') {
+        return await finish(db, locked, {
+          status: 'paused', scheduled_for: null, scheduled_week: null, preferred_date: null,
+          last_error: 'Postarea nu mai este programată în Buffer. Verifică programarea înainte de reluare.',
+        });
       }
       if (remote?.status === 'error') return await finish(db, locked, { status: 'error', last_error: 'Buffer nu a publicat postarea. Verifică legătura Instagram și reia programarea.' });
     }
@@ -270,20 +335,40 @@ async function schedulePromotion(db: Database, promotion: InstagramPromotion) {
     }
     const remote = await getBufferPost(postId);
     if (!remote) throw new PromotionError('Draftul Buffer nu poate fi verificat.');
-    if (remote.status === 'sent') return await finish(db, locked, { status: 'published', published_at: remote.sentAt, external_url: remote.externalLink });
+    if (remote.status === 'sent') {
+      const postedFor = remote.dueAt || remote.sentAt || locked.scheduled_for;
+      return await finish(db, locked, {
+        status: 'published', published_at: remote.sentAt, external_url: remote.externalLink,
+        scheduled_for: postedFor, scheduled_week: postedFor ? promotionWeek(new Date(postedFor)) : locked.scheduled_week,
+        preferred_date: null, last_error: null,
+      });
+    }
     if (remote.status === 'sending') return await finish(db, locked, {});
     if (remote.status === 'scheduled') {
       if (!remoteMatches(remote, locked)) {
         await pauseBufferInstagramPost(postId);
         throw new PromotionError('Postarea din Buffer diferă de versiunea aprobată. Reia programarea.');
       }
-      return await finish(db, locked, { status: 'scheduled', scheduled_for: remote.dueAt, scheduled_week: remote.dueAt ? promotionWeek(new Date(remote.dueAt)) : locked.scheduled_week, last_error: null });
+      return await finish(db, locked, { status: 'scheduled', scheduled_for: remote.dueAt, scheduled_week: remote.dueAt ? promotionWeek(new Date(remote.dueAt)) : locked.scheduled_week, preferred_date: null, last_error: null });
     }
-    const { data: occupied, error: occupiedError } = await db.from('social_promotions').select('scheduled_week')
-      .eq('platform', 'instagram').in('status', ['approved', 'scheduled', 'published', 'error']).not('scheduled_week', 'is', null).neq('id', locked.id);
+    const { data: occupied, error: occupiedError } = await db.from('social_promotions').select('scheduled_week, preferred_date')
+      .eq('platform', 'instagram').in('status', ['approved', 'scheduled', 'published', 'error'])
+      .or('scheduled_week.not.is.null,preferred_date.not.is.null').neq('id', locked.id);
     if (occupiedError) throw occupiedError;
-    const weeks = new Set((occupied || []).map((row) => String(row.scheduled_week)));
-    const slot = locked.preferred_date ? instagramSlotOnDate(locked.preferred_date) : nextInstagramSlot(weeks);
+    const weeks = new Set((occupied || []).flatMap((row) => [
+      ...(row.scheduled_week ? [String(row.scheduled_week)] : []),
+      ...(row.preferred_date ? [promotionWeek(new Date(`${row.preferred_date}T12:00:00Z`))] : []),
+    ]));
+    let slot: Date;
+    if (locked.preferred_date) {
+      try { slot = instagramSlotOnDate(locked.preferred_date); }
+      catch {
+        return await finish(db, locked, {
+          status: 'error', preferred_date: null, scheduled_for: null, scheduled_week: null,
+          last_error: 'Data aleasă nu mai este disponibilă. Alege un interval nou sau reintrodu postarea în coadă.',
+        });
+      }
+    } else slot = nextInstagramSlot(weeks);
     if (weeks.has(promotionWeek(slot))) throw new PromotionError('Există deja o campanie în săptămâna aleasă.');
     if (source.activeUntil && Date.parse(source.activeUntil) <= slot.getTime()) {
       throw new PromotionError('Publicarea cazării expiră înaintea datei promovării. Reînnoiește cazarea sau alege o dată eligibilă.');
@@ -324,7 +409,7 @@ export async function estimateInstagramDate(db: Database, source: Source, promot
     try { return instagramSlotOnDate(promotion.preferred_date).toISOString(); } catch { return null; }
   }
   const [weeksResult, olderResult] = await Promise.all([
-    db.from('social_promotions').select('scheduled_week').not('scheduled_week', 'is', null)
+    db.from('social_promotions').select('scheduled_week, preferred_date').or('scheduled_week.not.is.null,preferred_date.not.is.null')
       .in('status', ['approved', 'scheduled', 'published', 'error']).neq('id', promotion.id),
     db.from('social_promotions').select('id, listings!inner(is_published)', { count: 'exact', head: true })
       .eq('status', 'approved').eq('needs_reapproval', false).eq('listings.is_published', true)
@@ -332,7 +417,10 @@ export async function estimateInstagramDate(db: Database, source: Source, promot
   ]);
   if (weeksResult.error) throw weeksResult.error;
   if (olderResult.error) throw olderResult.error;
-  const weeks = new Set((weeksResult.data || []).map((row) => String(row.scheduled_week)));
+  const weeks = new Set((weeksResult.data || []).flatMap((row) => [
+    ...(row.scheduled_week ? [String(row.scheduled_week)] : []),
+    ...(row.preferred_date ? [promotionWeek(new Date(`${row.preferred_date}T12:00:00Z`))] : []),
+  ]));
   let slot = nextInstagramSlot(weeks);
   for (let index = 0; index < Math.min(olderResult.count || 0, 100); index += 1) {
     weeks.add(promotionWeek(slot)); slot = nextInstagramSlot(weeks);
@@ -344,22 +432,16 @@ export async function processInstagramPromotions(listingId?: string) {
   const config = instagramPromotionConfiguration();
   if (!config.enabled || !config.publishingEnabled || !config.bufferConfigured) return { processed: 0, active: false };
   const db = getSupabaseAdmin();
-  const token = randomUUID();
-  const now = new Date();
-  const { data: lease, error: leaseError } = await db.from('social_promotion_worker').update({
-    lock_token: token, lock_until: new Date(now.getTime() + 5 * 60_000).toISOString(),
-  }).eq('id', 'instagram').or(`lock_token.is.null,lock_until.lt.${now.toISOString()}`).select('id').maybeSingle();
-  if (leaseError) throw leaseError;
-  if (!lease) return { processed: 0, active: true };
+  const token = await acquireInstagramPromotionWorkerLock(db, listingId ? 20_000 : 0);
+  if (!token) return { processed: 0, active: true, busy: true };
   let processed = 0;
   const deadline = Date.now() + 90_000;
   try {
     await getBufferInstagramChannel();
-    let query = db.from('social_promotions').select('*').neq('status', 'published')
+    const query = db.from('social_promotions').select('*').neq('status', 'published')
       .not('buffer_post_id', 'is', null)
       .or('status.eq.scheduled,status.eq.approved,needs_reapproval.eq.true,last_error.not.is.null')
       .order('updated_at', { ascending: true }).limit(10);
-    if (listingId) query = query.eq('listing_reference', listingId);
     const { data: pendingSync, error: syncError } = await query;
     if (syncError) throw syncError;
     for (const row of (pendingSync || []) as InstagramPromotion[]) {
@@ -369,9 +451,8 @@ export async function processInstagramPromotions(listingId?: string) {
     const { count: scheduledCount, error: countError } = await db.from('social_promotions').select('id', { count: 'exact', head: true }).eq('status', 'scheduled');
     if (countError) throw countError;
     const available = Math.max(0, 4 - (scheduledCount || 0));
-    let approvedQuery = db.from('social_promotions').select('*, listings!inner(is_published)').eq('status', 'approved')
+    const approvedQuery = db.from('social_promotions').select('*, listings!inner(is_published)').eq('status', 'approved')
       .eq('listings.is_published', true).eq('needs_reapproval', false).order('approved_at', { ascending: true }).limit(20);
-    if (listingId) approvedQuery = approvedQuery.eq('listing_reference', listingId);
     const { data: approved, error: approvedError } = await approvedQuery;
     if (approvedError) throw approvedError;
     for (const row of (approved || []) as InstagramPromotion[]) {
@@ -381,6 +462,6 @@ export async function processInstagramPromotions(listingId?: string) {
     }
     return { processed, active: true };
   } finally {
-    await db.from('social_promotion_worker').update({ lock_token: null, lock_until: null }).eq('id', 'instagram').eq('lock_token', token);
+    await releaseInstagramPromotionWorkerLock(db, token);
   }
 }

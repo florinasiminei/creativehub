@@ -11,17 +11,23 @@ export type ListingWizardStep = {
 type ListingWizardProgressProps = {
   steps: ListingWizardStep[];
   activeIndex: number;
-  furthestIndex: number;
+  completedSteps: boolean[];
+  pendingSteps?: boolean[];
+  disabled?: boolean;
   onStepSelect: (index: number) => void;
 };
 
 export function ListingWizardProgress({
   steps,
   activeIndex,
-  furthestIndex,
+  completedSteps,
+  pendingSteps = [],
+  disabled = false,
   onStepSelect,
 }: ListingWizardProgressProps) {
-  const progress = ((activeIndex + 1) / steps.length) * 100;
+  const completedCount = steps.filter((_, index) => completedSteps[index] && !pendingSteps[index]).length;
+  const hasPendingSteps = steps.some((_, index) => pendingSteps[index]);
+  const progress = steps.length > 0 ? (completedCount / steps.length) * 100 : 0;
   const activeStep = steps[activeIndex];
 
   return (
@@ -29,25 +35,27 @@ export function ListingWizardProgress({
       aria-label="Progres formular proprietate"
       className="border-b border-zinc-200 pb-4 dark:border-zinc-800"
     >
-      <div className="flex items-center justify-between gap-4 lg:hidden">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700 dark:text-emerald-300">
             Pasul {activeIndex + 1} din {steps.length}
           </p>
           <p className="mt-1 font-semibold text-zinc-950 dark:text-white">{activeStep.label}</p>
         </div>
-        <span className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">
-          {Math.round(progress)}%
+        <span aria-live="polite" className="text-right text-xs font-medium text-zinc-500 dark:text-zinc-400 sm:text-sm">
+          {completedCount} din {steps.length} completate
+          {hasPendingSteps && <span className="mt-1 block text-[10px] font-normal sm:text-xs">Verificăm datele…</span>}
         </span>
       </div>
 
       <div
         role="progressbar"
         aria-label="Progres completare formular"
-        aria-valuemin={1}
+        aria-valuemin={0}
         aria-valuemax={steps.length}
-        aria-valuenow={activeIndex + 1}
-        className="mt-3 h-1 overflow-hidden rounded-full bg-zinc-100 lg:hidden dark:bg-zinc-800"
+        aria-valuenow={completedCount}
+        aria-valuetext={`${completedCount} din ${steps.length} secțiuni completate${hasPendingSteps ? '. Unele date se verifică.' : ''}`}
+        className="mt-3 h-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800"
       >
         <div
           className="h-full rounded-full bg-emerald-600 transition-[width] duration-300 dark:bg-emerald-400"
@@ -55,25 +63,25 @@ export function ListingWizardProgress({
         />
       </div>
 
-      <ol className="hidden gap-3 lg:grid" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
+      <ol className="mt-4 grid gap-1 sm:gap-3" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
         {steps.map((step, index) => {
-          const completed = index < activeIndex || (index < furthestIndex && index !== activeIndex);
+          const pending = pendingSteps[index] === true;
+          const completed = !pending && completedSteps[index] === true;
           const active = index === activeIndex;
-          const available = index <= furthestIndex;
+          const stateLabel = pending ? "Se verifică" : completed ? "Completat" : "De completat";
 
           return (
             <li key={step.id} className="min-w-0">
               <button
                 type="button"
                 onClick={() => onStepSelect(index)}
-                disabled={!available}
+                disabled={disabled}
                 aria-current={active ? "step" : undefined}
-                className={`group flex w-full flex-col items-center gap-1.5 text-center transition ${
+                aria-label={`${step.label}: ${stateLabel.toLowerCase()}`}
+                className={`group flex min-h-20 w-full min-w-0 flex-col items-center gap-1.5 rounded-2xl border px-1 py-3 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-50 dark:focus-visible:ring-offset-zinc-950 ${
                   active
-                    ? "text-emerald-800 dark:text-emerald-200"
-                    : available
-                      ? "text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white"
-                      : "cursor-default text-zinc-400 dark:text-zinc-600"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
+                    : "border-transparent text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-white"
                 }`}
               >
                 <span
@@ -87,7 +95,10 @@ export function ListingWizardProgress({
                 >
                   {completed ? <Check className="h-4 w-4" aria-hidden="true" /> : index + 1}
                 </span>
-                <span className="block truncate text-xs font-medium">{step.label}</span>
+                <span className="block w-full break-words text-[11px] font-semibold leading-4 sm:text-xs">{step.label}</span>
+                <span className={`text-[10px] leading-4 sm:text-xs ${completed ? "text-emerald-700 dark:text-emerald-300" : "text-zinc-500 dark:text-zinc-400"}`}>
+                  {stateLabel}
+                </span>
               </button>
             </li>
           );

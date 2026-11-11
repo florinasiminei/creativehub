@@ -4,35 +4,20 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { Session } from "@supabase/supabase-js";
-import { ArrowUpRight, Building2, LogOut, Plus, RefreshCw } from "lucide-react";
+import { ArrowUpRight, Building2, Instagram, LogOut, Plus, RefreshCw } from "lucide-react";
 import OwnerOtpGate from "@/components/forms/OwnerOtpGate";
 import FormPageShell, { FormPageState } from "@/components/forms/FormPageShell";
 import ListingSubmitFeedback from "@/components/forms/ListingSubmitFeedback";
-import OwnerListingCard, { type OwnerListing } from "@/components/owner/OwnerListingCard";
-import OwnerClaimSection, { type OwnerClaim } from "@/components/owner/OwnerClaimSection";
+import OwnerListingCard from "@/components/owner/OwnerListingCard";
+import OwnerClaimSection from "@/components/owner/OwnerClaimSection";
 import { fetchOwnerApi } from "@/lib/api/ownerSession";
 import { OwnerRequestError, readOwnerResponse } from "@/lib/ownerPortal";
-
-type OwnerPlan = {
-  name: string;
-  amount: number;
-  currency: string;
-  durationMonths: number;
-};
-
-type OwnerOverview = {
-  user: { email: string | null };
-  listings: OwnerListing[];
-  claims: OwnerClaim[];
-  plan: OwnerPlan | null;
-  instagramPromotionEnabled: boolean;
-  instagramPromotionStatusAvailable: boolean;
-};
+import { clearOwnerOverviewCache, getCachedOwnerOverview, loadOwnerOverview, type OwnerOverview } from "@/lib/api/ownerOverviewCache";
 
 const cardClassName =
   "rounded-[26px] border border-zinc-200 bg-white shadow-[0_20px_50px_-36px_rgba(15,23,42,0.5)] dark:border-zinc-800 dark:bg-zinc-900";
 
-function formatPrice(plan: OwnerPlan | null) {
+function formatPrice(plan: OwnerOverview["plan"]) {
   if (!plan) return null;
   return new Intl.NumberFormat("ro-RO", {
     style: "currency",
@@ -48,6 +33,7 @@ function OwnerDashboard({
   paymentResult,
   submissionResult,
   updatedResult,
+  promotionListingId,
 }: {
   session: Session;
   signOut: () => Promise<void>;
@@ -55,9 +41,10 @@ function OwnerDashboard({
   paymentResult: string;
   submissionResult: string;
   updatedResult: string;
+  promotionListingId: string;
 }) {
-  const [overview, setOverview] = useState<OwnerOverview | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [overview, setOverview] = useState<OwnerOverview | null>(() => getCachedOwnerOverview(session.user.id)?.data || null);
+  const [loading, setLoading] = useState(() => !getCachedOwnerOverview(session.user.id));
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [overviewError, setOverviewError] = useState<{
@@ -84,19 +71,20 @@ function OwnerDashboard({
       : "info"
   );
   const activeRef = useRef(true);
-  const overviewRequestRef = useRef<AbortController | null>(null);
+  const overviewRequestIdRef = useRef(0);
 
   useEffect(() => {
     activeRef.current = true;
     return () => {
       activeRef.current = false;
-      overviewRequestRef.current?.abort();
+      overviewRequestIdRef.current += 1;
     };
   }, []);
 
   const handleRequestError = useCallback((error: unknown, fallback: string, replaceOverview = false) => {
     const message = error instanceof Error ? error.message : fallback;
     const requiresLogin = error instanceof OwnerRequestError && error.status === 401;
+    if (requiresLogin) clearOwnerOverviewCache();
     if (replaceOverview || requiresLogin) {
       setOverview(null);
       setOverviewError({
@@ -111,39 +99,38 @@ function OwnerDashboard({
   }, []);
 
   const loadOverview = useCallback(async (options?: { quiet?: boolean }) => {
-    overviewRequestRef.current?.abort();
-    const controller = new AbortController();
-    overviewRequestRef.current = controller;
+    const requestId = ++overviewRequestIdRef.current;
     setOverviewError(null);
     setRefreshError(null);
     if (!options?.quiet) setLoading(true);
     else setRefreshing(true);
     try {
-      const response = await fetchOwnerApi(session.user.id, "/api/owner", {
-        signal: controller.signal,
+      const nextOverview = await loadOwnerOverview(session.user.id, async (signal) => {
+        const response = await fetchOwnerApi(session.user.id, "/api/owner", { signal });
+        const body = await readOwnerResponse(response);
+        if (!Array.isArray(body?.listings) || !Array.isArray(body?.claims)) {
+          throw new Error("Răspunsul contului este incomplet. Încearcă din nou.");
+        }
+        return {
+          user: body?.user || { email: session.user.email || null },
+          listings: body.listings,
+          claims: body.claims,
+          plan: body?.plan || null,
+          instagramPromotionEnabled: body?.instagramPromotionEnabled === true,
+          instagramPromotionStatusAvailable: body?.instagramPromotionStatusAvailable === true,
+        };
       });
-      const body = await readOwnerResponse(response);
-      if (!activeRef.current || controller.signal.aborted) return;
-      if (!Array.isArray(body?.listings) || !Array.isArray(body?.claims)) {
-        throw new Error("Răspunsul contului este incomplet. Încearcă din nou.");
-      }
-      setOverview({
-        user: body?.user || { email: session.user.email || null },
-        listings: body.listings,
-        claims: body.claims,
-        plan: body?.plan || null,
-        instagramPromotionEnabled: body?.instagramPromotionEnabled === true,
-        instagramPromotionStatusAvailable: body?.instagramPromotionStatusAvailable === true,
-      });
+      if (!activeRef.current || overviewRequestIdRef.current !== requestId) return;
+      setOverview(nextOverview);
     } catch (error) {
-      if (!activeRef.current || controller.signal.aborted) return;
+      if (!activeRef.current || overviewRequestIdRef.current !== requestId) return;
       if (options?.quiet && !(error instanceof OwnerRequestError && error.status === 401)) {
         setRefreshError("Nu am putut actualiza contul. Informațiile afișate sunt de la ultima încărcare. Încearcă din nou.");
       } else {
         handleRequestError(error, "Nu am putut încărca spațiul de proprietar.", true);
       }
     } finally {
-      if (activeRef.current && !controller.signal.aborted) {
+      if (activeRef.current && overviewRequestIdRef.current === requestId) {
         setLoading(false);
         setRefreshing(false);
       }
@@ -151,9 +138,30 @@ function OwnerDashboard({
   }, [handleRequestError, session.user.id, session.user.email]);
 
   useEffect(() => {
-    void loadOverview();
-    return () => overviewRequestRef.current?.abort();
-  }, [loadOverview]);
+    const restoreOverview = (force = false) => {
+      const cached = getCachedOwnerOverview(session.user.id);
+      if (cached) {
+        setOverview(cached.data);
+        setLoading(false);
+        if (cached.fresh && !force) return;
+      }
+      void loadOverview({ quiet: !!cached });
+    };
+    restoreOverview(paymentResult === "succes" || paymentResult === "anulata" || submissionResult === "1" || updatedResult === "1");
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) restoreOverview(true);
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") restoreOverview();
+    };
+    window.addEventListener("pageshow", handlePageShow);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      overviewRequestIdRef.current += 1;
+      window.removeEventListener("pageshow", handlePageShow);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [loadOverview, session.user.id, paymentResult, submissionResult, updatedResult]);
 
   const handleCheckout = async (listingId: string) => {
     if (checkoutListingId || signingOut || refreshing) return;
@@ -251,6 +259,9 @@ function OwnerDashboard({
   const planPrice = formatPrice(overview.plan);
   const publishedCount = listings.filter((listing) => listing.isPublished).length;
   const submittedCount = listings.filter((listing) => listing.status === "submitted").length;
+  const savedListing = (submissionResult === "1" || updatedResult === "1") && overview.instagramPromotionEnabled
+    ? listings.find((listing) => listing.id === promotionListingId)
+    : null;
 
   return (
     <div className="space-y-6">
@@ -277,6 +288,10 @@ function OwnerDashboard({
       </header>
 
       <ListingSubmitFeedback message={feedback} tone={feedbackTone} />
+      {savedListing && <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-900 dark:bg-emerald-950/30">
+        <div className="min-w-0"><p className="font-semibold text-emerald-950 dark:text-emerald-100">Continuă cu promovarea Instagram</p><p className="mt-1 text-sm leading-6 text-emerald-900 dark:text-emerald-200">Revizuiește postarea pentru {savedListing.title}. Tu alegi dacă îți dai acordul pentru publicare.</p></div>
+        <Link href={`/proprietari/promovare/${savedListing.id}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-emerald-700 px-5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950"><Instagram className="h-4 w-4" aria-hidden="true" />Deschide postarea</Link>
+      </div>}
       <ListingSubmitFeedback message={refreshError} tone="error" />
 
       <section aria-labelledby="owner-listings-title" aria-busy={refreshing}>
@@ -315,6 +330,7 @@ function OwnerPageContent() {
   const paymentResult = searchParams.get("plata") || "";
   const submissionResult = searchParams.get("trimis") || "";
   const updatedResult = searchParams.get("actualizat") || "";
+  const promotionListingId = searchParams.get("promovare") || "";
   const initialListingReference = searchParams.get("listing") || searchParams.get("claim") || "";
 
   return (
@@ -327,6 +343,7 @@ function OwnerPageContent() {
           paymentResult={paymentResult}
           submissionResult={submissionResult}
           updatedResult={updatedResult}
+          promotionListingId={promotionListingId}
         />
       )}
     </OwnerOtpGate>

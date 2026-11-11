@@ -8,6 +8,9 @@ import {
 } from '@/lib/server/ownerAuth';
 import { deleteStoredImageUrls } from '@/lib/server/r2';
 import { queueInstagramPromotionSync } from '@/lib/server/instagramPromotionConfig';
+import { getInstagramSourceMutationFailure, withInstagramSourceMutation } from '@/lib/server/instagramPromotionMutation';
+
+export const maxDuration = 180;
 
 export async function POST(request: Request) {
   try {
@@ -72,49 +75,29 @@ export async function POST(request: Request) {
       }
     }
 
-    if (access.kind === 'owner') {
-      await invalidateSubmittedOwnerListing(
-        supabaseAdmin,
-        String(rows.listing_id),
-        access.ownerId
-      );
-    }
-
-    const { data: deletedRows, error: deleteError } = await supabaseAdmin.rpc(
-      'delete_listing_image_record',
-      {
-        p_image_id: String(id),
-        p_expected_owner_id:
-          access.kind === 'owner' ? access.ownerId : null,
+    const mutationResult = await withInstagramSourceMutation(supabaseAdmin, String(rows.listing_id), async () => {
+      if (access.kind === 'owner') {
+        await invalidateSubmittedOwnerListing(supabaseAdmin, String(rows.listing_id), access.ownerId);
       }
-    );
-    if (deleteError) {
-      const conflict = /cel putin 5 imagini|proprietarul .* schimbat/i.test(
-        deleteError.message || ''
-      );
-      const missing = /nu exista/i.test(deleteError.message || '');
-      return NextResponse.json(
-        {
-          error: conflict
-            ? 'O proprietate publicata trebuie sa pastreze cel putin 5 imagini.'
-            : missing
-              ? 'Imaginea nu mai exista.'
-              : deleteError.message,
-        },
-        { status: conflict ? 409 : missing ? 404 : 500 }
-      );
-    }
-
-    const deletedRow = Array.isArray(deletedRows)
-      ? deletedRows[0]
-      : deletedRows;
-    if (access.kind === 'owner') {
-      await invalidateSubmittedOwnerListing(
-        supabaseAdmin,
-        String(rows.listing_id),
-        access.ownerId
-      );
-    }
+      const { data: deletedRows, error: deleteError } = await supabaseAdmin.rpc('delete_listing_image_record', {
+        p_image_id: String(id),
+        p_expected_owner_id: access.kind === 'owner' ? access.ownerId : null,
+      });
+      if (deleteError) {
+        const conflict = /cel putin 5 imagini|proprietarul .* schimbat/i.test(deleteError.message || '');
+        const missing = /nu exista/i.test(deleteError.message || '');
+        return { response: NextResponse.json({
+          error: conflict ? 'O proprietate publicata trebuie sa pastreze cel putin 5 imagini.'
+            : missing ? 'Imaginea nu mai exista.' : deleteError.message,
+        }, { status: conflict ? 409 : missing ? 404 : 500 }) };
+      }
+      if (access.kind === 'owner') {
+        await invalidateSubmittedOwnerListing(supabaseAdmin, String(rows.listing_id), access.ownerId);
+      }
+      return { deletedRow: Array.isArray(deletedRows) ? deletedRows[0] : deletedRows };
+    }, { actor: access.kind === 'owner' ? access.ownerId : 'staff' });
+    if (mutationResult.response) return mutationResult.response;
+    const deletedRow = mutationResult.deletedRow;
     const imageUrl =
       deletedRow?.deleted_image_url || (rows.image_url as string);
     try {
@@ -130,6 +113,8 @@ export async function POST(request: Request) {
     revalidatePath('/', 'layout');
     return NextResponse.json({ ok: true });
   } catch (err: any) {
+    const promotionFailure = getInstagramSourceMutationFailure(err);
+    if (promotionFailure) return NextResponse.json({ error: promotionFailure.message }, { status: promotionFailure.status });
     console.error(err);
     return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
   }

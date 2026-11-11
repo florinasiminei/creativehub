@@ -2,7 +2,15 @@
 
 Implementarea folosește Next.js, Supabase, R2 și `sharp` deja existente, plus API-ul Buffer Free. Nu adaugă pachete sau abonamente. Costul efectiv rămâne dependent de consumul și limitele infrastructurii existente.
 
-**Starea actuală (13 octombrie 2026):** schema a fost aplicată în proiectul Supabase `cabnNEW` (`wqogynlfehnwdlbvquos`), prin migrarea `20261013183057_instagram_property_promotions`. Interfața pentru proprietari este disponibilă implicit în dezvoltarea locală și dezactivată implicit în producție; `INSTAGRAM_PROMOTION_ENABLED` poate suprascrie explicit acest comportament. Programările externe sunt dezactivate implicit și au o opțiune separată. Nu sunt necesare Facebook sau TikTok pentru această etapă.
+**Starea implementării (18 octombrie 2026):** schema a fost aplicată în proiectul Supabase `cabnNEW` (`wqogynlfehnwdlbvquos`), prin migrarea `20261013183057_instagram_property_promotions`. Interfața pentru proprietari este disponibilă implicit în toate mediile; `INSTAGRAM_PROMOTION_ENABLED=false` o poate dezactiva explicit. Programările externe sunt dezactivate implicit și au o opțiune separată. Nu sunt necesare Facebook sau TikTok pentru această etapă.
+
+Adăugarea și editarea din contul proprietarului folosesc componenta comună `OwnerPropertyForm`, cu pașii Proprietate → Localizare → Fotografii → Verificare. Editarea precompletează datele și galeria, păstrează slug-ul și starea de publicare și retrimite spre verificare numai cazările nepublicate. Modul intern de editare din backoffice rămâne separat.
+
+Corecțiile din 20 octombrie 2026 folosesc blocarea existentă a workerului și a campaniei pentru a confirma oprirea postării Buffer înaintea modificării sursei. La indisponibilitatea Buffer sau a blocării, modificarea este refuzată înainte de scrieri. Activarea simplă a cazării și salvarea facilităților sau ordinii identice păstrează acordul. Protecția acoperă API-urile integrate; schimbările directe în SQL nu participă la această coordonare.
+
+Reprogramarea verifică noua săptămână înaintea modificării programării existente. Dacă răspunsul Buffer este incert, sunt păstrate rezervările pentru săptămâna existentă și cea solicitată până la reconciliere. Procesarea cozii respectă global ordinea acordurilor, inclusiv când este declanșată pentru o singură cazare. Nu sunt necesare migrări suplimentare pentru aceste corecții.
+
+Verificarea din 20 octombrie: 47 de scenarii izolate au trecut folosind modulele TypeScript reale și servicii simulate în memorie, fără cereri Supabase/Buffer. Au fost acoperite reîncercarea creării fără duplicate, răspunsurile incomplete, coordonarea modificărilor sursei, reprogramarea incertă, ordinea cozii și salvările identice. Compilarea și verificarea tipurilor au trecut în `npm run build`, dar buildul complet s-a încheiat cu eroare după trei timeouturi de generare pentru `/cazari/pensiuni/localitate-bucuresti`. Buildul trebuie finalizat cu succes înainte de publicarea versiunii; aceste verificări nu înlocuiesc pilotul Buffer.
 
 ## 1. Structura de date
 
@@ -24,7 +32,7 @@ Configurează valorile prin mecanismul de secrete al găzduirii. Nu introduce ch
 
 | Variabilă nouă | Rol |
 | --- | --- |
-| `INSTAGRAM_PROMOTION_ENABLED` | `true` afișează interfața și permite generarea/aprobarea preview-urilor; `false` o dezactivează explicit. Dacă lipsește, interfața este activă în dezvoltarea locală și dezactivată în producție. |
+| `INSTAGRAM_PROMOTION_ENABLED` | `true` afișează interfața și permite generarea/aprobarea preview-urilor; `false` o dezactivează explicit. Dacă lipsește, interfața este activă în toate mediile. |
 | `BUFFER_API_KEY` | Cheie personală generată în Buffer → Settings → API. |
 | `BUFFER_INSTAGRAM_CHANNEL_ID` | Identificatorul canalului Instagram `cabn.ro`, preluat prin API Explorer Buffer. |
 | `INSTAGRAM_PROMOTION_PUBLISHING_ENABLED` | `true` permite trimiterea și programarea în Buffer. Păstrează dezactivată până la validarea pilotului. |
@@ -36,11 +44,11 @@ Se reutilizează configurația Supabase și R2 deja folosită de website. Previe
 
 ## 3. Verificarea interfeței, cu publicarea dezactivată
 
-După configurarea bazei, interfața este disponibilă implicit pe serverul local de dezvoltare. Pentru alte medii de verificare, activează `INSTAGRAM_PROMOTION_ENABLED=true`. Lasă publicarea externă dezactivată.
+După configurarea bazei, interfața este disponibilă implicit în toate mediile. Dacă mediul are deja `INSTAGRAM_PROMOTION_ENABLED=false`, schimbă explicit această opțiune pentru a permite editorul. Lasă publicarea externă dezactivată. Editorul afișează această stare și nu estimează o dată de publicare până când integrarea este activată și configurată.
 
 1. Trimite o cazare completă: pagina confirmă trimiterea și deschide pasul opțional Instagram. Acesta este disponibil și din contul proprietarului.
-2. Verifică textul automat, selectează 1–5 fotografii, schimbă ordinea și decupajul.
-3. Apasă „Generează și salvează preview-ul final”. Prima imagine este coperta cabn; verifică toate JPEG-urile, inclusiv titlurile lungi și diacriticele. Salvarea se face explicit prin acest buton în această versiune.
+2. Verifică textul automat, selectează 1–5 fotografii și schimbă ordinea folosind mânerul. Prima fotografie este coperta. Facebook și TikTok sunt simulări de previzualizare; acordul și integrarea de publicare rămân pentru Instagram.
+3. Apasă „Salvează postarea” (sau „Salvează modificările” pentru o versiune existentă). Prima imagine este coperta cabn; verifică toate JPEG-urile, inclusiv titlurile lungi și diacriticele. Salvarea se face explicit prin acest buton în această versiune.
 4. Aprobă versiunea finală prin checkbox și buton. Campania rămâne în coadă; nu pleacă spre Buffer cu publicarea dezactivată.
 5. Deschide Backoffice → Promovare. Verifică preview-ul, starea acordului și calendarul.
 6. Verifică faptul că un alt proprietar nu poate accesa cazarea și că personalul nu poate aproba în locul proprietarului.

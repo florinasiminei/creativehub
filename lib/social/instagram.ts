@@ -57,17 +57,17 @@ export function canApproveInstagramPromotion(promotion: InstagramPromotion | nul
 }
 
 export const PROMOTION_STATUS_LABELS: Record<PromotionStatus, string> = {
-  draft: 'Așteaptă acordul', approved: 'În coadă', paused: 'În pauză',
+  draft: 'Așteaptă acordul', approved: 'Acord salvat', paused: 'În pauză',
   scheduled: 'Programată', published: 'Publicată', cancelled: 'Acord retras', error: 'Necesită atenție',
 };
 
 export function buildInstagramCaption(source: PromotionSource) {
   return [
-    `${source.title} — o nouă cazare pe cabn.ro.`,
+    `${source.title} — un loc de descoperit pe cabn.ro.`,
     source.location,
-    source.capacity ? `Capacitate: ${source.capacity} persoane.` : '',
+    source.capacity ? `Pentru ${source.capacity} persoane.` : '',
     source.facilities.length ? `Facilități: ${source.facilities.slice(0, 3).join(', ')}.` : '',
-    'Descoperă cazarea și contactează proprietarul pe cabn.ro.',
+    'Vezi fotografiile și detaliile pe cabn.ro. Pentru disponibilitate, contactează direct proprietarul.',
     '#cabn #cazari #vacanta',
   ].filter(Boolean).join('\n\n').slice(0, INSTAGRAM_MAX_CAPTION);
 }

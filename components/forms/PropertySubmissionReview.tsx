@@ -2,12 +2,16 @@
 
 import { LISTING_TYPES } from '@/lib/listingTypes';
 import type { ListingFormFields } from '@/lib/listings/listingForm';
+import { WIZARD_STEPS } from '@/lib/listings/ownerPropertyForm';
 
 export type PropertySubmissionReviewProps = {
+  mode?: 'create' | 'edit';
   formData: ListingFormFields;
   selectedFacilityNames: string[];
   imagesCount: number;
   locationConfirmed: boolean;
+  stepCompletion: boolean[];
+  locationPending: boolean;
   activeOwnerEmail: string | null;
   activeOwnerConfirmed: boolean;
   showActiveOwnerError: boolean;
@@ -19,10 +23,13 @@ export type PropertySubmissionReviewProps = {
 };
 
 export default function PropertySubmissionReview({
+  mode = 'create',
   formData,
   selectedFacilityNames,
   imagesCount,
   locationConfirmed,
+  stepCompletion,
+  locationPending,
   activeOwnerEmail,
   activeOwnerConfirmed,
   showActiveOwnerError,
@@ -53,7 +60,7 @@ export default function PropertySubmissionReview({
     },
     {
       label: 'Localizare',
-      value: `${locationLabel || 'Necompletată'} · ${locationConfirmed ? 'pin confirmat' : 'pin neconfirmat'}`,
+      value: `${locationLabel || 'Necompletată'} · ${locationPending ? 'se verifică localitatea' : !stepCompletion[1] ? 'verifică localizarea' : locationConfirmed ? 'pin confirmat' : 'pin neconfirmat'}`,
       stepIndex: 1,
     },
     {
@@ -62,6 +69,7 @@ export default function PropertySubmissionReview({
       stepIndex: 2,
     },
   ];
+  const incompleteSections = WIZARD_STEPS.filter((step, index) => step.id !== 'review' && !stepCompletion[index]);
 
   return (
     <section
@@ -73,9 +81,22 @@ export default function PropertySubmissionReview({
           Rezumat
         </p>
         <h2 id="listing-review-title" className="mt-1 text-xl font-semibold text-zinc-950 dark:text-white">
-          Verifică informațiile înainte de trimitere
+          {mode === 'edit' ? 'Verifică modificările înainte de salvare' : 'Verifică informațiile înainte de trimitere'}
         </h2>
       </div>
+
+      {incompleteSections.length > 0 && (
+        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
+          <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{locationPending && incompleteSections.length === 1 && incompleteSections[0].id === 'location' ? 'Verificăm localizarea…' : 'Mai ai informații de completat'}</p>
+          <p className="mt-1 text-sm leading-6 text-zinc-600 dark:text-zinc-300">Poți reveni direct la secțiunea dorită. Informațiile introduse se păstrează.</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {incompleteSections.map((step) => <button key={step.id} type="button" onClick={() => onEditStep(WIZARD_STEPS.indexOf(step))}
+              className="inline-flex min-h-11 items-center rounded-full border border-zinc-200 bg-white px-4 text-sm font-medium text-emerald-800 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-emerald-200 dark:hover:bg-emerald-950">
+              {step.label}{step.id === 'location' && locationPending ? ' · se verifică' : ''}
+            </button>)}
+          </div>
+        </div>
+      )}
 
       <div className="divide-y divide-zinc-200 border-y border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
         {reviewItems.map((item) => (
@@ -89,10 +110,11 @@ export default function PropertySubmissionReview({
               </div>
               <button
                 type="button"
+                aria-label={`Modifică: ${item.label}`}
                 onClick={() => onEditStep(item.stepIndex)}
-                className="shrink-0 text-xs font-semibold text-emerald-700 hover:text-emerald-900 dark:text-emerald-300 dark:hover:text-emerald-200"
+                className="inline-flex min-h-11 shrink-0 items-center rounded-lg px-2 text-xs font-semibold text-emerald-700 hover:text-emerald-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-emerald-300 dark:hover:text-emerald-200"
               >
-                Editează
+                Modifică
               </button>
             </div>
           </article>
@@ -107,7 +129,8 @@ export default function PropertySubmissionReview({
               : 'border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-800/60 dark:bg-emerald-950/35 dark:text-emerald-100'
           }`}
         >
-          <p className="font-semibold">Cont detectat: {activeOwnerEmail}</p>
+          <p className="break-words font-semibold">{mode === 'edit' ? 'Administrezi cazarea din contul' : 'Cont detectat:'} {activeOwnerEmail}</p>
+          {mode === 'create' && <>
           <label className="mt-2 flex items-start gap-2">
             <input
               type="checkbox"
@@ -125,6 +148,8 @@ export default function PropertySubmissionReview({
           >
             {switchingOwnerAccount ? 'Se schimbă contul...' : 'Folosește alt email'}
           </button>
+          </>}
+          {mode === 'edit' && <p className="mt-1">Modificările vor fi salvate pentru cazarea existentă, în același cont.</p>}
         </div>
       ) : (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-950 dark:border-emerald-800/60 dark:bg-emerald-950/35 dark:text-emerald-100">

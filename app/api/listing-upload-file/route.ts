@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
 import { queueInstagramPromotionSync } from '@/lib/server/instagramPromotionConfig';
+import { getInstagramSourceMutationFailure, withInstagramSourceMutation } from '@/lib/server/instagramPromotionMutation';
 import { LISTING_SUBMISSION_LIMITS } from '@/lib/listings/listingSubmissionRules';
 import { buildListingCardVariantBuffer, uploadResponsiveImageVariants, toListingCardVariantPath } from '@/lib/server/listingImageVariants';
 import { getListingImageVariantPaths, withListingImageVariantLimit } from '@/lib/listingImagePaths';
@@ -57,6 +58,8 @@ function getFileValidationError(contentType: string, fileSize: number | null) {
 }
 
 function getUploadFailure(error: unknown) {
+  const promotionFailure = getInstagramSourceMutationFailure(error);
+  if (promotionFailure) return promotionFailure;
   const message =
     error instanceof Error ? error.message : 'Uploadul imaginii a esuat.';
   if (/maximum 30 de imagini|maximum 30 imagini/i.test(message)) {
@@ -237,14 +240,6 @@ async function handleComplete(req: Request, body: any) {
   const capacityError = await ensureListingImageCapacity(listingId, access.supabaseAdmin);
   if (capacityError) return capacityError;
 
-  if (access.access.kind === 'owner') {
-    await invalidateSubmittedOwnerListing(
-      access.supabaseAdmin,
-      listingId,
-      access.access.ownerId
-    );
-  }
-
   let imageRegistered = false;
 
   try {
@@ -256,8 +251,11 @@ async function handleComplete(req: Request, body: any) {
       displayOrder < MAX_LISTING_IMAGES
         ? displayOrder
         : null;
-    const { data: insertedRows, error: imgErr } =
-      await access.supabaseAdmin.rpc('register_listing_image', {
+    const inserted = await withInstagramSourceMutation(access.supabaseAdmin, listingId, async () => {
+      if (access.access.kind === 'owner') {
+        await invalidateSubmittedOwnerListing(access.supabaseAdmin, listingId, access.access.ownerId);
+      }
+      const { data: insertedRows, error: imgErr } = await access.supabaseAdmin.rpc('register_listing_image', {
         p_listing_id: listingId,
         p_image_url: url,
         p_display_order: normalizedDisplayOrder,
@@ -267,23 +265,15 @@ async function handleComplete(req: Request, body: any) {
             ? access.access.ownerId
             : null,
       });
-    const inserted = Array.isArray(insertedRows)
-      ? insertedRows[0]
-      : insertedRows;
-
-    if (imgErr || !inserted) {
-      throw new Error(imgErr?.message || 'insert_failed');
-    }
-    imageRegistered = true;
+      const registered = Array.isArray(insertedRows) ? insertedRows[0] : insertedRows;
+      if (imgErr || !registered) throw new Error(imgErr?.message || 'insert_failed');
+      imageRegistered = true;
+      if (access.access.kind === 'owner') {
+        await invalidateSubmittedOwnerListing(access.supabaseAdmin, listingId, access.access.ownerId);
+      }
+      return registered;
+    }, { actor: access.access.kind === 'owner' ? access.access.ownerId : 'staff' });
     revalidatePath('/', 'layout');
-
-    if (access.access.kind === 'owner') {
-      await invalidateSubmittedOwnerListing(
-        access.supabaseAdmin,
-        listingId,
-        access.access.ownerId
-      );
-    }
 
     queueInstagramPromotionSync(listingId);
     return NextResponse.json({
@@ -333,14 +323,6 @@ async function handleLegacyUpload(req: Request) {
   const capacityError = await ensureListingImageCapacity(listingId, supabaseAdmin);
   if (capacityError) return capacityError;
 
-  if (access.access.kind === 'owner') {
-    await invalidateSubmittedOwnerListing(
-      supabaseAdmin,
-      listingId,
-      access.access.ownerId
-    );
-  }
-
   const path = buildListingPath(listingId, fileValue.name || 'image', contentType);
   const sourceBuffer = Buffer.from(await fileValue.arrayBuffer());
   let imageRegistered = false;
@@ -360,8 +342,11 @@ async function handleLegacyUpload(req: Request) {
       displayOrder < MAX_LISTING_IMAGES
         ? displayOrder
         : null;
-    const { data: insertedRows, error: imgErr } =
-      await supabaseAdmin.rpc('register_listing_image', {
+    const inserted = await withInstagramSourceMutation(supabaseAdmin, listingId, async () => {
+      if (access.access.kind === 'owner') {
+        await invalidateSubmittedOwnerListing(supabaseAdmin, listingId, access.access.ownerId);
+      }
+      const { data: insertedRows, error: imgErr } = await supabaseAdmin.rpc('register_listing_image', {
         p_listing_id: listingId,
         p_image_url: url,
         p_display_order: normalizedDisplayOrder,
@@ -371,23 +356,15 @@ async function handleLegacyUpload(req: Request) {
             ? access.access.ownerId
             : null,
       });
-    const inserted = Array.isArray(insertedRows)
-      ? insertedRows[0]
-      : insertedRows;
-
-    if (imgErr || !inserted) {
-      throw new Error(imgErr?.message || 'insert_failed');
-    }
-    imageRegistered = true;
+      const registered = Array.isArray(insertedRows) ? insertedRows[0] : insertedRows;
+      if (imgErr || !registered) throw new Error(imgErr?.message || 'insert_failed');
+      imageRegistered = true;
+      if (access.access.kind === 'owner') {
+        await invalidateSubmittedOwnerListing(supabaseAdmin, listingId, access.access.ownerId);
+      }
+      return registered;
+    }, { actor: access.access.kind === 'owner' ? access.access.ownerId : 'staff' });
     revalidatePath('/', 'layout');
-
-    if (access.access.kind === 'owner') {
-      await invalidateSubmittedOwnerListing(
-        supabaseAdmin,
-        listingId,
-        access.access.ownerId
-      );
-    }
 
     queueInstagramPromotionSync(listingId);
     return NextResponse.json({
@@ -431,6 +408,8 @@ export async function POST(req: Request) {
 
     return handleLegacyUpload(req);
   } catch (err: any) {
+    const promotionFailure = getInstagramSourceMutationFailure(err);
+    if (promotionFailure) return NextResponse.json({ error: promotionFailure.message }, { status: promotionFailure.status });
     console.error(err);
     return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
   }

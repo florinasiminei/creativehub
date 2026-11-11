@@ -20,6 +20,7 @@ type OwnerOtpGateProps = {
 };
 
 const RESEND_COOLDOWN_SECONDS = 60;
+const SESSION_CHECK_TIMEOUT_MS = 20_000;
 
 function isOwnerSession(session: Session | null): session is Session {
   return Boolean(session?.user.email && session.user.email_confirmed_at && !session.user.is_anonymous);
@@ -85,6 +86,11 @@ export default function OwnerOtpGate({ children, nextPath, purpose = "portal" }:
   useEffect(() => {
     let active = true;
     let authEventReceived = false;
+    const timeoutId = window.setTimeout(() => {
+      if (!active || authEventReceived) return;
+      setSessionCheckFailed(true);
+      setSessionLoading(false);
+    }, SESSION_CHECK_TIMEOUT_MS);
     const callbackParams = new URLSearchParams(window.location.hash.slice(1));
     const queryParams = new URLSearchParams(window.location.search);
     if (callbackParams.has("error") || queryParams.has("error")) {
@@ -94,6 +100,7 @@ export default function OwnerOtpGate({ children, nextPath, purpose = "portal" }:
 
     void supabase.auth.getSession().then(({ data, error }) => {
       if (!active || authEventReceived) return;
+      window.clearTimeout(timeoutId);
       if (error) {
         const accessExpired = Boolean(error.status && error.status < 500 && error.status !== 429);
         setSessionCheckFailed(!accessExpired);
@@ -110,6 +117,7 @@ export default function OwnerOtpGate({ children, nextPath, purpose = "portal" }:
       setSessionLoading(false);
     }).catch(() => {
       if (!active || authEventReceived) return;
+      window.clearTimeout(timeoutId);
       setSessionCheckFailed(true);
       setSessionLoading(false);
     });
@@ -118,6 +126,7 @@ export default function OwnerOtpGate({ children, nextPath, purpose = "portal" }:
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!active) return;
+      window.clearTimeout(timeoutId);
       if (event !== "INITIAL_SESSION") authEventReceived = true;
       if (event === "SIGNED_OUT") {
         resetLoginState();
@@ -132,6 +141,7 @@ export default function OwnerOtpGate({ children, nextPath, purpose = "portal" }:
 
     return () => {
       active = false;
+      window.clearTimeout(timeoutId);
       subscription.unsubscribe();
     };
   }, [resetLoginState, sessionCheckAttempt]);

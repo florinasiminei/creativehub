@@ -3,10 +3,14 @@ import { revalidatePath } from 'next/cache';
 import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
 import { rateLimit } from '@/lib/rateLimit';
 import { queueInstagramPromotionSync } from '@/lib/server/instagramPromotionConfig';
+import { getInstagramSourceMutationFailure, withInstagramSourceMutation } from '@/lib/server/instagramPromotionMutation';
+import { PromotionError } from '@/lib/server/instagramPromotions';
 import {
   invalidateSubmittedOwnerListing,
   resolveListingAccess,
 } from '@/lib/server/ownerAuth';
+
+export const maxDuration = 180;
 
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -48,41 +52,61 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Duplicate image ids' }, { status: 400 });
     }
 
-    if (access.kind === 'owner') {
-      await invalidateSubmittedOwnerListing(supabaseAdmin, String(listingId), access.ownerId);
-    }
+    let orderChanged = true;
+    const mutationResponse = await withInstagramSourceMutation(supabaseAdmin, String(listingId), async () => {
+      if (!orderChanged) return null;
+      if (access.kind === 'owner') {
+        await invalidateSubmittedOwnerListing(supabaseAdmin, String(listingId), access.ownerId);
+      }
+      const { error } = await supabaseAdmin.rpc('reorder_listing_images', {
+        p_listing_id: String(listingId),
+        p_image_ids: uniqueIds,
+        p_expected_owner_id:
+          access.kind === 'owner' ? access.ownerId : null,
+      });
+      if (error) {
+        const conflict = /proprietarul s-a schimbat/i.test(error.message || '');
+        const invalid = /lista .* invalida|duplicate|nu apartin|toate imaginile/i.test(
+          error.message || ''
+        );
+        return NextResponse.json(
+          {
+            error: conflict
+              ? 'Accesul la proprietate s-a schimbat. Reincarca pagina.'
+              : invalid
+                ? 'Ordinea imaginilor este invalida. Reincarca pagina.'
+                : 'Nu am putut salva ordinea imaginilor.',
+          },
+          { status: conflict ? 409 : invalid ? 400 : 500 }
+        );
+      }
 
-    const { error } = await supabaseAdmin.rpc('reorder_listing_images', {
-      p_listing_id: String(listingId),
-      p_image_ids: uniqueIds,
-      p_expected_owner_id:
-        access.kind === 'owner' ? access.ownerId : null,
+      if (access.kind === 'owner') {
+        await invalidateSubmittedOwnerListing(supabaseAdmin, String(listingId), access.ownerId);
+      }
+      return null;
+    }, {
+      actor: access.kind === 'owner' ? access.ownerId : 'staff',
+      shouldInvalidate: async () => {
+        const { data: currentImages, error } = await supabaseAdmin.from('listing_images')
+          .select('id, display_order').eq('listing_id', String(listingId)).order('display_order', { ascending: true });
+        if (error) throw error;
+        const currentIds = (currentImages || []).map((image) => String(image.id));
+        if (currentIds.length !== uniqueIds.length || currentIds.some((imageId) => !uniqueIds.includes(imageId))) {
+          throw new PromotionError('Ordinea imaginilor este invalida. Reincarca pagina.', 400);
+        }
+        orderChanged = JSON.stringify(currentIds) !== JSON.stringify(uniqueIds);
+        return orderChanged;
+      },
     });
-    if (error) {
-      const conflict = /proprietarul s-a schimbat/i.test(error.message || '');
-      const invalid = /lista .* invalida|duplicate|nu apartin|toate imaginile/i.test(
-        error.message || ''
-      );
-      return NextResponse.json(
-        {
-          error: conflict
-            ? 'Accesul la proprietate s-a schimbat. Reincarca pagina.'
-            : invalid
-              ? 'Ordinea imaginilor este invalida. Reincarca pagina.'
-              : 'Nu am putut salva ordinea imaginilor.',
-        },
-        { status: conflict ? 409 : invalid ? 400 : 500 }
-      );
-    }
-
-    if (access.kind === 'owner') {
-      await invalidateSubmittedOwnerListing(supabaseAdmin, String(listingId), access.ownerId);
-    }
+    if (mutationResponse) return mutationResponse;
 
     queueInstagramPromotionSync(String(listingId));
     revalidatePath('/', 'layout');
     return NextResponse.json({ ok: true });
   } catch (err: any) {
+    const promotionFailure = getInstagramSourceMutationFailure(err);
+    if (promotionFailure) return NextResponse.json({ error: promotionFailure.message }, { status: promotionFailure.status });
     console.error(err);
     return NextResponse.json({ error: "Cererea nu a putut fi procesata. Incearca din nou." }, { status: 500 });
   }

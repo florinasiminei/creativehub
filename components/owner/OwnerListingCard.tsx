@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "@/components/R2Image";
-import { ArrowUpRight, Building2, CalendarDays, CreditCard, Instagram, Pencil } from "lucide-react";
+import { ArrowUpRight, Building2, CalendarDays, CreditCard, Share2, Pencil } from "lucide-react";
 import { CARD_IMAGE_QUALITY } from "@/lib/imageConfig";
 import { formatOwnerDate } from "@/lib/ownerPortal";
 import { formatPromotionDate, PROMOTION_STATUS_LABELS, type InstagramPromotionSummary } from "@/lib/social/instagram";
@@ -100,7 +100,9 @@ export default function OwnerListingCard({ listing, promotionEnabled, promotionS
   const status = listingPresentation(listing, promotionEnabled);
   const paymentPending = listing.pendingPayment?.status === "pending";
   const checkoutUrl = listing.pendingPayment?.checkoutUrl;
-  const promotion = promotionPresentation(listing.instagramPromotion, promotionStatusAvailable, listing.isPublished);
+  const promotion = promotionEnabled
+    ? promotionPresentation(listing.instagramPromotion, promotionStatusAvailable, listing.isPublished)
+    : { label: "Momentan indisponibilă", description: "Promovarea Instagram este temporar indisponibilă. Poți reveni mai târziu din contul tău.", action: "", attention: false };
 
   return (
     <article className="flex flex-col overflow-hidden rounded-[26px] border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
@@ -139,16 +141,14 @@ export default function OwnerListingCard({ listing, promotionEnabled, promotionS
         </div>
       )}
 
-      {promotionEnabled && (
-        <div className="mt-auto border-t border-zinc-100 bg-zinc-50/70 p-5 dark:border-zinc-800 dark:bg-zinc-950/30">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h4 className="flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-white"><Instagram className="h-4 w-4 text-emerald-700 dark:text-emerald-300" aria-hidden="true" />Promovare Instagram</h4>
-            <span className={`text-xs font-semibold ${promotion.attention ? "text-amber-700 dark:text-amber-300" : "text-zinc-500 dark:text-zinc-400"}`}>{promotion.label}</span>
-          </div>
-          <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-300">{promotion.description}</p>
-          <Link href={`/proprietari/promovare/${listing.id}`} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200 transition hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:text-emerald-200 dark:ring-emerald-900 dark:hover:bg-emerald-950 dark:focus-visible:ring-offset-zinc-900">{promotion.action}<ArrowUpRight className="h-4 w-4" aria-hidden="true" /></Link>
+      <div className="mt-auto border-t border-zinc-100 bg-zinc-50/70 p-5 dark:border-zinc-800 dark:bg-zinc-950/30">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h4 className="flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-white"><Share2 className="h-4 w-4 text-emerald-700 dark:text-emerald-300" aria-hidden="true" />Promovare social media</h4>
+          <span className={`text-xs font-semibold ${promotion.attention ? "text-amber-700 dark:text-amber-300" : "text-zinc-500 dark:text-zinc-400"}`}>{promotion.label}</span>
         </div>
-      )}
+        <p className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-300">{promotion.description}</p>
+        {promotionEnabled && <Link href={`/proprietari/promovare/${listing.id}`} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200 transition hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:text-emerald-200 dark:ring-emerald-900 dark:hover:bg-emerald-950 dark:focus-visible:ring-offset-zinc-900">{promotion.action}<ArrowUpRight className="h-4 w-4" aria-hidden="true" /></Link>}
+      </div>
     </article>
   );
 }

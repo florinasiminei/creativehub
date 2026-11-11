@@ -113,7 +113,7 @@ export default function SocialPromotionsSection() {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || 'Operația nu a fost finalizată.');
       setNotice(name === 'check-connection' ? `Conexiune validă: ${body.name}.`
-        : name === 'process' ? body.active ? `Calendar verificat. ${body.processed} campanii programate.` : 'Publicarea automată este încă dezactivată în configurația serverului.' : 'Starea campaniei a fost actualizată.');
+        : name === 'process' ? body.busy ? 'Calendarul este deja în curs de actualizare. Revino în câteva momente.' : body.active ? `Calendar verificat. ${body.processed} campanii programate.` : 'Publicarea automată este încă dezactivată în configurația serverului.' : 'Starea campaniei a fost actualizată.');
       await load();
       if (name !== 'check-connection') setEditorVersion((version) => version + 1);
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Operația nu a fost finalizată.'); }
