@@ -25,6 +25,8 @@ import { getDestinationPhoto } from '@/lib/exploreCards';
 import FacilityCollectionPage from '@/components/explore/FacilityCollectionPage';
 import { FACILITY_COLLECTIONS, getFacilityCollectionBySlug } from '@/lib/facilityCollections';
 import { getPublishedFacilityCollections } from '@/lib/server/facilityCollections';
+import { getListingResponsiveSrcSet } from '@/lib/listingImagePaths';
+import { COLLECTION_IMAGE_SIZES } from '@/lib/imageConfig';
 
 export const revalidate = 21600;
 
@@ -173,6 +175,10 @@ export default async function TypePage({ params: paramsPromise }: PageProps) {
   const isCabinCollection = listingType.slug === "cabane";
   const isAFrame = listingType.slug === "a-frame";
   const hasCountyLinks = countyLinks.length > 0;
+  const firstListingImage = listings[0]?.image;
+  const firstListingSrcSet = listingType.slug === "tiny-house" && !hasCountyLinks && firstListingImage
+    ? getListingResponsiveSrcSet(firstListingImage)
+    : undefined;
 
   const listingJsonLd = buildListingPageJsonLd({
     siteUrl,
@@ -194,6 +200,17 @@ export default async function TypePage({ params: paramsPromise }: PageProps) {
 
   return (
     <>
+      {firstListingSrcSet && (
+        <link
+          rel="preload"
+          as="image"
+          type="image/webp"
+          imageSrcSet={firstListingSrcSet}
+          imageSizes={COLLECTION_IMAGE_SIZES}
+          media="(max-width: 639px)"
+          fetchPriority="high"
+        />
+      )}
       <JsonLdScripts scripts={jsonLdScripts} />
       <main className="min-h-screen py-6 sm:py-10">
         <header className="max-w-3xl">
