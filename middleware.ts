@@ -171,10 +171,16 @@ export async function middleware(request: NextRequest) {
 
   const isDrafts = pathname === "/drafts" || pathname.startsWith("/drafts/");
   const isSeoAdmin = pathname === "/admin-seo" || pathname.startsWith("/admin-seo/");
-  const isListingPreview =
-    pathname.startsWith("/cazare/") &&
-    (request.nextUrl.searchParams.get("preview") === "1" ||
-      request.nextUrl.searchParams.get("draft") === "1");
+  if (/^\/cazare\/[^/]+\/request\/?$/.test(pathname)) {
+    return new NextResponse(null, {
+      status: 404,
+      headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex" },
+    });
+  }
+
+  const query = request.nextUrl.searchParams;
+  const isListingPreview = /^\/cazare\/[^/]+\/?$/.test(pathname) &&
+    (query.get("preview") === "1" || query.get("draft") === "1");
   const isDraftsLogin = pathname === "/drafts-login";
   const isDraftsLoginApi = pathname === "/api/drafts-login";
   if (isDraftsLogin || isDraftsLoginApi) {
@@ -192,6 +198,7 @@ export async function middleware(request: NextRequest) {
       const hasAttempt = !!authHeader || !!authCookie;
       const loginUrl = new URL(`/drafts-login${hasAttempt ? "?error=1" : ""}`, request.url);
       const response = NextResponse.redirect(loginUrl);
+      if (isListingPreview) response.headers.set("Cache-Control", "private, no-store");
       if (authCookie) {
         response.cookies.set("drafts_auth", "", {
           httpOnly: true,

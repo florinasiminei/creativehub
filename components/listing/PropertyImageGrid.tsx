@@ -64,7 +64,7 @@ const PropertyImageGrid: React.FC<PropertyImageGridProps> = ({ images, title, cl
       <div
         className={`hidden md:grid grid-cols-4 gap-2 h-[480px] rounded-2xl overflow-hidden ${className}`}
       >
-        {/* Main large image */}
+        {/* This image emits the preload shared by both layouts. */}
         <div 
           className="col-span-2 row-span-2 relative group cursor-pointer"
           onClick={() => openGallery(0)}
@@ -130,7 +130,6 @@ const PropertyImageGrid: React.FC<PropertyImageGridProps> = ({ images, title, cl
                 sizes={index === 0 ? mainImageSizes : '85vw'}
                 quality={CARD_IMAGE_QUALITY}
                 className="object-cover"
-                priority={index === 0}
                 loading={index === 0 ? 'eager' : 'lazy'}
                 fetchPriority={index === 0 ? 'high' : 'auto'}
                 onError={() => handlePreviewError(original, preview)}

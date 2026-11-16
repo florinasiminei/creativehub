@@ -39,6 +39,21 @@ const nextConfig = {
   // Keep the running dev server from overwriting a production build.
   distDir: process.env.NODE_ENV === 'development' ? '.next-dev' : '.next',
   poweredByHeader: false,
+  async rewrites() {
+    return {
+      beforeFiles: [
+        { type: 'query', key: 'preview', value: '1' },
+        { type: 'query', key: 'draft', value: '1' },
+        { type: 'query', key: 'id' },
+      ].map((condition) => ({
+        source: '/cazare/:slug',
+        destination: '/cazare/:slug/request',
+        has: [condition],
+      })),
+      afterFiles: [],
+      fallback: [],
+    };
+  },
   async headers() {
     return [
       {
