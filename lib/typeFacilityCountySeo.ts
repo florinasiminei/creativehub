@@ -26,6 +26,12 @@ export type TypeFacilityCountyCombo = {
 
 type ListingFacilityRawRow = Record<string, unknown>;
 
+type RelatedListingScope = {
+  typeValue: ListingTypeValue;
+  countyName: string;
+  facilityIds: string[];
+};
+
 const LISTING_TYPE_VALUES = new Set<ListingTypeValue>(
   LISTING_TYPES.map((type) => type.value)
 );
@@ -103,15 +109,28 @@ export async function fetchSeoFacilities(supabaseAdmin: any): Promise<SeoFacilit
 
 export async function fetchTypeFacilityCountyCombos(
   supabaseAdmin: any,
-  options?: { publishedOnly?: boolean }
+  options?: { publishedOnly?: boolean; relatedListing?: RelatedListingScope }
 ): Promise<TypeFacilityCountyCombo[]> {
-  const { data, error } = await supabaseAdmin
-    .from("listing_facilities")
-    .select("listing_id, facilities(id, name), listings(id, type, judet, is_published)");
-
-  if (error || !data) return [];
+  const scope = options?.relatedListing;
+  if (scope?.facilityIds.length === 0) return [];
 
   const publishedOnly = Boolean(options?.publishedOnly);
+  const listingRelation = scope ? "listings!inner" : "listings";
+  let query = supabaseAdmin
+    .from("listing_facilities")
+    .select(`listing_id, facilities(id, name), ${listingRelation}(id, type, judet, is_published)`);
+  if (scope) {
+    query = query
+      .in("facility_id", Array.from(new Set(scope.facilityIds)))
+      .eq("listings.type", scope.typeValue)
+      .eq("listings.judet", scope.countyName);
+    if (publishedOnly) query = query.eq("listings.is_published", true);
+  }
+
+  const { data, error } = await query;
+  if (error || !data) return [];
+  if (scope && data.length === 0) return [];
+
   const countyByNormalizedName = new Map(
     getCounties().map((county) => [normalizeRegionText(county.name), county] as const)
   );
@@ -130,6 +149,7 @@ export async function fetchTypeFacilityCountyCombos(
       facilitiesForSlug.push({ id: facilityId, name: facilityName });
     }
   } else {
+    if (scope) return [];
     for (const row of data as ListingFacilityRawRow[]) {
       const facilityRow = firstObject(row["facilities"]);
       if (!facilityRow) continue;

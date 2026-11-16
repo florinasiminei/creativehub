@@ -170,7 +170,14 @@ async function buildListingRelatedLinks(listing: ListingPageData): Promise<SeoRe
         listingType.value,
         county.name
       ),
-      fetchTypeFacilityCountyCombos(supabaseAdmin, { publishedOnly: true }),
+      fetchTypeFacilityCountyCombos(supabaseAdmin, {
+        publishedOnly: true,
+        relatedListing: {
+          typeValue: listingType.value,
+          countyName: county.name,
+          facilityIds: listing.facilities.map((facility) => facility.id),
+        },
+      }),
     ]);
 
     if (hasMinimumPublishedListings(typeCountyCount)) {
